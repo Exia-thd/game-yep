@@ -1,0 +1,1908 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PUBG Pan Battle - 3D Battle Royale</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #fff;
+            overflow: hidden;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #canvas3d {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        #setupPanel {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(22, 33, 62, 0.95);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            max-width: 600px;
+            width: 90%;
+            border: 2px solid #e94560;
+            z-index: 1000;
+        }
+
+        #setupPanel h1 {
+            color: #e94560;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 2em;
+            text-shadow: 0 0 10px rgba(233, 69, 96, 0.5);
+        }
+
+        #setupPanel label {
+            display: block;
+            margin: 20px 0 10px;
+            color: #a8dadc;
+            font-weight: bold;
+        }
+
+        #setupPanel textarea {
+            width: 100%;
+            height: 150px;
+            padding: 15px;
+            border: 2px solid #457b9d;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            font-size: 14px;
+            resize: vertical;
+        }
+
+        #setupPanel input[type="number"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #457b9d;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            font-size: 16px;
+        }
+
+        #startBtn {
+            width: 100%;
+            padding: 15px;
+            margin-top: 25px;
+            background: linear-gradient(135deg, #e94560 0%, #d62839 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(233, 69, 96, 0.4);
+        }
+
+        #startBtn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(233, 69, 96, 0.6);
+        }
+
+        #gameUI {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 20px;
+            display: none;
+            pointer-events: none;
+        }
+
+        #stats {
+            background: rgba(22, 33, 62, 0.9);
+            padding: 20px;
+            border-radius: 15px;
+            display: inline-block;
+            border: 2px solid #457b9d;
+        }
+
+        #stats h2 {
+            color: #e94560;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+
+        #stats p {
+            margin: 8px 0;
+            font-size: 1.1em;
+            color: #a8dadc;
+        }
+
+        .highlight {
+            color: #00ff88;
+            font-weight: bold;
+            font-size: 1.3em;
+        }
+
+        #battleAlert {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(233, 69, 96, 0.95);
+            padding: 20px 40px;
+            border-radius: 20px;
+            font-size: 1.8em;
+            font-weight: bold;
+            display: none;
+            animation: pulse 0.5s;
+            box-shadow: 0 0 40px rgba(233, 69, 96, 0.8);
+            border: 4px solid #fff;
+            z-index: 2000;
+            text-align: center;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: translateX(-50%) scale(1); }
+            50% { transform: translateX(-50%) scale(1.05); }
+        }
+
+        #winnerPanel {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(22, 33, 62, 0.98);
+            padding: 60px;
+            border-radius: 25px;
+            text-align: center;
+            display: none;
+            border: 3px solid #00ff88;
+            box-shadow: 0 0 80px rgba(0, 255, 136, 0.6);
+            z-index: 3000;
+        }
+
+        #winnerPanel h1 {
+            color: #00ff88;
+            font-size: 3em;
+            margin-bottom: 20px;
+            text-shadow: 0 0 20px rgba(0, 255, 136, 0.8);
+        }
+
+        #winnerPanel p {
+            font-size: 1.5em;
+            margin: 15px 0;
+            color: #a8dadc;
+        }
+
+        #restartBtn {
+            margin-top: 30px;
+            padding: 15px 40px;
+            background: linear-gradient(135deg, #00ff88 0%, #00cc6a 100%);
+            color: #1a1a2e;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.2em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        #restartBtn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 20px rgba(0, 255, 136, 0.5);
+        }
+
+        .name-label {
+            position: absolute;
+            color: #ffffff;
+            font-size: 14px;
+            font-weight: bold;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 4px 8px;
+            border-radius: 8px;
+            border: 2px solid #00ffff;
+            pointer-events: none;
+            white-space: nowrap;
+            text-shadow: 0 0 5px rgba(0, 255, 255, 0.8);
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+        }
+
+        #actionLog {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 320px;
+            max-height: 80vh;
+            background: rgba(22, 33, 62, 0.9);
+            border: 2px solid #457b9d;
+            border-radius: 15px;
+            padding: 15px;
+            display: none;
+            overflow: hidden;
+        }
+
+        #actionLog h3 {
+            color: #00ffff;
+            margin: 0 0 15px 0;
+            font-size: 1.2em;
+            text-align: center;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+        }
+
+        #actionList {
+            max-height: calc(80vh - 60px);
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        #actionList::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #actionList::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 4px;
+        }
+
+        #actionList::-webkit-scrollbar-thumb {
+            background: #457b9d;
+            border-radius: 4px;
+        }
+
+        #actionList::-webkit-scrollbar-thumb:hover {
+            background: #00ffff;
+        }
+
+        .action-item {
+            background: rgba(0, 0, 0, 0.4);
+            padding: 10px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            border-left: 3px solid;
+            font-size: 0.9em;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .action-item.battle {
+            border-left-color: #ffa500;
+        }
+
+        .action-item.knockout {
+            border-left-color: #e94560;
+        }
+
+        .action-item.start {
+            border-left-color: #00ff88;
+        }
+
+        .action-item.finale {
+            border-left-color: #ffff00;
+        }
+
+        .action-time {
+            color: #a8dadc;
+            font-size: 0.85em;
+            margin-bottom: 4px;
+        }
+
+        .action-text {
+            color: #ffffff;
+            line-height: 1.4;
+        }
+
+        .action-icon {
+            display: inline-block;
+            margin-right: 5px;
+        }
+
+        #cameraControls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(22, 33, 62, 0.9);
+            padding: 15px 20px;
+            border-radius: 15px;
+            border: 2px solid #457b9d;
+            display: none;
+            pointer-events: auto;
+        }
+
+        #cameraControls button {
+            margin: 0 5px;
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #457b9d 0%, #1d3557 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        #cameraControls button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(69, 123, 157, 0.5);
+        }
+
+        #cameraControls button:active {
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="canvas3d"></canvas>
+        <div id="nameLabels"></div>
+        
+        <div id="setupPanel">
+            <h1>🍳 PUBG PAN BATTLE 🍳</h1>
+            <label>Danh sách tên (mỗi tên một dòng):</label>
+            <textarea id="nameInput" placeholder="Nhập tên người chơi...&#10;Ví dụ:&#10;Nguyễn Văn A&#10;Trần Thị B&#10;Lê Văn C&#10;...">Nguyễn Văn An
+Trần Thị Bình
+Lê Hoàng Cường
+Phạm Thị Dung
+Hoàng Văn Em
+Vũ Thị Phương
+Đặng Minh Giang
+Bùi Thị Hương
+Đinh Văn Inh
+Ngô Thị Kim</textarea>
+            
+            <label>Thời gian giữa mỗi trận đấu (giây):</label>
+            <input type="number" id="battleTime" value="8" min="5" max="20">
+            
+            <label>Tổng thời gian game (giây):</label>
+            <input type="number" id="totalGameTime" value="80" min="30" max="300">
+            
+            <button id="startBtn">BẮT ĐẦU GAME</button>
+        </div>
+
+        <div id="gameUI">
+            <div id="stats">
+                <h2>📊 THỐNG KÊ</h2>
+                <p>Còn lại: <span id="remaining" class="highlight">0</span> người</p>
+                <p>Đã loại: <span id="eliminated" class="highlight">0</span> người</p>
+                <p>Thời gian: <span id="timer" class="highlight">0</span>s / <span id="totalTime" class="highlight">0</span>s</p>
+            </div>
+        </div>
+
+        <div id="cameraControls">
+            <button id="zoomIn">🔍 Zoom In</button>
+            <button id="zoomOut">🔍 Zoom Out</button>
+            <button id="resetCamera">📷 Reset</button>
+        </div>
+
+        <div id="actionLog">
+            <h3>📜 LỊCH SỬ TRẬN ĐẤU</h3>
+            <div id="actionList"></div>
+        </div>
+
+        <div id="battleAlert"></div>
+
+        <div id="winnerPanel">
+            <h1>🎉 WINNER WINNER CHICKEN DINNER! 🎉</h1>
+            <p>Người chiến thắng:</p>
+            <p id="winnerName" style="color: #00ff88; font-size: 2em; font-weight: bold;"></p>
+            <p id="gameStats"></p>
+            <button id="restartBtn">CHƠI LẠI</button>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        let scene, camera, renderer;
+        let people = [];
+        let names = [];
+        let battleInterval;
+        let gameTime = 0;
+        let timerInterval;
+        let eliminatedCount = 0;
+        let battleTimeSeconds = 8;
+        let totalGameTimeSeconds = 80;
+        let actionLog = [];
+        const MAX_ACTIONS = 20;
+        let isFinalBattle = false;
+        let audioInitialized = false;
+        let battleSound, eliminationSound, winSound, lightningSound, panHitSound, panSwingSound;
+        let defaultCameraDistance = 35;
+        let cameraDistance = 35;
+        let cameraAngle = 0;
+        let activeBattle = null; // Track current battle state
+        
+        // Audio system
+        function initAudio() {
+            if (audioInitialized) return;
+            
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                const audioCtx = new AudioContext();
+                
+                battleSound = createBattleSound(audioCtx);
+                eliminationSound = createEliminationSound(audioCtx);
+                winSound = createWinSound(audioCtx);
+                lightningSound = createLightningSound(audioCtx);
+                panHitSound = createPanHitSound(audioCtx);
+                panSwingSound = createPanSwingSound(audioCtx);
+                
+                audioInitialized = true;
+            } catch (e) {
+                console.log('Audio not supported:', e);
+            }
+        }
+
+        function createBattleSound(audioCtx) {
+            return {
+                play: function() {
+                    const osc = audioCtx.createOscillator();
+                    const gainNode = audioCtx.createGain();
+                    
+                    osc.connect(gainNode);
+                    gainNode.connect(audioCtx.destination);
+                    
+                    osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.15);
+                    osc.type = 'square';
+                    
+                    gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+                    
+                    osc.start(audioCtx.currentTime);
+                    osc.stop(audioCtx.currentTime + 0.2);
+                }
+            };
+        }
+
+        function createLightningSound(audioCtx) {
+            return {
+                play: function() {
+                    const bufferSize = audioCtx.sampleRate * 0.3;
+                    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                    const data = buffer.getChannelData(0);
+                    
+                    for (let i = 0; i < bufferSize; i++) {
+                        data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.3));
+                    }
+                    
+                    const noise = audioCtx.createBufferSource();
+                    const gainNode = audioCtx.createGain();
+                    const filter = audioCtx.createBiquadFilter();
+                    
+                    noise.buffer = buffer;
+                    noise.connect(filter);
+                    filter.connect(gainNode);
+                    gainNode.connect(audioCtx.destination);
+                    
+                    filter.type = 'bandpass';
+                    filter.frequency.value = 300;
+                    
+                    gainNode.gain.setValueAtTime(0.4, audioCtx.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                    
+                    noise.start(audioCtx.currentTime);
+                }
+            };
+        }
+
+        function createPanSwingSound(audioCtx) {
+            return {
+                play: function() {
+                    const osc = audioCtx.createOscillator();
+                    const gainNode = audioCtx.createGain();
+                    
+                    osc.connect(gainNode);
+                    gainNode.connect(audioCtx.destination);
+                    
+                    osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+                    osc.frequency.linearRampToValueAtTime(100, audioCtx.currentTime + 0.1);
+                    osc.type = 'sine';
+                    
+                    gainNode.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+                    
+                    osc.start(audioCtx.currentTime);
+                    osc.stop(audioCtx.currentTime + 0.1);
+                }
+            };
+        }
+
+        function createPanHitSound(audioCtx) {
+            return {
+                play: function() {
+                    const osc1 = audioCtx.createOscillator();
+                    const osc2 = audioCtx.createOscillator();
+                    const gainNode = audioCtx.createGain();
+                    
+                    osc1.connect(gainNode);
+                    osc2.connect(gainNode);
+                    gainNode.connect(audioCtx.destination);
+                    
+                    osc1.frequency.value = 800;
+                    osc2.frequency.value = 1200;
+                    osc1.type = 'square';
+                    osc2.type = 'triangle';
+                    
+                    gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+                    
+                    osc1.start(audioCtx.currentTime);
+                    osc2.start(audioCtx.currentTime);
+                    osc1.stop(audioCtx.currentTime + 0.15);
+                    osc2.stop(audioCtx.currentTime + 0.15);
+                }
+            };
+        }
+
+        function createEliminationSound(audioCtx) {
+            return {
+                play: function() {
+                    const osc = audioCtx.createOscillator();
+                    const gainNode = audioCtx.createGain();
+                    
+                    osc.connect(gainNode);
+                    gainNode.connect(audioCtx.destination);
+                    
+                    osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.4);
+                    osc.type = 'sawtooth';
+                    
+                    gainNode.gain.setValueAtTime(0.25, audioCtx.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+                    
+                    osc.start(audioCtx.currentTime);
+                    osc.stop(audioCtx.currentTime + 0.4);
+                }
+            };
+        }
+
+        function createWinSound(audioCtx) {
+            return {
+                play: function() {
+                    const notes = [523, 659, 784, 1047];
+                    
+                    notes.forEach((freq, i) => {
+                        const osc = audioCtx.createOscillator();
+                        const gainNode = audioCtx.createGain();
+                        
+                        osc.connect(gainNode);
+                        gainNode.connect(audioCtx.destination);
+                        
+                        osc.frequency.value = freq;
+                        osc.type = 'sine';
+                        
+                        const startTime = audioCtx.currentTime + i * 0.15;
+                        gainNode.gain.setValueAtTime(0, startTime);
+                        gainNode.gain.linearRampToValueAtTime(0.2, startTime + 0.01);
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + 0.3);
+                        
+                        osc.start(startTime);
+                        osc.stop(startTime + 0.3);
+                    });
+                }
+            };
+        }
+
+        function addAction(type, text) {
+            const timestamp = gameTime;
+            const action = { type, text, timestamp };
+            actionLog.unshift(action);
+            
+            if (actionLog.length > MAX_ACTIONS) {
+                actionLog.pop();
+                const actionList = document.getElementById('actionList');
+                if (actionList.children.length >= MAX_ACTIONS) {
+                    actionList.removeChild(actionList.lastChild);
+                }
+            }
+            
+            addActionToUI(action);
+        }
+
+        function addActionToUI(action) {
+            const actionList = document.getElementById('actionList');
+            
+            const actionItem = document.createElement('div');
+            actionItem.className = `action-item ${action.type}`;
+            
+            let icon = '';
+            switch(action.type) {
+                case 'battle': icon = '⚔️'; break;
+                case 'knockout': icon = '💥'; break;
+                case 'start': icon = '🎮'; break;
+                case 'finale': icon = '⚡'; break;
+            }
+            
+            actionItem.innerHTML = `
+                <div class="action-time">[${action.timestamp}s]</div>
+                <div class="action-text"><span class="action-icon">${icon}</span>${action.text}</div>
+            `;
+            
+            actionList.insertBefore(actionItem, actionList.firstChild);
+        }
+
+        function init3DScene() {
+            scene = new THREE.Scene();
+            
+            scene.background = new THREE.Color(0x87ceeb);
+            scene.fog = new THREE.Fog(0x87ceeb, 50, 120);
+
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            updateCameraPosition();
+
+            renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('canvas3d'), antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const sunLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            sunLight.position.set(20, 40, 10);
+            sunLight.castShadow = true;
+            sunLight.shadow.camera.left = -80;
+            sunLight.shadow.camera.right = 80;
+            sunLight.shadow.camera.top = 80;
+            sunLight.shadow.camera.bottom = -80;
+            sunLight.shadow.mapSize.width = 2048;
+            sunLight.shadow.mapSize.height = 2048;
+            scene.add(sunLight);
+
+            // Ground - darker green grass
+            const groundGeometry = new THREE.CircleGeometry(60, 64);
+            const groundMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x2d5016, // Dark green
+                metalness: 0.0,
+                roughness: 1.0
+            });
+            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.rotation.x = -Math.PI / 2;
+            ground.receiveShadow = true;
+            scene.add(ground);
+
+            addTerrainFeatures();
+            addClouds();
+
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function updateCameraPosition() {
+            camera.position.set(
+                Math.sin(cameraAngle) * cameraDistance,
+                cameraDistance * 0.6,
+                Math.cos(cameraAngle) * cameraDistance
+            );
+            camera.lookAt(0, 0, 0);
+        }
+
+        function addTerrainFeatures() {
+            // Trees around perimeter
+            for (let angle = 0; angle < Math.PI * 2; angle += 0.2) {
+                const radius = 50 + Math.random() * 8;
+                const tree = createTree();
+                tree.position.set(
+                    Math.cos(angle) * radius,
+                    0,
+                    Math.sin(angle) * radius
+                );
+                tree.rotation.y = Math.random() * Math.PI * 2;
+                const scale = 0.8 + Math.random() * 0.6;
+                tree.scale.set(scale, scale, scale);
+                scene.add(tree);
+            }
+
+            // Bushes and rocks
+            for (let i = 0; i < 35; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const radius = 20 + Math.random() * 35;
+                
+                if (Math.random() > 0.5) {
+                    const bush = createBush();
+                    bush.position.set(
+                        Math.cos(angle) * radius,
+                        0,
+                        Math.sin(angle) * radius
+                    );
+                    scene.add(bush);
+                } else {
+                    const rock = createRock();
+                    rock.position.set(
+                        Math.cos(angle) * radius,
+                        0,
+                        Math.sin(angle) * radius
+                    );
+                    scene.add(rock);
+                }
+            }
+        }
+
+        function createTree() {
+            const treeGroup = new THREE.Group();
+
+            const trunkGeometry = new THREE.CylinderGeometry(0.3, 0.4, 3, 8);
+            const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x6b4423 });
+            const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+            trunk.position.y = 1.5;
+            trunk.castShadow = true;
+            treeGroup.add(trunk);
+
+            const foliageMaterial = new THREE.MeshStandardMaterial({ color: 0x228b22 });
+            for (let i = 0; i < 3; i++) {
+                const foliage = new THREE.Mesh(
+                    new THREE.ConeGeometry(1.5 - i * 0.3, 2.5 - i * 0.5, 8),
+                    foliageMaterial
+                );
+                foliage.position.y = 4 + i;
+                foliage.castShadow = true;
+                treeGroup.add(foliage);
+            }
+
+            return treeGroup;
+        }
+
+        function createBush() {
+            const bushGroup = new THREE.Group();
+            const bushMaterial = new THREE.MeshStandardMaterial({ color: 0x2d5016 });
+
+            for (let i = 0; i < 4; i++) {
+                const size = 0.4 + Math.random() * 0.4;
+                const sphere = new THREE.Mesh(
+                    new THREE.SphereGeometry(size, 8, 8),
+                    bushMaterial
+                );
+                sphere.position.x = (Math.random() - 0.5) * 1;
+                sphere.position.y = size * 0.5;
+                sphere.position.z = (Math.random() - 0.5) * 1;
+                sphere.castShadow = true;
+                bushGroup.add(sphere);
+            }
+
+            return bushGroup;
+        }
+
+        function createRock() {
+            const size = 0.3 + Math.random() * 0.7;
+            const rockGeometry = new THREE.DodecahedronGeometry(size, 0);
+            const rockMaterial = new THREE.MeshStandardMaterial({ color: 0x696969 });
+            const rock = new THREE.Mesh(rockGeometry, rockMaterial);
+            rock.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+            rock.castShadow = true;
+            return rock;
+        }
+
+        function addClouds() {
+            for (let i = 0; i < 15; i++) {
+                const cloud = createCloud();
+                cloud.position.x = (Math.random() - 0.5) * 150;
+                cloud.position.y = 20 + Math.random() * 15;
+                cloud.position.z = (Math.random() - 0.5) * 150;
+                cloud.userData.isCloud = true;
+                cloud.userData.driftSpeed = 0.01 + Math.random() * 0.02;
+                scene.add(cloud);
+            }
+        }
+
+        function createCloud() {
+            const cloudGroup = new THREE.Group();
+            const cloudMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0xffffff,
+                transparent: true,
+                opacity: 0.8
+            });
+
+            for (let i = 0; i < 4; i++) {
+                const size = 1.5 + Math.random() * 1;
+                const sphere = new THREE.Mesh(
+                    new THREE.SphereGeometry(size, 8, 8),
+                    cloudMaterial
+                );
+                sphere.position.x = (Math.random() - 0.5) * 4;
+                sphere.position.y = (Math.random() - 0.5) * 0.5;
+                sphere.position.z = (Math.random() - 0.5) * 2;
+                cloudGroup.add(sphere);
+            }
+
+            return cloudGroup;
+        }
+
+        function createPerson(name, index, total) {
+            const personGroup = new THREE.Group();
+
+            const colors = [
+                0xff6b6b, 0x4ecdc4, 0xffe66d, 0x95e1d3, 0xf38181,
+                0xaa96da, 0xfcbad3, 0xa8e6cf, 0xff8b94, 0xc7ceea
+            ];
+            const shirtColor = colors[index % colors.length];
+            const pantsColor = colors[(index + 5) % colors.length];
+
+            const footGeometry = new THREE.BoxGeometry(0.3, 0.15, 0.4);
+            const footMaterial = new THREE.MeshStandardMaterial({ color: 0x333333 });
+            
+            [-0.2, 0.2].forEach(x => {
+                const foot = new THREE.Mesh(footGeometry, footMaterial);
+                foot.position.set(x, 0.08, 0.1);
+                foot.castShadow = true;
+                personGroup.add(foot);
+            });
+
+            const legGeometry = new THREE.CylinderGeometry(0.18, 0.15, 0.9, 8);
+            const legMaterial = new THREE.MeshStandardMaterial({ color: pantsColor });
+            
+            [-0.2, 0.2].forEach(x => {
+                const leg = new THREE.Mesh(legGeometry, legMaterial);
+                leg.position.set(x, 0.6, 0);
+                leg.castShadow = true;
+                personGroup.add(leg);
+            });
+
+            const bodyGeometry = new THREE.CylinderGeometry(0.5, 0.4, 1.1, 12);
+            const bodyMaterial = new THREE.MeshStandardMaterial({ color: shirtColor });
+            const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+            body.position.y = 1.6;
+            body.castShadow = true;
+            personGroup.add(body);
+
+            const armGeometry = new THREE.CylinderGeometry(0.13, 0.11, 0.9, 8);
+            const skinMaterial = new THREE.MeshStandardMaterial({ color: 0xffd7b5 });
+            
+            const leftArm = new THREE.Mesh(armGeometry, skinMaterial);
+            leftArm.position.set(-0.65, 1.5, 0);
+            leftArm.rotation.z = 0.4;
+            leftArm.castShadow = true;
+            personGroup.add(leftArm);
+            personGroup.userData.leftArm = leftArm;
+
+            const rightArm = new THREE.Mesh(armGeometry, skinMaterial);
+            rightArm.position.set(0.65, 1.5, 0);
+            rightArm.rotation.z = -0.4;
+            rightArm.castShadow = true;
+            personGroup.add(rightArm);
+            personGroup.userData.rightArm = rightArm;
+
+            const handGeometry = new THREE.SphereGeometry(0.15, 8, 8);
+            [-0.85, 0.85].forEach(x => {
+                const hand = new THREE.Mesh(handGeometry, skinMaterial);
+                hand.position.set(x, 1.1, 0);
+                personGroup.add(hand);
+            });
+
+            const neckGeometry = new THREE.CylinderGeometry(0.18, 0.18, 0.25, 8);
+            const neck = new THREE.Mesh(neckGeometry, skinMaterial);
+            neck.position.y = 2.25;
+            personGroup.add(neck);
+
+            const headGeometry = new THREE.SphereGeometry(0.4, 16, 16);
+            const head = new THREE.Mesh(headGeometry, skinMaterial);
+            head.position.y = 2.65;
+            head.castShadow = true;
+            personGroup.add(head);
+
+            const hairGeometry = new THREE.SphereGeometry(0.42, 16, 16, 0, Math.PI * 2, 0, Math.PI / 1.5);
+            const hairColors = [0x2c1810, 0x6b4423, 0x3d2314, 0x1a0f0a, 0x8b6f47];
+            const hairMaterial = new THREE.MeshStandardMaterial({ color: hairColors[index % hairColors.length] });
+            const hair = new THREE.Mesh(hairGeometry, hairMaterial);
+            hair.position.y = 2.75;
+            personGroup.add(hair);
+
+            const eyeGeometry = new THREE.SphereGeometry(0.08, 8, 8);
+            const eyeMaterial = new THREE.MeshStandardMaterial({ color: 0x000000 });
+            
+            [-0.15, 0.15].forEach(x => {
+                const eye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+                eye.position.set(x, 2.7, 0.35);
+                personGroup.add(eye);
+            });
+
+            const pan = createPan();
+            pan.position.set(0.85, 1.1, 0.3);
+            pan.rotation.set(0, 0, -Math.PI / 2);
+            personGroup.add(pan);
+            personGroup.userData.pan = pan;
+
+            const htmlLabel = document.createElement('div');
+            htmlLabel.className = 'name-label';
+            htmlLabel.textContent = name;
+            htmlLabel.style.display = 'none';
+            document.getElementById('nameLabels').appendChild(htmlLabel);
+            personGroup.userData.htmlLabel = htmlLabel;
+
+            const radius = 25;
+            const angle = (index / total) * Math.PI * 2;
+            personGroup.position.x = Math.cos(angle) * radius;
+            personGroup.position.z = Math.sin(angle) * radius;
+
+            personGroup.userData.name = name;
+            personGroup.userData.eliminated = false;
+            personGroup.userData.wanderAngle = Math.random() * Math.PI * 2;
+            personGroup.userData.wanderSpeed = 0.03 + Math.random() * 0.02;
+            personGroup.userData.inBattle = false;
+            personGroup.userData.originalPos = { x: personGroup.position.x, z: personGroup.position.z };
+
+            scene.add(personGroup);
+            return personGroup;
+        }
+
+        function createPan() {
+            const panGroup = new THREE.Group();
+
+            const panGeometry = new THREE.CylinderGeometry(0.35, 0.35, 0.05, 32);
+            const panMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x2f2f2f,
+                metalness: 0.9,
+                roughness: 0.2
+            });
+            const panBody = new THREE.Mesh(panGeometry, panMaterial);
+            panBody.castShadow = true;
+            panGroup.add(panBody);
+
+            const handleGeometry = new THREE.CylinderGeometry(0.06, 0.06, 0.6, 8);
+            const handleMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x1a1a1a,
+                metalness: 0.3,
+                roughness: 0.7
+            });
+            const handle = new THREE.Mesh(handleGeometry, handleMaterial);
+            handle.position.set(0, 0, -0.5);
+            handle.rotation.x = Math.PI / 2;
+            panGroup.add(handle);
+
+            return panGroup;
+        }
+
+        function createLightning(x, z) {
+            const lightningGroup = new THREE.Group();
+
+            for (let i = 0; i < 3; i++) {
+                const angle = (i / 3) * Math.PI * 2;
+                const offsetX = Math.cos(angle) * 1.5;
+                const offsetZ = Math.sin(angle) * 1.5;
+
+                const boltGeometry = new THREE.CylinderGeometry(0.15, 0.05, 15, 6);
+                const boltMaterial = new THREE.MeshStandardMaterial({ 
+                    color: 0xffff00,
+                    emissive: 0xffff00,
+                    emissiveIntensity: 2
+                });
+                const bolt = new THREE.Mesh(boltGeometry, boltMaterial);
+                bolt.position.set(x + offsetX, 7.5, z + offsetZ);
+                lightningGroup.add(bolt);
+
+                const light = new THREE.PointLight(0xffff00, 3, 10);
+                light.position.set(x + offsetX, 10, z + offsetZ);
+                lightningGroup.add(light);
+            }
+
+            scene.add(lightningGroup);
+
+            setTimeout(() => {
+                scene.remove(lightningGroup);
+            }, 500);
+
+            return lightningGroup;
+        }
+
+        function startGame() {
+            const nameText = document.getElementById('nameInput').value.trim();
+            battleTimeSeconds = parseInt(document.getElementById('battleTime').value);
+            totalGameTimeSeconds = parseInt(document.getElementById('totalGameTime').value);
+            
+            names = nameText.split('\n').filter(n => n.trim() !== '');
+            
+            if (names.length < 2) {
+                alert('Vui lòng nhập ít nhất 2 tên!');
+                return;
+            }
+
+            document.getElementById('setupPanel').style.display = 'none';
+            document.getElementById('gameUI').style.display = 'block';
+            document.getElementById('actionLog').style.display = 'block';
+            document.getElementById('cameraControls').style.display = 'block';
+            document.getElementById('totalTime').textContent = totalGameTimeSeconds;
+
+            initAudio();
+            init3DScene();
+
+            names.forEach((name, index) => {
+                const person = createPerson(name.trim(), index, names.length);
+                people.push(person);
+            });
+
+            addAction('start', `Game bắt đầu với ${names.length} người chơi!`);
+
+            updateStats();
+            startBattles();
+            startTimer();
+            animate();
+        }
+
+        function startBattles() {
+            battleInterval = setInterval(() => {
+                if (activeBattle) return; // Wait for current battle to finish
+                
+                const alivePeople = people.filter(p => !p.userData.eliminated);
+                
+                if (alivePeople.length <= 1) {
+                    clearInterval(battleInterval);
+                    endGame();
+                    return;
+                }
+
+                const timeRemaining = totalGameTimeSeconds - gameTime;
+                
+                if (timeRemaining <= 0) {
+                    return;
+                }
+
+                const shuffled = [...alivePeople].sort(() => Math.random() - 0.5);
+                const fighter1 = shuffled[0];
+                const fighter2 = shuffled[1];
+
+                startBattle(fighter1, fighter2);
+                
+            }, battleTimeSeconds * 1000);
+        }
+
+        function startBattle(fighter1, fighter2) {
+            if (battleSound) battleSound.play();
+            if (lightningSound) lightningSound.play();
+
+            fighter1.userData.inBattle = true;
+            fighter2.userData.inBattle = true;
+
+            const alert = document.getElementById('battleAlert');
+            alert.textContent = `⚔️ ${fighter1.userData.name} VS ${fighter2.userData.name}`;
+            alert.style.background = 'rgba(255, 165, 0, 0.95)';
+            alert.style.display = 'block';
+
+            addAction('battle', `${fighter1.userData.name} và ${fighter2.userData.name} va chạm!`);
+
+            createLightning(fighter1.position.x, fighter1.position.z);
+            createLightning(fighter2.position.x, fighter2.position.z);
+
+            // Calculate meeting point
+            const meetX = (fighter1.position.x + fighter2.position.x) / 2;
+            const meetZ = (fighter1.position.z + fighter2.position.z) / 2;
+
+            activeBattle = {
+                fighter1: fighter1,
+                fighter2: fighter2,
+                meetX: meetX,
+                meetZ: meetZ,
+                phase: 'running', // running -> fighting -> knockout
+                fightTimer: 0,
+                loser: null,
+                winner: null,
+                originalCamera: {
+                    x: camera.position.x,
+                    y: camera.position.y,
+                    z: camera.position.z,
+                    distance: cameraDistance,
+                    angle: cameraAngle
+                },
+                cameraZoomProgress: 0
+            };
+
+            // Don't zoom immediately - wait for fighters to get close
+        }
+
+        function lightningStrike(victim) {
+            // Lightning strike elimination
+            if (victim.userData.eliminated) {
+                return;
+            }
+
+            victim.userData.eliminated = true;
+            eliminatedCount++;
+
+            // Dramatic lightning death animation
+            let strikeProgress = 0;
+            
+            const strikeInterval = setInterval(() => {
+                strikeProgress++;
+
+                // Electrocution effect - shake violently
+                if (strikeProgress < 10) {
+                    victim.position.x += (Math.random() - 0.5) * 0.3;
+                    victim.position.z += (Math.random() - 0.5) * 0.3;
+                    victim.position.y = Math.random() * 0.5;
+                    
+                    // Spin wildly
+                    victim.rotation.x += (Math.random() - 0.5) * 0.5;
+                    victim.rotation.y += (Math.random() - 0.5) * 0.5;
+                    victim.rotation.z += (Math.random() - 0.5) * 0.5;
+                } else {
+                    // Collapse and fade
+                    victim.position.y = Math.max(0, victim.position.y - 0.2);
+                    
+                    // Fade and shrink
+                    const scale = Math.max(0, 1 - (strikeProgress - 10) * 0.1);
+                    victim.scale.set(scale, scale, scale);
+                    
+                    if (scale <= 0 || strikeProgress > 20) {
+                        clearInterval(strikeInterval);
+                        scene.remove(victim);
+                    }
+                }
+            }, 50);
+
+            updateStats();
+        }
+
+        function startQuickBattle(fighter1, fighter2) {
+            // Quick battle for final brawl - proper rush and clash animation
+            if (!fighter1 || !fighter2 || fighter1.userData.eliminated || fighter2.userData.eliminated) {
+                return;
+            }
+            
+            // Calculate center meeting point
+            const meetX = (fighter1.position.x + fighter2.position.x) / 2;
+            const meetZ = (fighter1.position.z + fighter2.position.z) / 2;
+
+            const loser = Math.random() < 0.5 ? fighter1 : fighter2;
+            const winner = loser === fighter1 ? fighter2 : fighter1;
+
+            let runTimer = 0;
+            let fightPhase = 'running';
+            let hasClashed = false;
+            
+            const battleInterval = setInterval(() => {
+                // Safety check
+                if (fighter1.userData.eliminated || fighter2.userData.eliminated) {
+                    clearInterval(battleInterval);
+                    return;
+                }
+                
+                runTimer++;
+
+                if (fightPhase === 'running') {
+                    // Both rush to meeting point - MUST GET CLOSE
+                    const dx1 = meetX - fighter1.position.x;
+                    const dz1 = meetZ - fighter1.position.z;
+                    const dist1 = Math.sqrt(dx1 * dx1 + dz1 * dz1);
+
+                    const dx2 = meetX - fighter2.position.x;
+                    const dz2 = meetZ - fighter2.position.z;
+                    const dist2 = Math.sqrt(dx2 * dx2 + dz2 * dz2);
+
+                    const runSpeed = 0.4; // Fast run
+
+                    // Fighter 1 runs
+                    if (dist1 > 0.5) {
+                        fighter1.position.x += (dx1 / dist1) * runSpeed;
+                        fighter1.position.z += (dz1 / dist1) * runSpeed;
+                        fighter1.rotation.y = Math.atan2(dx1, dz1);
+                        // Running animation
+                        fighter1.position.y = Math.abs(Math.sin(runTimer * 0.5)) * 0.4;
+                    } else {
+                        fighter1.position.y = 0;
+                    }
+
+                    // Fighter 2 runs
+                    if (dist2 > 0.5) {
+                        fighter2.position.x += (dx2 / dist2) * runSpeed;
+                        fighter2.position.z += (dz2 / dist2) * runSpeed;
+                        fighter2.rotation.y = Math.atan2(dx2, dz2);
+                        // Running animation
+                        fighter2.position.y = Math.abs(Math.sin(runTimer * 0.5)) * 0.4;
+                    } else {
+                        fighter2.position.y = 0;
+                    }
+
+                    // Check if BOTH are close enough - CLASH!
+                    if (dist1 <= 0.5 && dist2 <= 0.5 && !hasClashed) {
+                        hasClashed = true;
+                        
+                        // Stop running
+                        fighter1.position.y = 0;
+                        fighter2.position.y = 0;
+                        
+                        // Face each other
+                        const angle1 = Math.atan2(fighter2.position.z - fighter1.position.z, 
+                                                   fighter2.position.x - fighter1.position.x);
+                        const angle2 = Math.atan2(fighter1.position.z - fighter2.position.z, 
+                                                   fighter1.position.x - fighter2.position.x);
+                        
+                        fighter1.rotation.y = angle1 + Math.PI / 2;
+                        fighter2.rotation.y = angle2 + Math.PI / 2;
+                        
+                        // Switch to fighting after a brief pause
+                        setTimeout(() => {
+                            fightPhase = 'fighting';
+                            runTimer = 0;
+                        }, 100);
+                    }
+                    
+                    // Timeout if taking too long
+                    if (runTimer > 40) {
+                        fightPhase = 'fighting';
+                        runTimer = 0;
+                        fighter1.position.y = 0;
+                        fighter2.position.y = 0;
+                    }
+                    
+                } else if (fightPhase === 'fighting') {
+                    // FIGHTING ANIMATION - one powerful hit
+                    
+                    // Winner's attack animation (0-15 frames)
+                    if (runTimer < 15) {
+                        const swingPower = Math.sin(runTimer * 0.4) * 2.2;
+                        
+                        if (winner.userData.rightArm) {
+                            winner.userData.rightArm.rotation.x = swingPower;
+                            winner.userData.rightArm.rotation.z = -0.4 + Math.abs(swingPower) * 0.6;
+                        }
+                        if (winner.userData.pan) {
+                            winner.userData.pan.rotation.y = swingPower * 0.8;
+                            winner.userData.pan.rotation.x = swingPower * 0.5;
+                        }
+                        
+                        // Jump during swing
+                        if (runTimer > 7) {
+                            winner.position.y = Math.sin((runTimer - 7) * 0.7) * 0.6;
+                        }
+                    } else {
+                        // Reset winner pose
+                        if (winner.userData.rightArm) {
+                            winner.userData.rightArm.rotation.x = 0;
+                            winner.userData.rightArm.rotation.z = -0.4;
+                        }
+                        if (winner.userData.pan) {
+                            winner.userData.pan.rotation.y = 0;
+                            winner.userData.pan.rotation.x = 0;
+                        }
+                        winner.position.y = 0;
+                    }
+                    
+                    // Loser gets hit (8-18 frames)
+                    if (runTimer >= 8 && runTimer < 18) {
+                        const hitProgress = (runTimer - 8) / 10;
+                        
+                        // Recoil and fly back
+                        loser.position.y = Math.sin(hitProgress * Math.PI) * 1.0;
+                        loser.rotation.z = Math.sin(hitProgress * Math.PI) * 0.5;
+                        loser.rotation.x = hitProgress * 0.4;
+                        
+                        // Push back
+                        const backAngle = Math.atan2(loser.position.z - winner.position.z,
+                                                      loser.position.x - winner.position.x);
+                        loser.position.x += Math.cos(backAngle) * 0.08;
+                        loser.position.z += Math.sin(backAngle) * 0.08;
+                    }
+                    
+                    // Knockout after animation
+                    if (runTimer >= 18) {
+                        clearInterval(battleInterval);
+                        
+                        // Reset winner completely
+                        winner.userData.inBattle = false;
+                        winner.position.y = 0;
+                        winner.rotation.z = 0;
+                        if (winner.userData.rightArm) {
+                            winner.userData.rightArm.rotation.x = 0;
+                            winner.userData.rightArm.rotation.z = -0.4;
+                        }
+                        if (winner.userData.pan) {
+                            winner.userData.pan.rotation.y = 0;
+                            winner.userData.pan.rotation.x = 0;
+                        }
+                        
+                        // Knockout loser
+                        quickKnockout(loser, winner);
+                    }
+                }
+            }, 30);
+        }
+
+        function quickKnockout(loser, winner) {
+            // Knockout with proper animation
+            if (loser.userData.eliminated) {
+                return;
+            }
+
+            loser.userData.eliminated = true;
+            eliminatedCount++;
+
+            addAction('knockout', `${winner.userData.name} đánh ngất ${loser.userData.name}!`);
+
+            // Dramatic knockout animation
+            let flyProgress = 0;
+            const angle = Math.atan2(loser.position.z - winner.position.z,
+                                     loser.position.x - winner.position.x);
+            
+            const quickFlyInterval = setInterval(() => {
+                flyProgress++;
+
+                // Fly backwards and up
+                loser.position.x += Math.cos(angle) * 0.3;
+                loser.position.z += Math.sin(angle) * 0.3;
+                loser.position.y += 0.4 - flyProgress * 0.02; // Arc trajectory
+                
+                // Spin dramatically
+                loser.rotation.x += 0.4;
+                loser.rotation.y += 0.3;
+                loser.rotation.z += 0.5;
+                
+                // Fade and shrink
+                const scale = Math.max(0, 1 - flyProgress * 0.06);
+                loser.scale.set(scale, scale, scale);
+
+                // Remove when done
+                if (flyProgress > 15 || scale <= 0 || loser.position.y < -2) {
+                    clearInterval(quickFlyInterval);
+                    scene.remove(loser);
+                }
+            }, 30);
+
+            updateStats();
+        }
+
+        function updateBattle() {
+            if (!activeBattle) return;
+
+            const battle = activeBattle;
+            const f1 = battle.fighter1;
+            const f2 = battle.fighter2;
+
+            if (battle.phase === 'running') {
+                // Move both fighters to meeting point
+                const dx1 = battle.meetX - f1.position.x;
+                const dz1 = battle.meetZ - f1.position.z;
+                const dist1 = Math.sqrt(dx1 * dx1 + dz1 * dz1);
+
+                const dx2 = battle.meetX - f2.position.x;
+                const dz2 = battle.meetZ - f2.position.z;
+                const dist2 = Math.sqrt(dx2 * dx2 + dz2 * dz2);
+
+                const runSpeed = 0.2;
+
+                if (dist1 > 0.5) {
+                    f1.position.x += (dx1 / dist1) * runSpeed;
+                    f1.position.z += (dz1 / dist1) * runSpeed;
+                    f1.rotation.y = Math.atan2(dx1, dz1);
+                    
+                    // Running animation
+                    f1.position.y = Math.abs(Math.sin(Date.now() * 0.02)) * 0.3;
+                }
+
+                if (dist2 > 0.5) {
+                    f2.position.x += (dx2 / dist2) * runSpeed;
+                    f2.position.z += (dz2 / dist2) * runSpeed;
+                    f2.rotation.y = Math.atan2(dx2, dz2);
+                    
+                    // Running animation
+                    f2.position.y = Math.abs(Math.sin(Date.now() * 0.02)) * 0.3;
+                }
+
+                // Start zooming when fighters get close
+                if (dist1 < 5 && dist2 < 5 && !isFinalBattle) {
+                    battle.cameraZoomProgress += 0.02;
+                    const progress = Math.min(battle.cameraZoomProgress, 1);
+                    
+                    // Smooth zoom to battle center
+                    const targetDistance = 8;
+                    const targetAngle = Math.atan2(battle.meetZ, battle.meetX);
+                    const targetX = Math.sin(targetAngle) * targetDistance;
+                    const targetY = targetDistance * 0.7;
+                    const targetZ = Math.cos(targetAngle) * targetDistance;
+                    
+                    camera.position.x = battle.originalCamera.x + (targetX + battle.meetX - battle.originalCamera.x) * progress;
+                    camera.position.y = battle.originalCamera.y + (targetY - battle.originalCamera.y) * progress;
+                    camera.position.z = battle.originalCamera.z + (targetZ + battle.meetZ - battle.originalCamera.z) * progress;
+                    
+                    camera.lookAt(battle.meetX, 2, battle.meetZ);
+                }
+
+                // Check if both reached meeting point
+                if (dist1 <= 0.5 && dist2 <= 0.5) {
+                    battle.phase = 'fighting';
+                    battle.fightTimer = 0;
+                    
+                    // Face each other
+                    f1.rotation.y = Math.atan2(f2.position.z - f1.position.z, f2.position.x - f1.position.x) + Math.PI / 2;
+                    f2.rotation.y = Math.atan2(f1.position.z - f2.position.z, f1.position.x - f2.position.x) + Math.PI / 2;
+                    
+                    f1.position.y = 0;
+                    f2.position.y = 0;
+
+                    // Determine loser
+                    battle.loser = Math.random() < 0.5 ? f1 : f2;
+                    battle.winner = battle.loser === f1 ? f2 : f1;
+                }
+
+            } else if (battle.phase === 'fighting') {
+                battle.fightTimer++;
+
+                // INTENSE FIGHTING ANIMATION with multiple attacks
+                const cycleDuration = 20; // Each attack cycle
+                const cycleNum = Math.floor(battle.fightTimer / cycleDuration);
+                const cycleProgress = battle.fightTimer % cycleDuration;
+                
+                // Alternate attacks between fighters
+                const attacker = (cycleNum % 2 === 0) ? f1 : f2;
+                const defender = (cycleNum % 2 === 0) ? f2 : f1;
+                
+                // Play sound at start of each attack
+                if (cycleProgress === 1 && panSwingSound) panSwingSound.play();
+                if (cycleProgress === 10 && panHitSound) panHitSound.play();
+
+                // ATTACKER ANIMATION
+                if (cycleProgress < 10) {
+                    // Wind up and swing
+                    const swing = Math.sin(cycleProgress * 0.5) * 2;
+                    
+                    if (attacker.userData.rightArm) {
+                        attacker.userData.rightArm.rotation.x = swing;
+                        attacker.userData.rightArm.rotation.z = -0.4 + Math.abs(swing) * 0.8;
+                    }
+                    if (attacker.userData.pan) {
+                        attacker.userData.pan.rotation.y = swing * 0.7;
+                        attacker.userData.pan.rotation.x = swing * 0.5;
+                    }
+                    
+                    // Body twist
+                    attacker.rotation.y += Math.sin(cycleProgress * 0.5) * 0.05;
+                    
+                    // Jump during attack
+                    if (cycleProgress > 5) {
+                        attacker.position.y = Math.sin((cycleProgress - 5) * 0.6) * 0.5;
+                    }
+                } else {
+                    // Reset to neutral
+                    if (attacker.userData.rightArm) {
+                        attacker.userData.rightArm.rotation.x = 0;
+                        attacker.userData.rightArm.rotation.z = -0.4;
+                    }
+                    if (attacker.userData.pan) {
+                        attacker.userData.pan.rotation.y = 0;
+                        attacker.userData.pan.rotation.x = 0;
+                    }
+                    attacker.position.y = 0;
+                }
+
+                // DEFENDER ANIMATION - gets hit
+                if (cycleProgress >= 8 && cycleProgress < 15) {
+                    // Recoil from hit
+                    const recoilProgress = (cycleProgress - 8) / 7;
+                    defender.position.y = Math.sin(recoilProgress * Math.PI) * 0.8;
+                    defender.rotation.z = Math.sin(recoilProgress * Math.PI) * 0.4;
+                    
+                    // Shake
+                    defender.position.x += (Math.random() - 0.5) * 0.05;
+                    defender.position.z += (Math.random() - 0.5) * 0.05;
+                } else {
+                    defender.position.y = 0;
+                    defender.rotation.z = 0;
+                }
+
+                // Both fighters bob and weave when not attacking/defending
+                if (cycleProgress >= 15) {
+                    f1.position.y = Math.sin(battle.fightTimer * 0.15) * 0.15;
+                    f2.position.y = Math.cos(battle.fightTimer * 0.15) * 0.15;
+                }
+
+                // Camera shake during impacts
+                if (cycleProgress === 10) {
+                    const shakeX = (Math.random() - 0.5) * 0.3;
+                    const shakeY = (Math.random() - 0.5) * 0.3;
+                    camera.position.x += shakeX;
+                    camera.position.y += shakeY;
+                }
+
+                // After multiple attacks (120 frames = 6 cycles), final knockout
+                if (battle.fightTimer >= 120) {
+                    battle.phase = 'knockout';
+                    
+                    // Reset positions
+                    f1.position.y = 0;
+                    f2.position.y = 0;
+                    f1.rotation.z = 0;
+                    f2.rotation.z = 0;
+                    
+                    knockoutPerson(battle.loser, battle.winner);
+                }
+            }
+        }
+
+        function knockoutPerson(loser, winner) {
+            if (loser.userData.eliminated) return;
+
+            loser.userData.eliminated = true;
+            eliminatedCount++;
+
+            if (panHitSound) panHitSound.play();
+            if (eliminationSound) eliminationSound.play();
+
+            addAction('knockout', `${winner.userData.name} đánh ngất ${loser.userData.name}! 🍳💥`);
+
+            const alert = document.getElementById('battleAlert');
+            alert.textContent = `💥 ${winner.userData.name} ĐÁNH NGẤT ${loser.userData.name}!`;
+            alert.style.background = 'rgba(233, 69, 96, 0.95)';
+
+            // Knockout animation - fly to camera
+            const cameraPos = camera.position;
+            
+            const dirX = cameraPos.x - loser.position.x;
+            const dirY = cameraPos.y - loser.position.y;
+            const dirZ = cameraPos.z - loser.position.z;
+            
+            const length = Math.sqrt(dirX * dirX + dirY * dirY + dirZ * dirZ);
+            const normalX = dirX / length;
+            const normalY = dirY / length;
+            const normalZ = dirZ / length;
+            
+            let flyProgress = 0;
+            const flySpeed = 0.8;
+            let hitScreen = false;
+            let slideProgress = 0;
+            
+            const knockoutAnimation = setInterval(() => {
+                if (!hitScreen) {
+                    flyProgress += flySpeed;
+                    
+                    loser.position.x += normalX * flySpeed;
+                    loser.position.y += normalY * flySpeed;
+                    loser.position.z += normalZ * flySpeed;
+                    
+                    loser.rotation.x += 0.3;
+                    loser.rotation.y += 0.4;
+                    loser.rotation.z += 0.2;
+                    
+                    const scale = 1 + flyProgress * 0.1;
+                    loser.scale.set(scale, scale, scale);
+                    
+                    const distToCamera = Math.sqrt(
+                        Math.pow(loser.position.x - cameraPos.x, 2) +
+                        Math.pow(loser.position.y - cameraPos.y, 2) +
+                        Math.pow(loser.position.z - cameraPos.z, 2)
+                    );
+                    
+                    if (distToCamera < 3 || flyProgress > 25) {
+                        hitScreen = true;
+                        loser.rotation.x = 0;
+                        loser.rotation.z = 0;
+                    }
+                } else {
+                    slideProgress++;
+                    
+                    loser.position.y -= 0.4;
+                    loser.rotation.z += 0.05;
+                    
+                    const fadeScale = Math.max(0, 1 - slideProgress * 0.03);
+                    const currentScale = 1 + flyProgress * 0.1;
+                    loser.scale.set(currentScale * fadeScale, currentScale * fadeScale, currentScale * fadeScale);
+                    
+                    if (slideProgress > 30 || loser.position.y < -10) {
+                        clearInterval(knockoutAnimation);
+                        scene.remove(loser);
+                        
+                        // Reset battle state
+                        if (activeBattle) {
+                            activeBattle.fighter1.userData.inBattle = false;
+                            activeBattle.fighter2.userData.inBattle = false;
+                            
+                            // Reset camera if zoomed
+                            if (!isFinalBattle) {
+                                setTimeout(() => {
+                                    cameraDistance = activeBattle.originalCamera.distance;
+                                    cameraAngle = activeBattle.originalCamera.angle;
+                                    updateCameraPosition();
+                                    alert.style.display = 'none';
+                                    activeBattle = null;
+                                }, 500);
+                            } else {
+                                alert.style.display = 'none';
+                                activeBattle = null;
+                            }
+                        }
+                        
+                        // Check if game should end
+                        const alivePeople = people.filter(p => !p.userData.eliminated);
+                        if (alivePeople.length <= 1) {
+                            setTimeout(() => endGame(), 500);
+                        }
+                    }
+                }
+            }, 30);
+
+            updateStats();
+        }
+
+        function updateStats() {
+            const remaining = people.filter(p => !p.userData.eliminated).length;
+            document.getElementById('remaining').textContent = remaining;
+            document.getElementById('eliminated').textContent = eliminatedCount;
+        }
+
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                gameTime++;
+                document.getElementById('timer').textContent = gameTime;
+                
+                if (gameTime >= totalGameTimeSeconds) {
+                    clearInterval(timerInterval);
+                    clearInterval(battleInterval);
+                    
+                    const alivePeople = people.filter(p => !p.userData.eliminated);
+                    
+                    if (alivePeople.length > 1) {
+                        isFinalBattle = true;
+                        
+                        const alert = document.getElementById('battleAlert');
+                        alert.textContent = `⚡ HẾT GIỜ! SÉT TRỪNG PHẠT! ⚡`;
+                        alert.style.background = 'rgba(255, 0, 0, 0.95)';
+                        alert.style.display = 'block';
+                        
+                        addAction('finale', `Hết giờ! Sét trừng phạt với ${alivePeople.length} người!`);
+                        
+                        // Lightning strikes every 5 seconds
+                        const lightningInterval = setInterval(() => {
+                            const alive = people.filter(p => !p.userData.eliminated);
+                            
+                            if (alive.length <= 1) {
+                                clearInterval(lightningInterval);
+                                alert.style.display = 'none';
+                                setTimeout(() => endGame(), 1000);
+                                return;
+                            }
+                            
+                            // Calculate how many to eliminate this round
+                            // Goal: eliminate everyone except 1 in reasonable time
+                            const remaining = alive.length;
+                            let toEliminate = Math.max(1, Math.floor(remaining * 0.3)); // 30% each wave
+                            
+                            // Make sure we don't eliminate all
+                            if (toEliminate >= remaining) {
+                                toEliminate = remaining - 1;
+                            }
+                            
+                            // Select random victims
+                            const shuffled = [...alive].sort(() => Math.random() - 0.5);
+                            const victims = shuffled.slice(0, toEliminate);
+                            
+                            // Show alert
+                            alert.textContent = `⚡ SÉT ĐÁNH! ${toEliminate} NGƯỜI BỊ TRỪNG PHẠT! ⚡`;
+                            alert.style.display = 'block';
+                            
+                            // Lightning sound
+                            if (lightningSound) lightningSound.play();
+                            
+                            // Strike each victim with lightning
+                            victims.forEach((victim, index) => {
+                                setTimeout(() => {
+                                    // Create lightning at victim position
+                                    createLightning(victim.position.x, victim.position.z);
+                                    
+                                    // Eliminate victim
+                                    lightningStrike(victim);
+                                    
+                                    addAction('knockout', `⚡ Sét đánh trúng ${victim.userData.name}!`);
+                                }, index * 200); // Stagger strikes
+                            });
+                            
+                        }, 2000); // Every 2 seconds - faster punishment!
+                    } else {
+                        endGame();
+                    }
+                }
+            }, 1000);
+        }
+
+        function endGame() {
+            clearInterval(battleInterval);
+            clearInterval(timerInterval);
+            activeBattle = null;
+
+            const survivors = people.filter(p => !p.userData.eliminated);
+            
+            if (survivors.length === 1 && winSound) {
+                winSound.play();
+            }
+            
+            let winnerText = '';
+            if (survivors.length === 0) {
+                winnerText = 'Không có người chiến thắng!';
+                document.getElementById('winnerPanel').querySelector('h1').textContent = '💥 HÒA! 💥';
+            } else if (survivors.length === 1) {
+                winnerText = survivors[0].userData.name;
+                document.getElementById('winnerPanel').querySelector('h1').textContent = '🎉 WINNER WINNER CHICKEN DINNER! 🎉';
+            }
+            
+            document.getElementById('winnerName').textContent = winnerText;
+            document.getElementById('gameStats').textContent = 
+                `Thời gian: ${gameTime}s / ${totalGameTimeSeconds}s | Đã loại: ${eliminatedCount} người`;
+            document.getElementById('winnerPanel').style.display = 'block';
+
+            if (survivors.length === 1) {
+                const winnerLight = new THREE.PointLight(0x00ff88, 3);
+                winnerLight.position.copy(survivors[0].position);
+                winnerLight.position.y += 5;
+                scene.add(winnerLight);
+            }
+        }
+
+        function updateNameLabels() {
+            people.forEach(person => {
+                if (person.userData.eliminated || !person.userData.htmlLabel) return;
+                
+                const labelPos = new THREE.Vector3();
+                labelPos.copy(person.position);
+                labelPos.y += 3.8;
+                
+                const screenPos = labelPos.project(camera);
+                
+                const x = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
+                const y = (screenPos.y * -0.5 + 0.5) * window.innerHeight;
+                
+                const label = person.userData.htmlLabel;
+                label.style.display = 'block';
+                label.style.left = `${x}px`;
+                label.style.top = `${y}px`;
+                label.style.transform = 'translate(-50%, -100%)';
+                
+                if (screenPos.z > 1) {
+                    label.style.display = 'none';
+                }
+            });
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Update battle if active
+            updateBattle();
+
+            // Animate people wandering (only if not in battle)
+            people.forEach((person, index) => {
+                if (!person.userData.eliminated && !person.userData.inBattle) {
+                    // Check if there's an active battle - if yes, run away from it!
+                    if (activeBattle && !isFinalBattle) {
+                        const battleX = activeBattle.meetX;
+                        const battleZ = activeBattle.meetZ;
+                        
+                        const dx = person.position.x - battleX;
+                        const dz = person.position.z - battleZ;
+                        const distToBattle = Math.sqrt(dx * dx + dz * dz);
+                        
+                        // If within 15 units of battle, run away!
+                        if (distToBattle < 15) {
+                            const fleeSpeed = 0.15;
+                            person.position.x += (dx / distToBattle) * fleeSpeed;
+                            person.position.z += (dz / distToBattle) * fleeSpeed;
+                            
+                            // Look away from battle
+                            person.rotation.y = Math.atan2(dz, dx) + Math.PI / 2;
+                            
+                            // Running animation - scared!
+                            person.position.y = Math.abs(Math.sin(Date.now() * 0.02)) * 0.3;
+                            
+                            // Keep within arena
+                            const distFromCenter = Math.sqrt(person.position.x ** 2 + person.position.z ** 2);
+                            if (distFromCenter > 40) {
+                                person.position.x *= 40 / distFromCenter;
+                                person.position.z *= 40 / distFromCenter;
+                            }
+                        } else {
+                            // Normal wandering when far from battle
+                            person.userData.wanderAngle += (Math.random() - 0.5) * 0.1;
+                            
+                            const moveX = Math.cos(person.userData.wanderAngle) * person.userData.wanderSpeed;
+                            const moveZ = Math.sin(person.userData.wanderAngle) * person.userData.wanderSpeed;
+                            
+                            person.position.x += moveX;
+                            person.position.z += moveZ;
+                            
+                            const distFromCenter = Math.sqrt(person.position.x ** 2 + person.position.z ** 2);
+                            if (distFromCenter > 40) {
+                                person.userData.wanderAngle = Math.atan2(-person.position.z, -person.position.x) + (Math.random() - 0.5) * 0.5;
+                            }
+                            
+                            person.rotation.y = person.userData.wanderAngle;
+                            person.position.y = Math.abs(Math.sin(Date.now() * 0.005 + index)) * 0.15;
+                        }
+                    } else {
+                        // No battle - normal wandering
+                        person.userData.wanderAngle += (Math.random() - 0.5) * 0.1;
+                        
+                        const moveX = Math.cos(person.userData.wanderAngle) * person.userData.wanderSpeed;
+                        const moveZ = Math.sin(person.userData.wanderAngle) * person.userData.wanderSpeed;
+                        
+                        person.position.x += moveX;
+                        person.position.z += moveZ;
+                        
+                        const distFromCenter = Math.sqrt(person.position.x ** 2 + person.position.z ** 2);
+                        if (distFromCenter > 40) {
+                            person.userData.wanderAngle = Math.atan2(-person.position.z, -person.position.x) + (Math.random() - 0.5) * 0.5;
+                        }
+                        
+                        person.rotation.y = person.userData.wanderAngle;
+                        person.position.y = Math.abs(Math.sin(Date.now() * 0.005 + index)) * 0.15;
+                    }
+                    
+                    // Idle pan swing
+                    if (person.userData.pan) {
+                        person.userData.pan.rotation.z = -Math.PI / 2 + Math.sin(Date.now() * 0.005 + index) * 0.3;
+                    }
+                } else if (person.userData.eliminated) {
+                    if (person.userData.htmlLabel) {
+                        person.userData.htmlLabel.style.display = 'none';
+                    }
+                }
+            });
+
+            updateNameLabels();
+
+            // Animate clouds
+            scene.children.forEach(child => {
+                if (child.userData.isCloud) {
+                    child.position.x += child.userData.driftSpeed;
+                    if (child.position.x > 75) child.position.x = -75;
+                }
+            });
+
+            // Slowly rotate camera when not in battle
+            if (!activeBattle || isFinalBattle) {
+                cameraAngle += 0.001;
+                updateCameraPosition();
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            updateNameLabels();
+        }
+
+        document.getElementById('zoomIn').addEventListener('click', () => {
+            cameraDistance = Math.max(15, cameraDistance - 5);
+            updateCameraPosition();
+        });
+
+        document.getElementById('zoomOut').addEventListener('click', () => {
+            cameraDistance = Math.min(60, cameraDistance + 5);
+            updateCameraPosition();
+        });
+
+        document.getElementById('resetCamera').addEventListener('click', () => {
+            cameraDistance = defaultCameraDistance;
+            cameraAngle = 0;
+            updateCameraPosition();
+        });
+
+        document.getElementById('startBtn').addEventListener('click', startGame);
+        
+        document.getElementById('restartBtn').addEventListener('click', () => {
+            location.reload();
+        });
+    </script>
+</body>
+</html>

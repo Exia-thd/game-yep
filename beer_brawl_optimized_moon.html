@@ -1,0 +1,1612 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Beer Brawl Royale - Moonlight Party 🌙</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{
+      font-family:Arial,sans-serif;
+      background:linear-gradient(135deg,#0a0a1f 0%,#1a1a3e 100%);
+      color:#fff;
+      overflow:hidden
+    }
+    #gameContainer{position:relative;width:100vw;height:100vh}
+    #canvas3d{width:100%;height:100%;display:block}
+    #setupPanel{
+      position:absolute;top:50%;left:50%;
+      transform:translate(-50%,-50%);
+      background:rgba(15,15,40,.95);
+      padding:40px;border-radius:20px;
+      box-shadow:0 20px 60px rgba(0,0,0,.5);
+      max-width:600px;width:90%;
+      border:2px solid #e94560;
+      z-index:1000
+    }
+    #setupPanel h1{
+      color:#e94560;margin-bottom:20px;text-align:center;
+      font-size:2em;text-shadow:0 0 10px rgba(233,69,96,.5)
+    }
+    #setupPanel label{display:block;margin:20px 0 10px;color:#a8dadc;font-weight:bold}
+    #setupPanel textarea{
+      width:100%;height:150px;padding:15px;
+      border:2px solid #457b9d;border-radius:10px;
+      background:rgba(255,255,255,.1);color:#fff;
+      font-size:14px;resize:vertical
+    }
+    #setupPanel input[type="number"]{
+      width:100%;padding:12px;border:2px solid #457b9d;border-radius:10px;
+      background:rgba(255,255,255,.1);color:#fff;font-size:16px
+    }
+    #startBtn{
+      width:100%;padding:15px;margin-top:25px;
+      background:linear-gradient(135deg,#e94560 0%,#d62839 100%);
+      color:#fff;border:none;border-radius:10px;
+      font-size:18px;font-weight:bold;cursor:pointer;
+      transition:all .3s;box-shadow:0 5px 15px rgba(233,69,96,.4)
+    }
+    #startBtn:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(233,69,96,.6)}
+    #gameUI{position:absolute;top:0;left:0;width:100%;padding:20px;display:none;pointer-events:none}
+    #stats{
+      background:rgba(15,15,40,.9);
+      padding:20px;border-radius:15px;display:inline-block;
+      border:2px solid #457b9d
+    }
+    #stats h2{color:#e94560;margin-bottom:15px;font-size:1.5em}
+    #stats p{margin:8px 0;font-size:1.1em;color:#a8dadc}
+    .highlight{color:#00ff88;font-weight:bold;font-size:1.3em}
+
+    #battleAlert{
+      position:absolute;top:20px;left:50%;
+      transform:translateX(-50%);
+      background:rgba(0,200,255,.95);
+      padding:18px 34px;border-radius:20px;
+      font-size:1.5em;font-weight:bold;
+      display:none;animation:pulse .5s;
+      box-shadow:0 0 40px rgba(0,200,255,.55);
+      border:4px solid #fff;z-index:2000;text-align:center
+    }
+    @keyframes pulse{
+      0%,100%{transform:translateX(-50%) scale(1)}
+      50%{transform:translateX(-50%) scale(1.05)}
+    }
+
+    #winnerPanel{
+      position:absolute;top:50%;left:50%;
+      transform:translate(-50%,-50%);
+      background:rgba(15,15,40,.98);
+      padding:60px;border-radius:25px;text-align:center;
+      display:none;border:3px solid #00ff88;
+      box-shadow:0 0 80px rgba(0,255,136,.6);
+      z-index:3000
+    }
+    #winnerPanel h1{
+      color:#00ff88;font-size:2.6em;margin-bottom:20px;
+      text-shadow:0 0 20px rgba(0,255,136,.8)
+    }
+    #winnerPanel p{font-size:1.5em;margin:15px 0;color:#a8dadc}
+    #restartBtn{
+      margin-top:30px;padding:15px 40px;
+      background:linear-gradient(135deg,#00ff88 0%,#00cc6a 100%);
+      color:#1a1a2e;border:none;border-radius:10px;
+      font-size:1.2em;font-weight:bold;cursor:pointer;transition:all .3s
+    }
+    #restartBtn:hover{transform:scale(1.05);box-shadow:0 5px 20px rgba(0,255,136,.5)}
+
+    .name-label{
+      position:absolute;color:#fff;font-size:13px;font-weight:bold;
+      background:rgba(0,0,0,.65);padding:4px 8px;border-radius:8px;
+      border:2px solid #00ffff;pointer-events:none;white-space:nowrap;
+      text-shadow:0 0 5px rgba(0,255,255,.8);
+      box-shadow:0 0 10px rgba(0,255,255,.35)
+    }
+
+    #actionLog{
+      position:absolute;top:20px;right:20px;width:340px;max-height:80vh;
+      background:rgba(15,15,40,.9);border:2px solid #457b9d;
+      border-radius:15px;padding:15px;display:none;overflow:hidden
+    }
+    #actionLog h3{
+      color:#00ffff;margin:0 0 15px 0;font-size:1.2em;
+      text-align:center;text-shadow:0 0 10px rgba(0,255,255,.5)
+    }
+    #actionList{max-height:calc(80vh - 60px);overflow-y:auto;overflow-x:hidden}
+    #actionList::-webkit-scrollbar{width:8px}
+    #actionList::-webkit-scrollbar-track{background:rgba(0,0,0,.3);border-radius:4px}
+    #actionList::-webkit-scrollbar-thumb{background:#457b9d;border-radius:4px}
+    #actionList::-webkit-scrollbar-thumb:hover{background:#00ffff}
+
+    .action-item{
+      background:rgba(0,0,0,.4);
+      padding:10px;margin-bottom:8px;border-radius:8px;border-left:3px solid;
+      font-size:.9em;animation:slideIn .3s ease-out
+    }
+    @keyframes slideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+    .action-item.battle{border-left-color:#00c8ff}
+    .action-item.knockout{border-left-color:#e94560}
+    .action-item.start{border-left-color:#00ff88}
+    .action-item.finale{border-left-color:#ffff00}
+    .action-time{color:#a8dadc;font-size:.85em;margin-bottom:4px}
+    .action-text{color:#fff;line-height:1.4}
+    .action-icon{display:inline-block;margin-right:6px}
+
+    #cameraControls{
+      position:absolute;bottom:20px;left:50%;transform:translateX(-50%);
+      background:rgba(15,15,40,.9);padding:15px 20px;border-radius:15px;
+      border:2px solid #457b9d;display:none;pointer-events:auto
+    }
+    #cameraControls button{
+      margin:0 5px;padding:10px 20px;
+      background:linear-gradient(135deg,#457b9d 0%,#1d3557 100%);
+      color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:bold;
+      cursor:pointer;transition:all .3s
+    }
+    #cameraControls button:hover{transform:translateY(-2px);box-shadow:0 5px 15px rgba(69,123,157,.5)}
+    #cameraControls button:active{transform:translateY(0)}
+  </style>
+</head>
+<body>
+  <div id="gameContainer">
+    <canvas id="canvas3d"></canvas>
+    <div id="nameLabels"></div>
+
+    <div id="setupPanel">
+      <h1>🍺 BEER BRAWL ROYALE 🌙</h1>
+      <label>Danh sách tên (mỗi tên một dòng):</label>
+      <textarea id="nameInput" placeholder="Nhập tên người chơi...&#10;Ví dụ:&#10;Nguyễn Văn A&#10;Trần Thị B&#10;Lê Văn C&#10;...">Nguyễn Văn An
+Trần Thị Bình
+Lê Hoàng Cường
+Phạm Thị Dung
+Hoàng Văn Em
+Vũ Thị Phương
+Đặng Minh Giang
+Bùi Thị Hương
+Đinh Văn Inh
+Ngô Thị Kim</textarea>
+
+      <label>Thời gian giữa mỗi lần so tửu lượng (giây):</label>
+      <input type="number" id="battleTime" value="8" min="5" max="20" />
+
+      <label>Tổng thời gian party (giây):</label>
+      <input type="number" id="totalGameTime" value="80" min="30" max="300" />
+
+      <button id="startBtn">BẮT ĐẦU PARTY</button>
+    </div>
+
+    <div id="gameUI">
+      <div id="stats">
+        <h2>📊 THỐNG KÊ</h2>
+        <p>Còn tỉnh: <span id="remaining" class="highlight">0</span> người</p>
+        <p>Đã gục: <span id="eliminated" class="highlight">0</span> người</p>
+        <p>Thời gian: <span id="timer" class="highlight">0</span>s / <span id="totalTime" class="highlight">0</span>s</p>
+      </div>
+    </div>
+
+    <div id="cameraControls">
+      <button id="zoomIn">🔍 Zoom In</button>
+      <button id="zoomOut">🔍 Zoom Out</button>
+      <button id="resetCamera">📷 Reset</button>
+    </div>
+
+    <div id="actionLog">
+      <h3>📜 LỊCH SỬ PARTY</h3>
+      <div id="actionList"></div>
+    </div>
+
+    <div id="battleAlert"></div>
+
+    <div id="winnerPanel">
+      <h1>🏆 VUA TỬU LƯỢNG! 🏆</h1>
+      <p>Người trụ cuối cùng:</p>
+      <p id="winnerName" style="color:#00ff88;font-size:2em;font-weight:bold;"></p>
+      <p id="gameStats"></p>
+      <button id="restartBtn">CHƠI LẠI</button>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+    let scene, camera, renderer;
+    let people = [];
+    let names = [];
+    let battleInterval;
+    let gameTime = 0;
+    let timerInterval;
+    let eliminatedCount = 0;
+    let battleTimeSeconds = 8;
+    let totalGameTimeSeconds = 80;
+
+    let actionLog = [];
+    const MAX_ACTIONS = 20;
+
+    let isFinalBattle = false;
+    let audioInitialized = false;
+
+    // Audio
+    let battleSound, eliminationSound, winSound;
+    let clinkSound, sipSound;
+
+    // Camera
+    let defaultCameraDistance = 35;
+    let cameraDistance = 35;
+    let cameraAngle = 0;
+
+    // Battle state
+    let activeBattle = null;
+
+    // ✅ Optimizations
+    let balloons = [];
+    let stars = [];
+    let labelFrame = 0;
+    const LABEL_UPDATE_EVERY = 3;
+
+    // Moon & celestial
+    let moon, moonLight;
+
+    // ✅ Shared geometries/materials
+    const shared = {
+      handBeerGlassGeo: new THREE.CylinderGeometry(0.22, 0.25, 0.8, 8),
+      handBeerFoamGeo: new THREE.SphereGeometry(0.24, 6, 6),
+      handBeerGlassMat: new THREE.MeshStandardMaterial({ color: 0xffd966, transparent: true, opacity: 0.85, roughness: 0.3 }),
+      handBeerFoamMat: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 }),
+
+      footGeo: new THREE.BoxGeometry(0.3, 0.15, 0.4),
+      footMat: new THREE.MeshStandardMaterial({ color: 0x333333 }),
+      legGeo: new THREE.CylinderGeometry(0.18, 0.15, 0.9, 6),
+      bodyGeo: new THREE.CylinderGeometry(0.5, 0.4, 1.1, 10),
+      armGeo: new THREE.CylinderGeometry(0.13, 0.11, 0.9, 6),
+      handGeo: new THREE.SphereGeometry(0.15, 6, 6),
+      neckGeo: new THREE.CylinderGeometry(0.18, 0.18, 0.25, 6),
+      headGeo: new THREE.SphereGeometry(0.4, 10, 10),
+      eyeGeo: new THREE.SphereGeometry(0.08, 6, 6),
+    };
+
+    // -------------------- AUDIO --------------------
+    function initAudio() {
+      if (audioInitialized) return;
+      try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        const audioCtx = new AudioContext();
+
+        battleSound = createBattleSound(audioCtx);
+        eliminationSound = createEliminationSound(audioCtx);
+        winSound = createWinSound(audioCtx);
+        clinkSound = createClinkSound(audioCtx);
+        sipSound = createSipSound(audioCtx);
+
+        audioInitialized = true;
+      } catch (e) {
+        console.log("Audio not supported:", e);
+      }
+    }
+
+    function createBattleSound(audioCtx) {
+      return {
+        play: function () {
+          const osc = audioCtx.createOscillator();
+          const gainNode = audioCtx.createGain();
+          osc.connect(gainNode);
+          gainNode.connect(audioCtx.destination);
+          osc.frequency.setValueAtTime(260, audioCtx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(520, audioCtx.currentTime + 0.12);
+          osc.type = "square";
+          gainNode.gain.setValueAtTime(0.14, audioCtx.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.18);
+          osc.start(audioCtx.currentTime);
+          osc.stop(audioCtx.currentTime + 0.18);
+        },
+      };
+    }
+
+    function createEliminationSound(audioCtx) {
+      return {
+        play: function () {
+          const osc = audioCtx.createOscillator();
+          const gainNode = audioCtx.createGain();
+          osc.connect(gainNode);
+          gainNode.connect(audioCtx.destination);
+          osc.frequency.setValueAtTime(700, audioCtx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(90, audioCtx.currentTime + 0.35);
+          osc.type = "sawtooth";
+          gainNode.gain.setValueAtTime(0.18, audioCtx.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.35);
+          osc.start(audioCtx.currentTime);
+          osc.stop(audioCtx.currentTime + 0.35);
+        },
+      };
+    }
+
+    function createWinSound(audioCtx) {
+      return {
+        play: function () {
+          const notes = [523, 659, 784, 1047];
+          notes.forEach((freq, i) => {
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            osc.frequency.value = freq;
+            osc.type = "sine";
+            const startTime = audioCtx.currentTime + i * 0.15;
+            gainNode.gain.setValueAtTime(0, startTime);
+            gainNode.gain.linearRampToValueAtTime(0.18, startTime + 0.01);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + 0.3);
+            osc.start(startTime);
+            osc.stop(startTime + 0.3);
+          });
+        },
+      };
+    }
+
+    function createClinkSound(audioCtx) {
+      return {
+        play: function () {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          const filter = audioCtx.createBiquadFilter();
+          osc.connect(filter);
+          filter.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.type = "triangle";
+          osc.frequency.setValueAtTime(1200, audioCtx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(650, audioCtx.currentTime + 0.08);
+          filter.type = "highpass";
+          filter.frequency.value = 500;
+          gain.gain.setValueAtTime(0.22, audioCtx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.12);
+          osc.start();
+          osc.stop(audioCtx.currentTime + 0.12);
+        },
+      };
+    }
+
+    function createSipSound(audioCtx) {
+      return {
+        play: function () {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(280, audioCtx.currentTime);
+          osc.frequency.linearRampToValueAtTime(220, audioCtx.currentTime + 0.12);
+          gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.12);
+          osc.start();
+          osc.stop(audioCtx.currentTime + 0.12);
+        },
+      };
+    }
+
+    // -------------------- LOG --------------------
+    function addAction(type, text) {
+      const timestamp = gameTime;
+      const action = { type, text, timestamp };
+      actionLog.unshift(action);
+
+      if (actionLog.length > MAX_ACTIONS) {
+        actionLog.pop();
+        const actionList = document.getElementById("actionList");
+        if (actionList.children.length >= MAX_ACTIONS) {
+          actionList.removeChild(actionList.lastChild);
+        }
+      }
+      addActionToUI(action);
+    }
+
+    function addActionToUI(action) {
+      const actionList = document.getElementById("actionList");
+      const actionItem = document.createElement("div");
+      actionItem.className = `action-item ${action.type}`;
+
+      let icon = "";
+      switch (action.type) {
+        case "battle": icon = "🍻"; break;
+        case "knockout": icon = "😵"; break;
+        case "start": icon = "🎉"; break;
+        case "finale": icon = "🥂"; break;
+      }
+
+      actionItem.innerHTML = `
+        <div class="action-time">[${action.timestamp}s]</div>
+        <div class="action-text"><span class="action-icon">${icon}</span>${action.text}</div>
+      `;
+      actionList.insertBefore(actionItem, actionList.firstChild);
+    }
+
+    // -------------------- PARTY SCENE --------------------
+    function init3DScene() {
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x1a1a3e);
+      scene.fog = new THREE.Fog(0x1a1a3e, 60, 130);
+
+      camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+      updateCameraPosition();
+
+      renderer = new THREE.WebGLRenderer({ canvas: document.getElementById("canvas3d"), antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+      // ✅ Lighting optimized - brighter for visibility
+      const ambientLight = new THREE.AmbientLight(0x6688cc, 0.65);
+      scene.add(ambientLight);
+
+      const keyLight = new THREE.DirectionalLight(0xaaccff, 1.0);
+      keyLight.position.set(20, 35, 10);
+      keyLight.castShadow = true;
+      keyLight.shadow.camera.left = -60;
+      keyLight.shadow.camera.right = 60;
+      keyLight.shadow.camera.top = 60;
+      keyLight.shadow.camera.bottom = -60;
+      keyLight.shadow.mapSize.width = 1024;
+      keyLight.shadow.mapSize.height = 1024;
+      scene.add(keyLight);
+
+      // 🌙 MOON
+      createMoon();
+
+      // 🌟 STARS
+      createStars();
+
+      // Party floor - lighter brown
+      const groundGeometry = new THREE.CircleGeometry(60, 32);
+      const groundMaterial = new THREE.MeshStandardMaterial({ 
+        color: 0x4a3a2f, 
+        roughness: 0.85, 
+        metalness: 0.0 
+      });
+      const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+      ground.rotation.x = -Math.PI / 2;
+      ground.receiveShadow = true;
+      scene.add(ground);
+
+      // Center carpet - more vibrant
+      const carpetGeometry = new THREE.CircleGeometry(22, 32);
+      const carpetMaterial = new THREE.MeshStandardMaterial({ 
+        color: 0x7a2f4d, 
+        roughness: 0.9, 
+        metalness: 0.0 
+      });
+      const carpet = new THREE.Mesh(carpetGeometry, carpetMaterial);
+      carpet.rotation.x = -Math.PI / 2;
+      carpet.position.y = 0.02;
+      carpet.receiveShadow = true;
+      scene.add(carpet);
+
+      addPartyDecor();
+
+      window.addEventListener("resize", onWindowResize);
+    }
+
+    function createMoon() {
+      // Main moon body
+      const moonGeometry = new THREE.SphereGeometry(8, 32, 32);
+      const moonMaterial = new THREE.MeshStandardMaterial({
+        color: 0xffffdd,
+        emissive: 0xffffcc,
+        emissiveIntensity: 1.2,
+        roughness: 0.7,
+        metalness: 0.0
+      });
+      moon = new THREE.Mesh(moonGeometry, moonMaterial);
+      moon.position.set(-40, 60, -50);
+      moon.castShadow = false;
+      scene.add(moon);
+
+      // Moon craters (details)
+      const craterMat = new THREE.MeshStandardMaterial({
+        color: 0xddddaa,
+        emissive: 0xcccc88,
+        emissiveIntensity: 0.3,
+        roughness: 0.9
+      });
+      
+      const craterPositions = [
+        { x: 2, y: 1, z: 3, size: 1.2 },
+        { x: -1.5, y: -2, z: 2.5, size: 0.8 },
+        { x: 1, y: -1.5, z: 3.5, size: 1.0 },
+        { x: -2.5, y: 1.5, z: 2, size: 0.6 }
+      ];
+
+      craterPositions.forEach(crater => {
+        const c = new THREE.Mesh(
+          new THREE.SphereGeometry(crater.size, 12, 12),
+          craterMat
+        );
+        c.position.set(
+          moon.position.x + crater.x,
+          moon.position.y + crater.y,
+          moon.position.z + crater.z
+        );
+        scene.add(c);
+      });
+
+      // Moonlight - bright directional light
+      moonLight = new THREE.DirectionalLight(0xffffee, 1.5);
+      moonLight.position.copy(moon.position);
+      moonLight.target.position.set(0, 0, 0);
+      moonLight.castShadow = true;
+      moonLight.shadow.camera.left = -60;
+      moonLight.shadow.camera.right = 60;
+      moonLight.shadow.camera.top = 60;
+      moonLight.shadow.camera.bottom = -60;
+      moonLight.shadow.mapSize.width = 512;
+      moonLight.shadow.mapSize.height = 512;
+      scene.add(moonLight);
+      scene.add(moonLight.target);
+
+      // Moon glow effect - brighter
+      const glowGeometry = new THREE.SphereGeometry(9.5, 32, 32);
+      const glowMaterial = new THREE.MeshBasicMaterial({
+        color: 0xffffdd,
+        transparent: true,
+        opacity: 0.3,
+        side: THREE.BackSide
+      });
+      const moonGlow = new THREE.Mesh(glowGeometry, glowMaterial);
+      moonGlow.position.copy(moon.position);
+      scene.add(moonGlow);
+
+      // Additional point light for atmosphere - stronger
+      const moonPointLight = new THREE.PointLight(0xffffee, 2.5, 180);
+      moonPointLight.position.copy(moon.position);
+      scene.add(moonPointLight);
+    }
+
+    function createStars() {
+      const starGeometry = new THREE.BufferGeometry();
+      const starCount = 300;
+      const positions = new Float32Array(starCount * 3);
+
+      for (let i = 0; i < starCount; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const radius = 80 + Math.random() * 80;
+        const height = 40 + Math.random() * 60;
+
+        positions[i * 3] = Math.cos(angle) * radius;
+        positions[i * 3 + 1] = height;
+        positions[i * 3 + 2] = Math.sin(angle) * radius;
+      }
+
+      starGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+      const starMaterial = new THREE.PointsMaterial({
+        color: 0xffffff,
+        size: 0.5,
+        transparent: true,
+        opacity: 0.9
+      });
+
+      const starField = new THREE.Points(starGeometry, starMaterial);
+      scene.add(starField);
+      stars.push(starField);
+
+      // Add some brighter stars
+      for (let i = 0; i < 20; i++) {
+        const starLight = new THREE.PointLight(0xffffee, 0.6, 35);
+        const angle = Math.random() * Math.PI * 2;
+        const radius = 70 + Math.random() * 60;
+        const height = 45 + Math.random() * 50;
+        
+        starLight.position.set(
+          Math.cos(angle) * radius,
+          height,
+          Math.sin(angle) * radius
+        );
+        scene.add(starLight);
+        
+        // Store for twinkling
+        starLight.userData.baseIntensity = 0.6;
+        starLight.userData.twinklePhase = Math.random() * Math.PI * 2;
+        stars.push(starLight);
+      }
+    }
+
+    function updateCameraPosition() {
+      camera.position.set(
+        Math.sin(cameraAngle) * cameraDistance,
+        cameraDistance * 0.6,
+        Math.cos(cameraAngle) * cameraDistance
+      );
+      camera.lookAt(0, 0, 0);
+    }
+
+    function addPartyDecor() {
+      // ✅ Fewer tables and beer towers
+      const radius = 50;
+      for (let angle = 0; angle < Math.PI * 2; angle += 0.5) {
+        const r = radius + (Math.random() * 4 - 2);
+        const isBeerTower = Math.random() > 0.6;
+        const obj = isBeerTower ? createBeerTower() : createFoodTable();
+        obj.position.set(Math.cos(angle) * r, 0, Math.sin(angle) * r);
+        obj.rotation.y = Math.random() * Math.PI * 2;
+        const s = 0.95 + Math.random() * 0.35;
+        obj.scale.set(s, s, s);
+        scene.add(obj);
+      }
+
+      // ✅ Fewer balloons
+      balloons = [];
+      for (let i = 0; i < 10; i++) {
+        const balloon = createBalloonCluster();
+        const a = Math.random() * Math.PI * 2;
+        const rr = 18 + Math.random() * 32;
+        balloon.position.set(Math.cos(a) * rr, 6 + Math.random() * 6, Math.sin(a) * rr);
+        balloon.userData.floatPhase = Math.random() * Math.PI * 2;
+        balloons.push(balloon);
+        scene.add(balloon);
+      }
+
+      // ✅ String lights
+      const ringCount = 28;
+      for (let i = 0; i < ringCount; i++) {
+        const a = (i / ringCount) * Math.PI * 2;
+        const x = Math.cos(a) * 42;
+        const z = Math.sin(a) * 42;
+        const bulb = createLightBulb();
+        bulb.position.set(x, 10.5 + Math.sin(a * 3) * 0.4, z);
+        scene.add(bulb);
+      }
+
+      // Point lights for ambiance - brighter
+      for (let i = 0; i < 5; i++) {
+        const a = (i / 5) * Math.PI * 2;
+        const x = Math.cos(a) * 30;
+        const z = Math.sin(a) * 30;
+        const p = new THREE.PointLight(0xffeebb, 1.4, 40);
+        p.position.set(x, 12, z);
+        scene.add(p);
+      }
+    }
+
+    function createFoodTable() {
+      const g = new THREE.Group();
+
+      const top = new THREE.Mesh(
+        new THREE.CylinderGeometry(2.2, 2.2, 0.18, 12),
+        new THREE.MeshStandardMaterial({ color: 0x2b2b2b, roughness: 0.8 })
+      );
+      top.position.y = 1.35;
+      top.castShadow = true;
+      top.receiveShadow = true;
+      g.add(top);
+
+      const legMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.9 });
+      for (let i = 0; i < 4; i++) {
+        const a = (i / 4) * Math.PI * 2;
+        const leg = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.12, 0.12, 1.35, 6),
+          legMat
+        );
+        leg.position.set(Math.cos(a) * 1.5, 0.7, Math.sin(a) * 1.5);
+        leg.castShadow = true;
+        g.add(leg);
+      }
+
+      const plateMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4 });
+      const foodColors = [0xffcc66, 0xff6b6b, 0x4ecdc4, 0xa8e6cf, 0xffe66d];
+
+      for (let i = 0; i < 4; i++) {
+        const plate = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.55, 0.55, 0.06, 10),
+          plateMat
+        );
+        const a = (i / 4) * Math.PI * 2;
+        plate.position.set(Math.cos(a) * 1.2, 1.45, Math.sin(a) * 1.2);
+        plate.castShadow = true;
+        g.add(plate);
+
+        const food = new THREE.Mesh(
+          new THREE.SphereGeometry(0.22, 6, 6),
+          new THREE.MeshStandardMaterial({ color: foodColors[i % foodColors.length], roughness: 0.6 })
+        );
+        food.position.set(
+          plate.position.x + (Math.random() - 0.5) * 0.2,
+          1.55,
+          plate.position.z + (Math.random() - 0.5) * 0.2
+        );
+        food.castShadow = true;
+        g.add(food);
+      }
+
+      return g;
+    }
+
+    function createBeerTower() {
+      const g = new THREE.Group();
+
+      const crate = new THREE.Mesh(
+        new THREE.BoxGeometry(3.8, 0.9, 3.8),
+        new THREE.MeshStandardMaterial({ color: 0x3a2a1a, roughness: 0.95 })
+      );
+      crate.position.y = 0.45;
+      crate.castShadow = true;
+      crate.receiveShadow = true;
+      g.add(crate);
+
+      // ✅ Fewer beer cups
+      const levels = 3;
+      for (let y = 0; y < levels; y++) {
+        const ring = Math.max(3 - y, 1);
+        for (let i = 0; i < ring * 3; i++) {
+          const a = (i / (ring * 3)) * Math.PI * 2;
+          const rr = 1.25 - y * 0.18;
+          const cup = createBeerCup();
+          cup.position.set(Math.cos(a) * rr, 1.0 + y * 0.68, Math.sin(a) * rr);
+          cup.rotation.y = Math.random() * Math.PI * 2;
+          g.add(cup);
+        }
+      }
+
+      const keg = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.9, 0.9, 1.6, 12),
+        new THREE.MeshStandardMaterial({ color: 0x777777, metalness: 0.6, roughness: 0.35 })
+      );
+      keg.position.y = 1.25;
+      keg.castShadow = true;
+      g.add(keg);
+
+      const sign = new THREE.Mesh(
+        new THREE.TorusGeometry(1.2, 0.08, 6, 16),
+        new THREE.MeshStandardMaterial({ color: 0x00c8ff, emissive: 0x00c8ff, emissiveIntensity: 1.2 })
+      );
+      sign.position.y = 4.4;
+      sign.castShadow = true;
+      g.add(sign);
+
+      const glow = new THREE.PointLight(0x00c8ff, 0.6, 10);
+      glow.position.set(0, 4.4, 0);
+      g.add(glow);
+
+      return g;
+    }
+
+    const decorBeerGlassMat = new THREE.MeshStandardMaterial({ color: 0xffd966, transparent: true, opacity: 0.82, roughness: 0.35 });
+    const decorBeerFoamMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 });
+    const decorBeerGlassGeo = new THREE.CylinderGeometry(0.28, 0.32, 0.75, 8);
+    const decorBeerFoamGeo = new THREE.SphereGeometry(0.3, 6, 6);
+
+    function createBeerCup() {
+      const cup = new THREE.Group();
+      const glass = new THREE.Mesh(decorBeerGlassGeo, decorBeerGlassMat);
+      glass.castShadow = true;
+      cup.add(glass);
+
+      const foam = new THREE.Mesh(decorBeerFoamGeo, decorBeerFoamMat);
+      foam.position.y = 0.38;
+      foam.castShadow = true;
+      cup.add(foam);
+
+      return cup;
+    }
+
+    function createBalloonCluster() {
+      const g = new THREE.Group();
+      const colors = [0xff6b6b, 0x4ecdc4, 0xffe66d, 0xaa96da, 0xfcbad3, 0x00c8ff];
+
+      for (let i = 0; i < 3; i++) {
+        const b = new THREE.Mesh(
+          new THREE.SphereGeometry(0.5 + Math.random() * 0.2, 8, 8),
+          new THREE.MeshStandardMaterial({ color: colors[(Math.random() * colors.length) | 0], roughness: 0.6 })
+        );
+        b.position.set((Math.random() - 0.5) * 1.2, (Math.random() - 0.5) * 1.0, (Math.random() - 0.5) * 1.2);
+        b.castShadow = true;
+        g.add(b);
+
+        const s = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.02, 0.02, 2.0, 4),
+          new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9 })
+        );
+        s.position.set(b.position.x, b.position.y - 1.5, b.position.z);
+        g.add(s);
+      }
+      return g;
+    }
+
+    function createLightBulb() {
+      const bulb = new THREE.Mesh(
+        new THREE.SphereGeometry(0.12, 8, 8),
+        new THREE.MeshStandardMaterial({
+          color: 0xfff2b2,
+          emissive: 0xfff2b2,
+          emissiveIntensity: 1.0,
+          roughness: 0.4
+        })
+      );
+      bulb.castShadow = false;
+      return bulb;
+    }
+
+    // -------------------- CHARACTERS --------------------
+    function createBeer() {
+      const beerGroup = new THREE.Group();
+
+      const glass = new THREE.Mesh(shared.handBeerGlassGeo, shared.handBeerGlassMat);
+      glass.castShadow = true;
+      beerGroup.add(glass);
+
+      const foam = new THREE.Mesh(shared.handBeerFoamGeo, shared.handBeerFoamMat);
+      foam.position.y = 0.45;
+      foam.castShadow = true;
+      beerGroup.add(foam);
+
+      return beerGroup;
+    }
+
+    function createPerson(name, index, total) {
+      const personGroup = new THREE.Group();
+
+      const colors = [
+        0xff6b6b, 0x4ecdc4, 0xffe66d, 0x95e1d3, 0xf38181,
+        0xaa96da, 0xfcbad3, 0xa8e6cf, 0xff8b94, 0xc7ceea
+      ];
+      const shirtColor = colors[index % colors.length];
+      const pantsColor = colors[(index + 5) % colors.length];
+
+      // feet
+      [-0.2, 0.2].forEach(x => {
+        const foot = new THREE.Mesh(shared.footGeo, shared.footMat);
+        foot.position.set(x, 0.08, 0.1);
+        foot.castShadow = true;
+        personGroup.add(foot);
+      });
+
+      // legs
+      const legMaterial = new THREE.MeshStandardMaterial({ color: pantsColor });
+      [-0.2, 0.2].forEach(x => {
+        const leg = new THREE.Mesh(shared.legGeo, legMaterial);
+        leg.position.set(x, 0.6, 0);
+        leg.castShadow = true;
+        personGroup.add(leg);
+      });
+
+      // body
+      const bodyMaterial = new THREE.MeshStandardMaterial({ color: shirtColor });
+      const body = new THREE.Mesh(shared.bodyGeo, bodyMaterial);
+      body.position.y = 1.6;
+      body.castShadow = true;
+      personGroup.add(body);
+
+      // arms
+      const skinMaterial = new THREE.MeshStandardMaterial({ color: 0xffd7b5 });
+
+      const leftArm = new THREE.Mesh(shared.armGeo, skinMaterial);
+      leftArm.position.set(-0.65, 1.5, 0);
+      leftArm.rotation.z = 0.4;
+      leftArm.castShadow = true;
+      personGroup.add(leftArm);
+      personGroup.userData.leftArm = leftArm;
+
+      const rightArm = new THREE.Mesh(shared.armGeo, skinMaterial);
+      rightArm.position.set(0.65, 1.5, 0);
+      rightArm.rotation.z = -0.4;
+      rightArm.castShadow = true;
+      personGroup.add(rightArm);
+      personGroup.userData.rightArm = rightArm;
+
+      // hands
+      [-0.85, 0.85].forEach(x => {
+        const hand = new THREE.Mesh(shared.handGeo, skinMaterial);
+        hand.position.set(x, 1.1, 0);
+        hand.castShadow = true;
+        personGroup.add(hand);
+      });
+
+      // neck
+      const neck = new THREE.Mesh(shared.neckGeo, skinMaterial);
+      neck.position.y = 2.25;
+      neck.castShadow = true;
+      personGroup.add(neck);
+
+      // head
+      const head = new THREE.Mesh(shared.headGeo, skinMaterial);
+      head.position.y = 2.65;
+      head.castShadow = true;
+      personGroup.add(head);
+
+      // hair
+      const hairGeometry = new THREE.SphereGeometry(0.42, 10, 10, 0, Math.PI * 2, 0, Math.PI / 1.5);
+      const hairColors = [0x2c1810, 0x6b4423, 0x3d2314, 0x1a0f0a, 0x8b6f47];
+      const hairMaterial = new THREE.MeshStandardMaterial({ color: hairColors[index % hairColors.length] });
+      const hair = new THREE.Mesh(hairGeometry, hairMaterial);
+      hair.position.y = 2.75;
+      hair.castShadow = true;
+      personGroup.add(hair);
+
+      // eyes
+      const eyeMaterial = new THREE.MeshStandardMaterial({ color: 0x000000 });
+      [-0.15, 0.15].forEach(x => {
+        const eye = new THREE.Mesh(shared.eyeGeo, eyeMaterial);
+        eye.position.set(x, 2.7, 0.35);
+        personGroup.add(eye);
+      });
+
+      // beer
+      const beer = createBeer();
+      beer.position.set(0.7, 1.2, 0.3);
+      personGroup.add(beer);
+      personGroup.userData.beer = beer;
+
+      // label
+      const htmlLabel = document.createElement("div");
+      htmlLabel.className = "name-label";
+      htmlLabel.textContent = name;
+      htmlLabel.style.display = "none";
+      document.getElementById("nameLabels").appendChild(htmlLabel);
+      personGroup.userData.htmlLabel = htmlLabel;
+
+      // spawn
+      const radius = 25;
+      const ang = (index / total) * Math.PI * 2;
+      personGroup.position.x = Math.cos(ang) * radius;
+      personGroup.position.z = Math.sin(ang) * radius;
+
+      personGroup.userData.name = name;
+      personGroup.userData.eliminated = false;
+      personGroup.userData.wanderAngle = Math.random() * Math.PI * 2;
+      personGroup.userData.wanderSpeed = 0.03 + Math.random() * 0.02;
+      personGroup.userData.inBattle = false;
+
+      scene.add(personGroup);
+      return personGroup;
+    }
+
+    // -------------------- PARTY ANIMS --------------------
+    function playToastAnimation(person) {
+      if (!person || person.userData.eliminated) return;
+
+      let t = 0;
+      const beer = person.userData.beer;
+      const arm = person.userData.rightArm;
+
+      const foamGroup = new THREE.Group();
+      for (let i = 0; i < 3; i++) {
+        const bubble = new THREE.Mesh(
+          new THREE.SphereGeometry(0.08 + Math.random() * 0.06, 6, 6),
+          new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 })
+        );
+        bubble.position.set((Math.random() - 0.5) * 0.3, 0.2 + Math.random() * 0.2, (Math.random() - 0.5) * 0.3);
+        foamGroup.add(bubble);
+      }
+      foamGroup.position.copy(person.position);
+      foamGroup.position.y += 2.0;
+      scene.add(foamGroup);
+
+      if (sipSound) sipSound.play();
+
+      const iv = setInterval(() => {
+        t++;
+
+        if (arm) {
+          arm.rotation.x = -0.6 + Math.sin(t * 0.6) * 0.3;
+          arm.rotation.z = -0.4 + Math.sin(t * 0.6) * 0.2;
+        }
+        if (beer) {
+          beer.rotation.x = Math.sin(t * 0.6) * 0.25;
+          beer.rotation.z = Math.sin(t * 0.6) * 0.25;
+        }
+
+        foamGroup.children.forEach(b => {
+          b.position.y += 0.03;
+          b.material.opacity -= 0.04;
+        });
+
+        if (t > 16) {
+          clearInterval(iv);
+          if (arm) { arm.rotation.x = 0; arm.rotation.z = -0.4; }
+          if (beer) { beer.rotation.x = 0; beer.rotation.z = 0; }
+          scene.remove(foamGroup);
+        }
+      }, 30);
+    }
+
+    function drunkenSleepEliminate(victim) {
+      if (!victim || victim.userData.eliminated) return;
+
+      victim.userData.eliminated = true;
+      eliminatedCount++;
+      updateStats();
+
+      // Lay down flat on the ground
+      let fallProgress = 0;
+      const fallInterval = setInterval(() => {
+        fallProgress += 0.1;
+        if (fallProgress >= 1) {
+          clearInterval(fallInterval);
+          victim.rotation.x = Math.PI / 2;
+          victim.position.y = 0.3;
+          
+          // Start continuous smoke animation
+          startSleepingSmoke(victim);
+        } else {
+          victim.rotation.x = (Math.PI / 2) * fallProgress;
+          victim.position.y = 0.3 + (1 - fallProgress) * 1.5;
+        }
+      }, 30);
+
+      if (eliminationSound) eliminationSound.play();
+
+      // Reset battle state after falling
+      setTimeout(() => {
+        if (activeBattle) {
+          try {
+            activeBattle.fighter1.userData.inBattle = false;
+            activeBattle.fighter2.userData.inBattle = false;
+          } catch(e) {}
+
+          const alert = document.getElementById("battleAlert");
+          alert.style.display = "none";
+
+          if (!isFinalBattle && activeBattle.originalCamera) {
+            cameraDistance = activeBattle.originalCamera.distance;
+            cameraAngle = activeBattle.originalCamera.angle;
+            updateCameraPosition();
+          }
+          activeBattle = null;
+        }
+
+        const alive = people.filter(p => !p.userData.eliminated);
+        if (alive.length <= 1) setTimeout(() => endGame(), 500);
+      }, 800);
+    }
+
+    function startSleepingSmoke(person) {
+      if (!person || !person.userData.eliminated) return;
+
+      // Create continuous smoke puffs
+      const smokeInterval = setInterval(() => {
+        if (!person.parent) {
+          clearInterval(smokeInterval);
+          return;
+        }
+
+        // Create smoke puff
+        const smokeGroup = new THREE.Group();
+        for (let i = 0; i < 3; i++) {
+          const puff = new THREE.Mesh(
+            new THREE.SphereGeometry(0.15 + Math.random() * 0.1, 8, 8),
+            new THREE.MeshStandardMaterial({ 
+              color: 0xcccccc, 
+              transparent: true, 
+              opacity: 0.6 
+            })
+          );
+          puff.position.set(
+            (Math.random() - 0.5) * 0.5, 
+            0.3 + Math.random() * 0.2, 
+            (Math.random() - 0.5) * 0.5
+          );
+          puff.userData.velocity = {
+            x: (Math.random() - 0.5) * 0.02,
+            y: 0.03 + Math.random() * 0.02,
+            z: (Math.random() - 0.5) * 0.02
+          };
+          smokeGroup.add(puff);
+        }
+        
+        smokeGroup.position.copy(person.position);
+        smokeGroup.position.y += 1.2; // Near head position when lying down
+        scene.add(smokeGroup);
+
+        // Animate smoke puff
+        let t = 0;
+        const puffInterval = setInterval(() => {
+          t++;
+          smokeGroup.children.forEach(p => {
+            p.position.x += p.userData.velocity.x;
+            p.position.y += p.userData.velocity.y;
+            p.position.z += p.userData.velocity.z;
+            p.material.opacity -= 0.015;
+            p.scale.multiplyScalar(1.03);
+          });
+
+          if (t > 40 || smokeGroup.children[0].material.opacity <= 0) {
+            clearInterval(puffInterval);
+            scene.remove(smokeGroup);
+          }
+        }, 40);
+
+      }, 1500); // New smoke puff every 1.5 seconds
+
+      // Store interval reference to clear later if needed
+      person.userData.smokeInterval = smokeInterval;
+    }
+
+    // -------------------- GAME FLOW --------------------
+    function startGame() {
+      const nameText = document.getElementById("nameInput").value.trim();
+      battleTimeSeconds = parseInt(document.getElementById("battleTime").value);
+      totalGameTimeSeconds = parseInt(document.getElementById("totalGameTime").value);
+
+      names = nameText.split("\n").filter(n => n.trim() !== "");
+      if (names.length < 2) {
+        alert("Vui lòng nhập ít nhất 2 tên!");
+        return;
+      }
+
+      document.getElementById("setupPanel").style.display = "none";
+      document.getElementById("gameUI").style.display = "block";
+      document.getElementById("actionLog").style.display = "block";
+      document.getElementById("cameraControls").style.display = "block";
+      document.getElementById("totalTime").textContent = totalGameTimeSeconds;
+
+      initAudio();
+      init3DScene();
+
+      names.forEach((name, index) => {
+        const person = createPerson(name.trim(), index, names.length);
+        people.push(person);
+      });
+
+      addAction("start", `Party bắt đầu dưới ánh trăng với ${names.length} người chơi! 🌙`);
+      updateStats();
+      startBattles();
+      startTimer();
+      animate();
+    }
+
+    function startBattles() {
+      battleInterval = setInterval(() => {
+        if (activeBattle) return;
+
+        const alivePeople = people.filter(p => !p.userData.eliminated);
+        if (alivePeople.length <= 1) {
+          clearInterval(battleInterval);
+          endGame();
+          return;
+        }
+
+        const timeRemaining = totalGameTimeSeconds - gameTime;
+        if (timeRemaining <= 0) return;
+
+        const shuffled = [...alivePeople].sort(() => Math.random() - 0.5);
+        startBattle(shuffled[0], shuffled[1]);
+      }, battleTimeSeconds * 1000);
+    }
+
+    function startBattle(f1, f2) {
+      if (battleSound) battleSound.play();
+      f1.userData.inBattle = true;
+      f2.userData.inBattle = true;
+
+      const alert = document.getElementById("battleAlert");
+      alert.textContent = `🍻 ${f1.userData.name} đang so tửu lượng với ${f2.userData.name}`;
+      alert.style.background = "rgba(0, 200, 255, 0.95)";
+      alert.style.display = "block";
+
+      addAction("battle", `${f1.userData.name} đang so tửu lượng với ${f2.userData.name}`);
+
+      const meetX = (f1.position.x + f2.position.x) / 2;
+      const meetZ = (f1.position.z + f2.position.z) / 2;
+
+      activeBattle = {
+        fighter1: f1,
+        fighter2: f2,
+        meetX,
+        meetZ,
+        phase: "running",
+        fightTimer: 0,
+        loser: null,
+        winner: null,
+        originalCamera: {
+          x: camera.position.x,
+          y: camera.position.y,
+          z: camera.position.z,
+          distance: cameraDistance,
+          angle: cameraAngle,
+        },
+        cameraZoomProgress: 0,
+      };
+    }
+
+    function updateBattle() {
+      if (!activeBattle) return;
+
+      const battle = activeBattle;
+      const f1 = battle.fighter1;
+      const f2 = battle.fighter2;
+
+      if (f1.userData.eliminated || f2.userData.eliminated) {
+        activeBattle = null;
+        return;
+      }
+
+      if (battle.phase === "running") {
+        const dx1 = battle.meetX - f1.position.x;
+        const dz1 = battle.meetZ - f1.position.z;
+        const dist1 = Math.sqrt(dx1*dx1 + dz1*dz1);
+
+        const dx2 = battle.meetX - f2.position.x;
+        const dz2 = battle.meetZ - f2.position.z;
+        const dist2 = Math.sqrt(dx2*dx2 + dz2*dz2);
+
+        const runSpeed = 0.2;
+
+        if (dist1 > 0.5) {
+          f1.position.x += (dx1 / dist1) * runSpeed;
+          f1.position.z += (dz1 / dist1) * runSpeed;
+          f1.rotation.y = Math.atan2(dx1, dz1);
+          f1.position.y = Math.abs(Math.sin(Date.now() * 0.02)) * 0.3;
+        }
+        if (dist2 > 0.5) {
+          f2.position.x += (dx2 / dist2) * runSpeed;
+          f2.position.z += (dz2 / dist2) * runSpeed;
+          f2.rotation.y = Math.atan2(dx2, dz2);
+          f2.position.y = Math.abs(Math.sin(Date.now() * 0.02)) * 0.3;
+        }
+
+        if (dist1 < 5 && dist2 < 5 && !isFinalBattle) {
+          battle.cameraZoomProgress += 0.02;
+          const progress = Math.min(battle.cameraZoomProgress, 1);
+
+          const targetDistance = 8;
+          const targetAngle = Math.atan2(battle.meetZ, battle.meetX);
+          const targetX = Math.sin(targetAngle) * targetDistance;
+          const targetY = targetDistance * 0.7;
+          const targetZ = Math.cos(targetAngle) * targetDistance;
+
+          camera.position.x = battle.originalCamera.x + (targetX + battle.meetX - battle.originalCamera.x) * progress;
+          camera.position.y = battle.originalCamera.y + (targetY - battle.originalCamera.y) * progress;
+          camera.position.z = battle.originalCamera.z + (targetZ + battle.meetZ - battle.originalCamera.z) * progress;
+          camera.lookAt(battle.meetX, 2, battle.meetZ);
+        }
+
+        if (dist1 <= 0.5 && dist2 <= 0.5) {
+          battle.phase = "fighting";
+          battle.fightTimer = 0;
+          f1.rotation.y = Math.atan2(f2.position.z - f1.position.z, f2.position.x - f1.position.x) + Math.PI / 2;
+          f2.rotation.y = Math.atan2(f1.position.z - f2.position.z, f1.position.x - f2.position.x) + Math.PI / 2;
+          f1.position.y = 0; f2.position.y = 0;
+          battle.loser = Math.random() < 0.5 ? f1 : f2;
+          battle.winner = (battle.loser === f1) ? f2 : f1;
+        }
+      } else if (battle.phase === "fighting") {
+        battle.fightTimer++;
+
+        const cycleDuration = 20;
+        const cycleNum = Math.floor(battle.fightTimer / cycleDuration);
+        const cycleProgress = battle.fightTimer % cycleDuration;
+
+        const attacker = (cycleNum % 2 === 0) ? f1 : f2;
+        const defender = (cycleNum % 2 === 0) ? f2 : f1;
+
+        if (cycleProgress === 2 && sipSound) sipSound.play();
+        if (cycleProgress === 10 && clinkSound) clinkSound.play();
+
+        if (cycleProgress < 10) {
+          const swing = Math.sin(cycleProgress * 0.5) * 1.6;
+          if (attacker.userData.rightArm) {
+            attacker.userData.rightArm.rotation.x = swing * 0.6;
+            attacker.userData.rightArm.rotation.z = -0.4 + Math.abs(swing) * 0.6;
+          }
+          if (attacker.userData.beer) {
+            attacker.userData.beer.rotation.x = swing * 0.25;
+            attacker.userData.beer.rotation.z = swing * 0.25;
+          }
+          attacker.rotation.y += Math.sin(cycleProgress * 0.5) * 0.03;
+          if (cycleProgress > 5) attacker.position.y = Math.sin((cycleProgress - 5) * 0.6) * 0.35;
+        } else {
+          if (attacker.userData.rightArm) { attacker.userData.rightArm.rotation.x = 0; attacker.userData.rightArm.rotation.z = -0.4; }
+          if (attacker.userData.beer) { attacker.userData.beer.rotation.x = 0; attacker.userData.beer.rotation.z = 0; }
+          attacker.position.y = 0;
+        }
+
+        if (cycleProgress >= 8 && cycleProgress < 15) {
+          const recoilProgress = (cycleProgress - 8) / 7;
+          defender.position.y = Math.sin(recoilProgress * Math.PI) * 0.6;
+          defender.rotation.z = Math.sin(recoilProgress * Math.PI) * 0.25;
+          defender.position.x += (Math.random() - 0.5) * 0.04;
+          defender.position.z += (Math.random() - 0.5) * 0.04;
+        } else {
+          defender.position.y = 0;
+          defender.rotation.z = 0;
+        }
+
+        if (cycleProgress >= 15) {
+          f1.position.y = Math.sin(battle.fightTimer * 0.15) * 0.12;
+          f2.position.y = Math.cos(battle.fightTimer * 0.15) * 0.12;
+        }
+
+        if (cycleProgress === 10) {
+          camera.position.x += (Math.random() - 0.5) * 0.2;
+          camera.position.y += (Math.random() - 0.5) * 0.2;
+        }
+
+        if (battle.fightTimer >= 100) {
+          battle.phase = "knockout";
+          f1.position.y = 0; f2.position.y = 0;
+          f1.rotation.z = 0; f2.rotation.z = 0;
+          knockoutPerson(battle.loser, battle.winner);
+        }
+      }
+    }
+
+    function knockoutPerson(loser, winner) {
+      if (loser.userData.eliminated) return;
+
+      addAction("knockout", `${loser.userData.name} đã bị hạ gục vì say xỉn 🍺😵`);
+
+      const alert = document.getElementById("battleAlert");
+      alert.textContent = `😵 ${loser.userData.name} GỤC VÌ SAY!`;
+      alert.style.background = "rgba(233, 69, 96, 0.95)";
+      alert.style.display = "block";
+
+      if (winner && winner.userData.rightArm) {
+        winner.userData.rightArm.rotation.x = 0;
+        winner.userData.rightArm.rotation.z = -0.4;
+      }
+      if (winner && winner.userData.beer) {
+        winner.userData.beer.rotation.x = 0;
+        winner.userData.beer.rotation.z = 0;
+      }
+      if (winner) winner.position.y = 0;
+
+      drunkenSleepEliminate(loser);
+    }
+
+    function updateStats() {
+      const remaining = people.filter(p => !p.userData.eliminated).length;
+      document.getElementById("remaining").textContent = remaining;
+      document.getElementById("eliminated").textContent = eliminatedCount;
+    }
+
+    function startTimer() {
+      timerInterval = setInterval(() => {
+        gameTime++;
+        document.getElementById("timer").textContent = gameTime;
+
+        if (gameTime >= totalGameTimeSeconds) {
+          clearInterval(timerInterval);
+          clearInterval(battleInterval);
+
+          const alivePeople = people.filter(p => !p.userData.eliminated);
+
+          if (alivePeople.length > 1) {
+            isFinalBattle = true;
+
+            const alert = document.getElementById("battleAlert");
+            alert.textContent = `🍻 HẾT GIỜ! TOÀN BỘ CỤNG LY! 🍻`;
+            alert.style.background = "rgba(0, 200, 255, 0.95)";
+            alert.style.display = "block";
+
+            addAction("finale", `Hết giờ! Tất cả cùng cụng ly với ${alivePeople.length} người!`);
+
+            const toastInterval = setInterval(() => {
+              const alive = people.filter(p => !p.userData.eliminated);
+
+              if (alive.length <= 1) {
+                clearInterval(toastInterval);
+                alert.style.display = "none";
+                setTimeout(() => endGame(), 1000);
+                return;
+              }
+
+              const remaining = alive.length;
+              let toEliminate = Math.max(1, Math.floor(remaining * 0.3));
+              if (toEliminate >= remaining) toEliminate = remaining - 1;
+
+              const shuffled = [...alive].sort(() => Math.random() - 0.5);
+              const victims = shuffled.slice(0, toEliminate);
+
+              alert.textContent = `🍺 CỤNG LY! ${toEliminate} NGƯỜI ĐÃ GỤC VÌ SAY! 😵`;
+              alert.style.display = "block";
+
+              if (clinkSound) clinkSound.play();
+
+              alive.forEach((p, idx) => { if (idx % 2 === 0) playToastAnimation(p); });
+
+              victims.forEach((victim, index) => {
+                setTimeout(() => {
+                  addAction("knockout", `${victim.userData.name} đã gục vì say xỉn trong màn cụng ly 🍺😴`);
+                  drunkenSleepEliminate(victim);
+                }, index * 220);
+              });
+
+            }, 2000);
+          } else {
+            endGame();
+          }
+        }
+      }, 1000);
+    }
+
+    function endGame() {
+      clearInterval(battleInterval);
+      clearInterval(timerInterval);
+      activeBattle = null;
+
+      const survivors = people.filter(p => !p.userData.eliminated);
+      if (survivors.length === 1 && winSound) winSound.play();
+
+      let winnerText = "";
+      const panelTitle = document.getElementById("winnerPanel").querySelector("h1");
+
+      if (survivors.length === 0) {
+        winnerText = "Không ai trụ nổi 😵";
+        panelTitle.textContent = "💥 TẤT CẢ ĐỀU GỤC! 💥";
+      } else {
+        winnerText = survivors[0].userData.name;
+        panelTitle.textContent = "🏆 VUA TỬU LƯỢNG! 🏆";
+      }
+
+      document.getElementById("winnerName").textContent = winnerText;
+      document.getElementById("gameStats").textContent =
+        `Thời gian: ${gameTime}s / ${totalGameTimeSeconds}s | Đã gục: ${eliminatedCount} người`;
+
+      document.getElementById("winnerPanel").style.display = "block";
+
+      if (survivors.length === 1) {
+        const winnerLight = new THREE.PointLight(0x00ff88, 2.2, 18);
+        winnerLight.position.copy(survivors[0].position);
+        winnerLight.position.y += 5;
+        scene.add(winnerLight);
+        playToastAnimation(survivors[0]);
+      }
+    }
+
+    function updateNameLabels() {
+      people.forEach(person => {
+        if (!person.userData.htmlLabel) return;
+
+        // Hide labels for eliminated people
+        if (person.userData.eliminated) {
+          person.userData.htmlLabel.style.display = "none";
+          return;
+        }
+
+        const labelPos = new THREE.Vector3();
+        labelPos.copy(person.position);
+        labelPos.y += 3.8;
+
+        const screenPos = labelPos.project(camera);
+        const x = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
+        const y = (screenPos.y * -0.5 + 0.5) * window.innerHeight;
+
+        const label = person.userData.htmlLabel;
+        label.style.display = "block";
+        label.style.left = `${x}px`;
+        label.style.top = `${y}px`;
+        label.style.transform = "translate(-50%, -100%)";
+
+        if (screenPos.z > 1) label.style.display = "none";
+      });
+    }
+
+    // -------------------- MAIN LOOP --------------------
+    function animate() {
+      requestAnimationFrame(animate);
+
+      updateBattle();
+
+      people.forEach((person, index) => {
+        if (!person.userData.eliminated && !person.userData.inBattle) {
+          if (activeBattle && !isFinalBattle) {
+            const battleX = activeBattle.meetX;
+            const battleZ = activeBattle.meetZ;
+
+            const dx = person.position.x - battleX;
+            const dz = person.position.z - battleZ;
+            const distToBattle = Math.sqrt(dx * dx + dz * dz);
+
+            if (distToBattle < 15) {
+              const fleeSpeed = 0.15;
+              person.position.x += (dx / distToBattle) * fleeSpeed;
+              person.position.z += (dz / distToBattle) * fleeSpeed;
+              person.rotation.y = Math.atan2(dz, dx) + Math.PI / 2;
+              person.position.y = Math.abs(Math.sin(Date.now() * 0.02)) * 0.3;
+
+              const distFromCenter = Math.sqrt(person.position.x ** 2 + person.position.z ** 2);
+              if (distFromCenter > 40) {
+                person.position.x *= 40 / distFromCenter;
+                person.position.z *= 40 / distFromCenter;
+              }
+            } else {
+              person.userData.wanderAngle += (Math.random() - 0.5) * 0.1;
+              const moveX = Math.cos(person.userData.wanderAngle) * person.userData.wanderSpeed;
+              const moveZ = Math.sin(person.userData.wanderAngle) * person.userData.wanderSpeed;
+
+              person.position.x += moveX;
+              person.position.z += moveZ;
+
+              const distFromCenter = Math.sqrt(person.position.x ** 2 + person.position.z ** 2);
+              if (distFromCenter > 40) {
+                person.userData.wanderAngle = Math.atan2(-person.position.z, -person.position.x) + (Math.random() - 0.5) * 0.5;
+              }
+
+              person.rotation.y = person.userData.wanderAngle;
+              person.position.y = Math.abs(Math.sin(Date.now() * 0.005 + index)) * 0.15;
+            }
+          } else {
+            person.userData.wanderAngle += (Math.random() - 0.5) * 0.1;
+            const moveX = Math.cos(person.userData.wanderAngle) * person.userData.wanderSpeed;
+            const moveZ = Math.sin(person.userData.wanderAngle) * person.userData.wanderSpeed;
+
+            person.position.x += moveX;
+            person.position.z += moveZ;
+
+            const distFromCenter = Math.sqrt(person.position.x ** 2 + person.position.z ** 2);
+            if (distFromCenter > 40) {
+              person.userData.wanderAngle = Math.atan2(-person.position.z, -person.position.x) + (Math.random() - 0.5) * 0.5;
+            }
+
+            person.rotation.y = person.userData.wanderAngle;
+            person.position.y = Math.abs(Math.sin(Date.now() * 0.005 + index)) * 0.15;
+          }
+
+          if (person.userData.beer) {
+            person.userData.beer.rotation.z = Math.sin(Date.now() * 0.005 + index) * 0.28;
+          }
+        } else if (person.userData.eliminated) {
+          // Keep label visible for eliminated people lying down
+          // Labels will still update position
+        }
+      });
+
+      labelFrame++;
+      if (labelFrame % LABEL_UPDATE_EVERY === 0) updateNameLabels();
+
+      // Balloons float
+      for (let i = 0; i < balloons.length; i++) {
+        const b = balloons[i];
+        b.userData.floatPhase += 0.02;
+        b.position.y += Math.sin(b.userData.floatPhase) * 0.01;
+        b.rotation.y += 0.003;
+      }
+
+      // 🌙 Moon gentle float
+      if (moon) {
+        moon.position.y = 60 + Math.sin(Date.now() * 0.0003) * 2;
+        moon.rotation.y += 0.0005;
+      }
+
+      // ⭐ Stars twinkling
+      stars.forEach(star => {
+        if (star.isPointLight) {
+          star.userData.twinklePhase += 0.05;
+          star.intensity = star.userData.baseIntensity + Math.sin(star.userData.twinklePhase) * 0.25;
+        }
+      });
+
+      if (!activeBattle || isFinalBattle) {
+        cameraAngle += 0.001;
+        updateCameraPosition();
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      updateNameLabels();
+    }
+
+    // -------------------- UI CONTROLS --------------------
+    document.getElementById("zoomIn").addEventListener("click", () => {
+      cameraDistance = Math.max(15, cameraDistance - 5);
+      updateCameraPosition();
+    });
+
+    document.getElementById("zoomOut").addEventListener("click", () => {
+      cameraDistance = Math.min(60, cameraDistance + 5);
+      updateCameraPosition();
+    });
+
+    document.getElementById("resetCamera").addEventListener("click", () => {
+      cameraDistance = defaultCameraDistance;
+      cameraAngle = 0;
+      updateCameraPosition();
+    });
+
+    document.getElementById("startBtn").addEventListener("click", startGame);
+
+    document.getElementById("restartBtn").addEventListener("click", () => {
+      location.reload();
+    });
+  </script>
+</body>
+</html>

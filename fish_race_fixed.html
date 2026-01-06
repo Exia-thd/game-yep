@@ -1,0 +1,1428 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🐟 Đua Cá Bắt AI Agent</title>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Sriracha&family=Quicksand:wght@600;700&display=swap');
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{
+      font-family:'Quicksand',sans-serif;
+      overflow:hidden;
+      background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+    }
+    #gameCanvas{display:block;width:100%;height:100vh;}
+
+    .ui-overlay{position:fixed;inset:0;pointer-events:none;z-index:10;}
+
+    .setup-panel{
+      position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+      background:linear-gradient(145deg,rgba(255,255,255,0.95),rgba(240,248,255,0.95));
+      padding:40px;border-radius:30px;
+      box-shadow:0 20px 60px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.8);
+      pointer-events:all;max-width:520px;width:90%;
+      max-height:85vh;overflow-y:auto;
+      backdrop-filter:blur(10px);border:3px solid rgba(255,255,255,0.6);
+      display:flex;flex-direction:column;
+    }
+    .setup-panel h1{
+      font-family:'Sriracha',cursive;color:#667eea;font-size:42px;text-align:center;
+      margin-bottom:10px;text-shadow:3px 3px 0 rgba(118,75,162,0.3);letter-spacing:1px;
+    }
+    .setup-panel p{text-align:center;color:#666;margin-bottom:22px;font-size:16px;font-weight:600;}
+
+    .player-input-area{margin-bottom:18px;flex-shrink:0;}
+    .player-input-area label{display:block;color:#764ba2;font-weight:700;margin-bottom:10px;font-size:16px;}
+    #playerInput{
+      width:100%;padding:15px;border:3px solid #667eea;border-radius:15px;
+      font-size:16px;font-family:'Quicksand',sans-serif;font-weight:600;
+      background:#fff;min-height:150px;resize:vertical;line-height:1.6;
+      transition:all .25s ease;
+    }
+    #playerInput:focus{
+      outline:none;border-color:#764ba2;box-shadow:0 0 0 3px rgba(118,75,162,0.2);
+      transform:translateY(-2px);
+    }
+
+    .btn{
+      width:100%;padding:18px;font-size:20px;font-weight:700;font-family:'Sriracha',cursive;
+      border:none;border-radius:15px;cursor:pointer;transition:all .25s ease;
+      text-transform:uppercase;letter-spacing:1px;box-shadow:0 6px 20px rgba(0,0,0,0.2);
+      pointer-events:all;
+    }
+    .btn-start{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;margin-top:10px;}
+    .btn-start:hover:not(:disabled){transform:translateY(-3px);box-shadow:0 10px 30px rgba(102,126,234,0.4);}
+    .btn-start:disabled{opacity:.5;cursor:not-allowed;}
+
+    .player-list{
+      margin-top:16px;max-height:180px;overflow:auto;background:rgba(255,255,255,0.5);
+      border-radius:15px;padding:15px;flex-shrink:0;
+    }
+    .player-item{
+      background:#fff;padding:12px 15px;margin-bottom:8px;border-radius:10px;
+      display:flex;justify-content:space-between;align-items:center;
+      box-shadow:0 2px 8px rgba(0,0,0,0.1);font-weight:600;color:#333;
+      animation:slideIn .25s ease;min-height:48px;overflow:hidden;pointer-events:all;
+    }
+    .player-item span{flex:1;margin-right:10px;overflow-wrap:break-word;max-width:calc(100% - 70px);}
+    .player-item .fish-icon{font-size:24px;margin-right:10px;}
+    .player-item .remove-btn{
+      background:#ff4757;color:#fff;border:none;padding:5px 12px;border-radius:8px;
+      cursor:pointer;font-weight:700;font-size:12px;transition:all .2s ease;pointer-events:all;
+    }
+    .player-item .remove-btn:hover{background:#ff3838;transform:scale(1.05);}
+    @keyframes slideIn{from{opacity:0;transform:translateX(-18px);}to{opacity:1;transform:translateX(0);}}
+
+    .race-info{
+      position:fixed;top:30px;left:50%;transform:translateX(-50%);
+      background:linear-gradient(145deg,rgba(255,255,255,0.95),rgba(240,248,255,0.95));
+      padding:18px 36px;border-radius:20px;
+      box-shadow:0 10px 30px rgba(0,0,0,0.3);
+      font-family:'Sriracha',cursive;font-size:28px;color:#667eea;text-align:center;
+      border:3px solid rgba(255,255,255,0.6);backdrop-filter:blur(10px);
+      display:none;pointer-events:all;z-index:9998;
+    }
+
+    .winner-announcement{
+      position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0);
+      background:linear-gradient(145deg,#ffd700,#ffed4e);
+      padding:60px;border-radius:30px;
+      box-shadow:0 30px 80px rgba(0,0,0,0.4);
+      text-align:center;border:5px solid #fff;
+      z-index:9999;transition:transform .5s cubic-bezier(0.68,-0.55,0.265,1.55);
+      pointer-events:all;
+    }
+    .winner-announcement.show{transform:translate(-50%,-50%) scale(1);}
+    .winner-announcement h2{
+      font-family:'Sriracha',cursive;font-size:48px;color:#d63031;margin-bottom:18px;
+      text-shadow:3px 3px 0 rgba(0,0,0,0.1);animation:pulse 1s infinite;
+    }
+    .winner-announcement .winner-name{
+      font-size:56px;font-weight:700;color:#2d3436;margin:20px 0;
+      text-shadow:2px 2px 0 rgba(255,255,255,0.8);word-break:break-word;
+    }
+    .winner-announcement .trophy{font-size:100px;animation:bounce .8s infinite;}
+    @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+    @keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-20px)}}
+
+    .btn-restart{background:linear-gradient(135deg,#00b894,#00cec9);color:#fff;margin-top:26px;}
+    .btn-restart:hover{transform:translateY(-3px);box-shadow:0 10px 30px rgba(0,184,148,0.4);}
+    .hidden{display:none !important;}
+
+    .progress-bar{
+      position:fixed;bottom:30px;left:50%;transform:translateX(-50%);
+      width:80%;max-width:600px;height:60px;
+      background:rgba(255,255,255,0.9);border-radius:30px;padding:10px;
+      box-shadow:0 10px 30px rgba(0,0,0,0.3);border:3px solid rgba(255,255,255,0.6);
+      backdrop-filter:blur(10px);display:none;z-index:9997;
+    }
+    .progress-fill{
+      height:100%;background:linear-gradient(90deg,#667eea,#764ba2);
+      border-radius:20px;width:0%;transition:width .15s linear;
+      display:flex;align-items:center;justify-content:flex-end;padding-right:15px;
+      box-shadow:inset 0 2px 10px rgba(0,0,0,0.2);
+    }
+    .progress-icon{font-size:32px;filter:drop-shadow(2px 2px 4px rgba(0,0,0,0.3));}
+
+    .event-log{
+      position:fixed;top:120px;right:20px;width:340px;max-height:560px;
+      background:rgba(255,255,255,0.95);border-radius:20px;padding:20px;
+      box-shadow:0 10px 30px rgba(0,0,0,0.3);border:3px solid rgba(255,255,255,0.6);
+      backdrop-filter:blur(10px);display:none;overflow:auto;pointer-events:all;z-index:9999;
+    }
+    .event-log h3{font-family:'Sriracha',cursive;color:#667eea;font-size:24px;margin:0 0 12px 0;text-align:center;}
+    .event-item{padding:10px;margin-bottom:8px;border-radius:10px;font-size:14px;font-weight:600;line-height:1.3;animation:slideInRight .25s ease;}
+    @keyframes slideInRight{from{opacity:0;transform:translateX(18px);}to{opacity:1;transform:translateX(0);}}
+    .event-caught{background:linear-gradient(135deg,#ff6b6b,#ff8787);color:#fff;}
+    .event-eliminated{background:linear-gradient(135deg,#feca57,#ff9ff3);color:#2d3436;}
+    .event-info{background:linear-gradient(135deg,#48dbfb,#0abde3);color:#fff;}
+  </style>
+</head>
+
+<body>
+  <canvas id="gameCanvas"></canvas>
+
+  <div class="ui-overlay">
+    <div id="setupPanel" class="setup-panel">
+      <h1>🐟 Đua Cá Bắt AI Agent</h1>
+      <p>Nhập danh sách người chơi để bắt đầu cuộc đua!</p>
+
+      <div class="player-input-area">
+        <label for="playerInput">Danh sách người chơi (mỗi dòng 1 người):</label>
+        <textarea id="playerInput" placeholder="Nguyễn Văn A
+Trần Thị B
+Lê Văn C"></textarea>
+      </div>
+
+      <div class="player-input-area">
+        <label for="raceDuration">⏱️ Thời gian đua (giây):</label>
+        <input type="number" id="raceDuration" min="1" value="30"
+          style="width:100%; padding:15px; border:3px solid #667eea; border-radius:15px;
+                 font-size:16px; font-family:'Quicksand',sans-serif; font-weight:600;">
+        <p style="font-size:14px;color:#666;margin-top:8px;">Tối thiểu 1 giây</p>
+      </div>
+
+      <div class="player-list" id="playerList"></div>
+      <button class="btn btn-start" id="startBtn" disabled>🏁 Bắt Đầu Đua!</button>
+    </div>
+
+    <div id="raceInfo" class="race-info">
+      🏁 Cuộc đua đang diễn ra! 🏁<br>
+      <span id="timeRemaining" style="font-size:20px;color:#ff6b6b;">⏱️ 30s</span>
+    </div>
+
+    <div id="winnerPanel" class="winner-announcement hidden">
+      <div class="trophy">🏆</div>
+      <h2>🎉 Người Thắng Cuộc 🎉</h2>
+      <div class="winner-name" id="winnerName"></div>
+      <button class="btn btn-restart" id="restartBtn">🔄 Chơi Lại</button>
+    </div>
+
+    <div id="progressBar" class="progress-bar">
+      <div class="progress-fill" id="progressFill"><span class="progress-icon">🤖</span></div>
+    </div>
+
+    <div id="eventLog" class="event-log">
+      <h3>📜 Nhật Ký Sự Kiện</h3>
+      <div id="eventList"></div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+    'use strict';
+
+    // ===== Helpers =====
+    const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+    const rand  = (a, b) => a + Math.random() * (b - a);
+    const pick  = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+    // ===== UI =====
+    const setupPanel = document.getElementById('setupPanel');
+    const playerInput = document.getElementById('playerInput');
+    const playerList = document.getElementById('playerList');
+    const startBtn = document.getElementById('startBtn');
+    const raceDurationInput = document.getElementById('raceDuration');
+
+    const raceInfo = document.getElementById('raceInfo');
+    const winnerPanel = document.getElementById('winnerPanel');
+    const winnerNameEl = document.getElementById('winnerName');
+    const progressBar = document.getElementById('progressBar');
+    const progressFill = document.getElementById('progressFill');
+    const eventLog = document.getElementById('eventLog');
+    const eventListEl = document.getElementById('eventList');
+    const restartBtn = document.getElementById('restartBtn');
+
+    function addEventLog(msg, type='info') {
+      const el = document.createElement('div');
+      el.className = `event-item event-${type}`;
+      el.textContent = msg;
+      eventListEl.insertBefore(el, eventListEl.firstChild);
+      while (eventListEl.children.length > 15) eventListEl.removeChild(eventListEl.lastChild);
+    }
+
+    // ===== State =====
+    let players = [];
+    let scene, camera, renderer;
+
+    let fishes = [];
+    let fishermen = [];
+    let birds = [];
+    let aiAgent = null;
+
+    let eliminatedFishes = [];
+    let totalPlayers = 0;
+
+    let raceDuration = 30;
+    let raceDistance = 300;
+    let raceStartTime = 0;
+
+    let winner = null;
+
+    // Modes
+    const MODE = { SETUP:'SETUP', RACING:'RACING', WIN_CINEMATIC:'WIN_CINEMATIC', ENDED:'ENDED' };
+    let mode = MODE.SETUP;
+
+    // Catch scheduler (internal only)
+    const maxEliminationPercent = 0.30;
+    let nextCatchAt = 0;
+    let catchInProgress = false;
+    const CATCH_GAP_MIN = 5000;
+    const CATCH_GAP_MAX = 12000;
+
+    // Overtake drama scheduler (internal only)
+    let nextOvertakeAt = 0;
+    const OVERTAKE_GAP_MIN = 5000;
+    const OVERTAKE_GAP_MAX = 6500;
+
+    // ===== River Tiling (fix "mất sông") =====
+    const RIVER_W = 80;
+    const SEG_LEN = 420;
+    const SEG_OVERLAP = 90;
+    const SEG_DRAW_LEN = SEG_LEN + SEG_OVERLAP;
+    const SEG_COUNT = 10;
+
+    const tileSegments = [];  // { group, zCenter, waterMesh }
+    const decoSegments = [];  // { group, zCenter }
+
+    function getRaceFocusZ() {
+      const alive = fishes.filter(f => !eliminatedFishes.includes(f.name));
+      if (!alive.length) return aiAgent ? aiAgent.position : 0;
+      const lead = alive.reduce((a,b)=> (b.position < a.position ? b : a));
+      const back = alive.reduce((a,b)=> (b.position > a.position ? b : a));
+      return (lead.position + back.position) / 2;
+    }
+
+    function initThree() {
+      const canvas = document.getElementById('gameCanvas');
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x87CEEB);
+
+      // Camera: to hơn để thấy cá + bảng tên rõ
+      camera = new THREE.PerspectiveCamera(85, window.innerWidth / window.innerHeight, 0.1, 50000);
+      camera.position.set(0, 52, 52);
+      camera.lookAt(0, 0, -45);
+
+      renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+      scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+      const sun = new THREE.DirectionalLight(0xffe4b5, 0.85);
+      sun.position.set(120, 150, 80);
+      sun.castShadow = true;
+      sun.shadow.camera.left = -600;
+      sun.shadow.camera.right = 600;
+      sun.shadow.camera.top = 600;
+      sun.shadow.camera.bottom = -600;
+      scene.add(sun);
+
+      createClouds();
+      buildTiles(0);
+    }
+
+    function clearTiles() {
+      while (tileSegments.length) scene.remove(tileSegments.pop().group);
+      while (decoSegments.length) scene.remove(decoSegments.pop().group);
+    }
+
+    // FIX: tile đầu tiên phủ gần start, trải dần về phía âm (hướng đua)
+    function buildTiles(anchorZ) {
+      clearTiles();
+
+      const startZ = anchorZ - SEG_LEN * 0.5;
+      for (let i = 0; i < SEG_COUNT; i++) {
+        const zCenter = startZ - i * SEG_LEN;
+
+        const seg = createRiverSegment();
+        seg.zCenter = zCenter;
+        seg.group.position.z = zCenter;
+        tileSegments.push(seg);
+        scene.add(seg.group);
+
+        const deco = createMountainForestSegment();
+        deco.zCenter = zCenter;
+        deco.group.position.z = zCenter;
+        decoSegments.push(deco);
+        scene.add(deco.group);
+      }
+    }
+
+    // FIX: recycle theo focusZ, không bị "trượt tile" dẫn tới mất sông
+    function recycleTiles() {
+      const focusZ = getRaceFocusZ();
+      const range = SEG_LEN * (SEG_COUNT * 0.45);
+
+      let minZ = Infinity;
+      for (const s of tileSegments) minZ = Math.min(minZ, s.zCenter);
+
+      for (let i = 0; i < tileSegments.length; i++) {
+        const seg = tileSegments[i];
+        const deco = decoSegments[i];
+
+        if (seg.zCenter - focusZ > range) {
+          const newZ = minZ - SEG_LEN;
+          minZ = newZ;
+
+          seg.zCenter = newZ;
+          seg.group.position.z = newZ;
+
+          deco.zCenter = newZ;
+          deco.group.position.z = newZ;
+        }
+      }
+    }
+
+    // ===== Environment builders (FIXED: ground split to avoid covering river) =====
+    function createRiverSegment() {
+      const g = new THREE.Group();
+
+      // Ground - SPLIT into LEFT and RIGHT to avoid covering river
+      const groundWidth = 760; // Width of each ground section
+      const groundOffset = (RIVER_W / 2) + (groundWidth / 2); // Position offset from center
+      
+      const groundMat = new THREE.MeshPhongMaterial({ color: 0x228b22, side: THREE.DoubleSide });
+      
+      // Left ground
+      const groundLeft = new THREE.Mesh(
+        new THREE.PlaneGeometry(groundWidth, SEG_DRAW_LEN),
+        groundMat
+      );
+      groundLeft.rotation.x = -Math.PI / 2;
+      groundLeft.position.set(-groundOffset, -0.5, 0);
+      groundLeft.receiveShadow = true;
+      g.add(groundLeft);
+      
+      // Right ground
+      const groundRight = new THREE.Mesh(
+        new THREE.PlaneGeometry(groundWidth, SEG_DRAW_LEN),
+        groundMat
+      );
+      groundRight.rotation.x = -Math.PI / 2;
+      groundRight.position.set(groundOffset, -0.5, 0);
+      groundRight.receiveShadow = true;
+      g.add(groundRight);
+
+      // River bed - LOWER than ground to ensure visibility
+      const bed = new THREE.Mesh(
+        new THREE.PlaneGeometry(RIVER_W, SEG_DRAW_LEN),
+        new THREE.MeshPhongMaterial({ color: 0x8b7355, side: THREE.DoubleSide })
+      );
+      bed.rotation.x = -Math.PI / 2;
+      bed.position.set(0, -2.5, 0); // Lowered from -2 to -2.5
+      bed.receiveShadow = true;
+      g.add(bed);
+
+      // Water (xanh dương) - HIGHER than bed, LOWER than ground
+      const waterMat = new THREE.MeshPhongMaterial({
+        color: 0x2f7fe8,
+        transparent: true,
+        opacity: 0.78,
+        side: THREE.DoubleSide,
+        shininess: 140,
+        depthWrite: false,
+        polygonOffset: true,
+        polygonOffsetFactor: -2,
+        polygonOffsetUnits: -2
+      });
+
+      const water = new THREE.Mesh(
+        new THREE.PlaneGeometry(RIVER_W, SEG_DRAW_LEN),
+        waterMat
+      );
+      water.rotation.x = -Math.PI / 2;
+      water.position.set(0, -1.2, 0); // Raised from -1.35 to -1.2 for better visibility
+      water.renderOrder = 10;
+      g.add(water);
+
+      // Banks
+      const bankGeo = new THREE.BoxGeometry(5, 4, SEG_DRAW_LEN);
+      const bankMat = new THREE.MeshPhongMaterial({ color: 0x228b22 });
+
+      const leftBank = new THREE.Mesh(bankGeo, bankMat);
+      leftBank.position.set(-42.5, 0, 0);
+      leftBank.receiveShadow = true;
+      g.add(leftBank);
+
+      const rightBank = new THREE.Mesh(bankGeo, bankMat);
+      rightBank.position.set(42.5, 0, 0);
+      rightBank.receiveShadow = true;
+      g.add(rightBank);
+
+      // Rocks in bed
+      for (let i = 0; i < 24; i++) {
+        const size = 0.25 + Math.random() * 0.9;
+        const rock = new THREE.Mesh(
+          new THREE.DodecahedronGeometry(size, 0),
+          new THREE.MeshPhongMaterial({ color: 0x7f7f7f, flatShading: true })
+        );
+        rock.position.set((Math.random() - 0.5) * (RIVER_W - 6), -2 + size * 0.5, (Math.random() - 0.5) * SEG_DRAW_LEN);
+        rock.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+        rock.castShadow = true;
+        rock.receiveShadow = true;
+        g.add(rock);
+      }
+
+      // Pebbles
+      for (let i = 0; i < 160; i++) {
+        const s = 0.08 + Math.random() * 0.25;
+        const peb = new THREE.Mesh(
+          new THREE.SphereGeometry(s, 6, 6),
+          new THREE.MeshPhongMaterial({ color: Math.random() > 0.5 ? 0x9a9a9a : 0x6b6b6b })
+        );
+        peb.position.set((Math.random() - 0.5) * (RIVER_W - 3), -2 + s * 0.55, (Math.random() - 0.5) * SEG_DRAW_LEN);
+        peb.receiveShadow = true;
+        g.add(peb);
+      }
+
+      // Grass / bushes / flowers
+      const vegCount = 150;
+      for (let i = 0; i < vegCount; i++) {
+        const side = Math.random() > 0.5 ? 1 : -1;
+        const x = side * (26 + Math.random() * 7);
+        const z = (Math.random() - 0.5) * SEG_DRAW_LEN;
+        const r = Math.random();
+        if (r < 0.62) createGrass(g, x, z);
+        else if (r < 0.9) createBush(g, x, z);
+        else createFlower(g, x, z);
+      }
+
+      // Bank rocks
+      for (let i = 0; i < 65; i++) {
+        const side = Math.random() > 0.5 ? 1 : -1;
+        const x = side * (24 + Math.random() * 3);
+        const z = (Math.random() - 0.5) * SEG_DRAW_LEN;
+        createBankRock(g, x, z);
+      }
+
+      return { group: g, waterMesh: water, zCenter: 0 };
+    }
+
+    function createGrass(parent, x, z) {
+      const grass = new THREE.Mesh(
+        new THREE.ConeGeometry(0.06, 0.38, 4),
+        new THREE.MeshPhongMaterial({ color: 0x2ecc71, flatShading: true })
+      );
+      grass.position.set(x, 2.3, z);
+      grass.rotation.x = (Math.random() - 0.5) * 0.3;
+      grass.rotation.z = (Math.random() - 0.5) * 0.3;
+      parent.add(grass);
+    }
+
+    function createBush(parent, x, z) {
+      const bush = new THREE.Mesh(
+        new THREE.DodecahedronGeometry(0.62, 0),
+        new THREE.MeshPhongMaterial({ color: 0x27ae60, flatShading: true })
+      );
+      bush.position.set(x, 2.35, z);
+      bush.castShadow = true;
+      parent.add(bush);
+    }
+
+    function createFlower(parent, x, z) {
+      const stem = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.02, 0.02, 0.45, 4),
+        new THREE.MeshPhongMaterial({ color: 0x27ae60 })
+      );
+      stem.position.set(x, 2.45, z);
+      parent.add(stem);
+
+      const colors = [0xff6b81, 0xfeca57, 0x48dbfb, 0xff9ff3, 0xf368e0];
+      const flower = new THREE.Mesh(
+        new THREE.SphereGeometry(0.1, 6, 6),
+        new THREE.MeshPhongMaterial({ color: colors[Math.floor(Math.random() * colors.length)] })
+      );
+      flower.position.set(x, 2.7, z);
+      parent.add(flower);
+    }
+
+    function createBankRock(parent, x, z) {
+      const size = 0.18 + Math.random() * 0.55;
+      const rock = new THREE.Mesh(
+        new THREE.DodecahedronGeometry(size, 0),
+        new THREE.MeshPhongMaterial({ color: 0x696969, flatShading: true })
+      );
+      rock.position.set(x, 2 + size * 0.5, z);
+      rock.rotation.set(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI);
+      rock.castShadow = true;
+      parent.add(rock);
+    }
+
+    function createMountainForestSegment() {
+      const g = new THREE.Group();
+
+      // Trees
+      for (let i = 0; i < 46; i++) {
+        const side = Math.random() > 0.5 ? 1 : -1;
+        const x = side * (55 + Math.random() * 170);
+        const z = (Math.random() - 0.5) * SEG_DRAW_LEN;
+        createTree(g, x, z, 0.9 + Math.random() * 1.9);
+      }
+
+      // Mountains
+      for (let i = 0; i < 12; i++) {
+        const side = Math.random() > 0.5 ? 1 : -1;
+        const x = side * (170 + Math.random() * 290);
+        const z = (Math.random() - 0.5) * SEG_DRAW_LEN;
+        createMountain(g, x, z);
+      }
+
+      return { group: g, zCenter: 0 };
+    }
+
+    function createTree(parent, x, z, scale=1) {
+      const trunk = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.25*scale, 0.35*scale, 4.2*scale, 8),
+        new THREE.MeshPhongMaterial({ color: 0x8b4513 })
+      );
+      trunk.position.set(x, 2.1*scale, z);
+      trunk.castShadow = true;
+      parent.add(trunk);
+
+      const leaves = new THREE.Mesh(
+        new THREE.SphereGeometry(2.1*scale, 10, 10),
+        new THREE.MeshPhongMaterial({ color: 0x1f7a1f })
+      );
+      leaves.position.set(x, 5.2*scale, z);
+      leaves.castShadow = true;
+      parent.add(leaves);
+    }
+
+    function createMountain(parent, x, z) {
+      const base = 18 + Math.random() * 35;
+      const height = 45 + Math.random() * 95;
+      const geo = new THREE.ConeGeometry(base, height, 10);
+      const mat = new THREE.MeshPhongMaterial({ color: 0x3f5f3f, flatShading: true });
+      const m = new THREE.Mesh(geo, mat);
+      m.position.set(x, height/2 - 0.5, z);
+      m.rotation.y = Math.random() * Math.PI;
+      m.castShadow = true;
+      parent.add(m);
+
+      if (Math.random() < 0.35) {
+        const cap = new THREE.Mesh(
+          new THREE.ConeGeometry(base * 0.55, height * 0.35, 10),
+          new THREE.MeshPhongMaterial({ color: 0xeaeaea, flatShading: true })
+        );
+        cap.position.set(x, height - height*0.2, z);
+        cap.rotation.y = m.rotation.y;
+        cap.castShadow = true;
+        parent.add(cap);
+      }
+    }
+
+    function createClouds() {
+      const cloudCount = 26;
+      for (let i = 0; i < cloudCount; i++) {
+        const cloud = new THREE.Group();
+        const parts = 3 + Math.floor(Math.random() * 3);
+        for (let j = 0; j < parts; j++) {
+          const s = 3 + Math.random() * 4;
+          const part = new THREE.Mesh(
+            new THREE.SphereGeometry(s, 8, 8),
+            new THREE.MeshPhongMaterial({ color: 0xffffff, transparent: true, opacity: 0.82 })
+          );
+          part.position.set((Math.random()-0.5)*8, (Math.random()-0.5)*2, (Math.random()-0.5)*4);
+          cloud.add(part);
+        }
+        const side = Math.random() > 0.5 ? 1 : -1;
+        cloud.position.set(side*(60 + Math.random()*80), 30 + Math.random()*18, (Math.random()-0.5)*1800);
+        scene.add(cloud);
+      }
+    }
+
+    // ===== Entities =====
+    function createAIAgent() {
+      const group = new THREE.Group();
+
+      const body = new THREE.Mesh(
+        new THREE.BoxGeometry(2, 2.5, 1.5),
+        new THREE.MeshPhongMaterial({ color: 0xff6b6b, emissive: 0xff0000, emissiveIntensity: 0.3 })
+      );
+      body.castShadow = true;
+      group.add(body);
+
+      const head = new THREE.Mesh(
+        new THREE.SphereGeometry(0.8, 16, 16),
+        new THREE.MeshPhongMaterial({ color: 0xffd700, emissive: 0xffaa00, emissiveIntensity: 0.5 })
+      );
+      head.position.y = 2;
+      head.castShadow = true;
+      group.add(head);
+
+      const eyeMat = new THREE.MeshPhongMaterial({ color: 0x00ffff, emissive: 0x00ffff, emissiveIntensity: 1 });
+      const eyeGeo = new THREE.SphereGeometry(0.15, 8, 8);
+      const e1 = new THREE.Mesh(eyeGeo, eyeMat); e1.position.set(-0.3, 2.2, 0.7); group.add(e1);
+      const e2 = new THREE.Mesh(eyeGeo, eyeMat); e2.position.set( 0.3, 2.2, 0.7); group.add(e2);
+
+      const ant = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.05, 0.05, 1, 8),
+        new THREE.MeshPhongMaterial({ color: 0xffd700 })
+      );
+      ant.position.y = 3; group.add(ant);
+
+      const ball = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 8), eyeMat);
+      ball.position.y = 3.5; group.add(ball);
+
+      const posZ = -raceDistance * 0.9;
+      group.position.set(0, 0, posZ);
+
+      aiAgent = { mesh: group, position: posZ, speed: 0.55, targetSpeed: 0.55 }; // 2.75x faster: was 0.2
+      scene.add(group);
+    }
+
+    function createDetailedFish(color) {
+      const group = new THREE.Group();
+
+      const bodyGeo = new THREE.SphereGeometry(1.5, 16, 16);
+      bodyGeo.scale(1.8, 1, 0.8);
+      const mat = new THREE.MeshPhongMaterial({ color, shininess: 100, specular: 0xffffff });
+      const body = new THREE.Mesh(bodyGeo, mat); body.castShadow = true; group.add(body);
+
+      const tail = new THREE.Mesh(new THREE.ConeGeometry(1.8, 2.2, 3), mat);
+      tail.rotation.z = Math.PI/2; tail.position.x = 2.2; tail.castShadow = true; group.add(tail);
+
+      const finGeo = new THREE.ConeGeometry(0.75, 1.5, 3);
+      const topFin = new THREE.Mesh(finGeo, mat);
+      topFin.position.set(-0.5, 1.2, 0); topFin.rotation.z = Math.PI; group.add(topFin);
+
+      const side1 = new THREE.Mesh(finGeo, mat);
+      side1.position.set(0, -0.5, 0.9); side1.rotation.x = Math.PI/4; side1.rotation.z = Math.PI/2; side1.scale.set(0.7,0.7,0.7);
+      group.add(side1);
+
+      const side2 = new THREE.Mesh(finGeo, mat);
+      side2.position.set(0, -0.5, -0.9); side2.rotation.x = -Math.PI/4; side2.rotation.z = Math.PI/2; side2.scale.set(0.7,0.7,0.7);
+      group.add(side2);
+
+      const eyeMat = new THREE.MeshPhongMaterial({ color: 0xffffff });
+      const pupMat = new THREE.MeshPhongMaterial({ color: 0x000000 });
+      const le = new THREE.Mesh(new THREE.SphereGeometry(0.3, 8, 8), eyeMat); le.position.set(-2.0, 0.5, 0.75); group.add(le);
+      const re = new THREE.Mesh(new THREE.SphereGeometry(0.3, 8, 8), eyeMat); re.position.set(-2.0, 0.5,-0.75); group.add(re);
+      const lp = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 8), pupMat); lp.position.set(-2.1, 0.5, 0.75); group.add(lp);
+      const rp = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 8), pupMat); rp.position.set(-2.1, 0.5,-0.75); group.add(rp);
+
+      group.rotation.y = -Math.PI/2;
+      group.scale.set(1.25, 1.25, 1.25);
+
+      return group;
+    }
+
+    function createNameSprite(name, colorHex) {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+
+      canvas.width = 1400;
+      canvas.height = 340;
+
+      const grad = ctx.createLinearGradient(0,0,0,canvas.height);
+      grad.addColorStop(0,'rgba(255,255,255,0.96)');
+      grad.addColorStop(1,'rgba(240,248,255,0.96)');
+      ctx.fillStyle = grad;
+
+      const r = 40;
+      ctx.beginPath();
+      ctx.moveTo(r,0); ctx.lineTo(canvas.width-r,0); ctx.quadraticCurveTo(canvas.width,0,canvas.width,r);
+      ctx.lineTo(canvas.width,canvas.height-r); ctx.quadraticCurveTo(canvas.width,canvas.height,canvas.width-r,canvas.height);
+      ctx.lineTo(r,canvas.height); ctx.quadraticCurveTo(0,canvas.height,0,canvas.height-r);
+      ctx.lineTo(0,r); ctx.quadraticCurveTo(0,0,r,0);
+      ctx.closePath(); ctx.fill();
+
+      // Darker, thicker border for better visibility
+      ctx.strokeStyle = '#003366'; ctx.lineWidth = 20; ctx.stroke();
+
+      const cx = canvas.width/2;
+      const cy = canvas.height/2;
+
+      ctx.font = 'bold 120px Quicksand';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      // Multi-layer text stroke for high contrast and visibility
+      ctx.strokeStyle = '#001a33'; ctx.lineWidth = 28; ctx.strokeText(name, cx, cy); // Dark blue-black outer
+      ctx.strokeStyle = '#003366'; ctx.lineWidth = 22; ctx.strokeText(name, cx, cy); // Dark blue middle
+      ctx.strokeStyle = '#0055aa'; ctx.lineWidth = 16; ctx.strokeText(name, cx, cy); // Medium blue
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 8; ctx.strokeText(name, cx, cy);     // White inner edge
+      ctx.fillStyle = '#ffffff'; ctx.fillText(name, cx, cy);                          // White fill
+
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.anisotropy = 8;
+
+      const mat = new THREE.SpriteMaterial({ map: tex, transparent: true });
+      const sp = new THREE.Sprite(mat);
+      sp.scale.set(22, 5.5, 1);
+      sp.position.y = 8;
+      return sp;
+    }
+
+    function createFishes() {
+      const colors = [
+        0xff6b81,0x70a1ff,0x5f27cd,0x00d2d3,0xff9ff3,0xfeca57,0x48dbfb,0xff6348,0x1dd1a1,0xf368e0,
+        0xffa502,0x2ed573,0x1e90ff,0xff4757,0x3742fa,0xe056fd,0x686de0,0x30336b,0x95afc0,0x535c68
+      ];
+      const spacing = 70 / (players.length + 1);
+
+      players.forEach((name, idx) => {
+        const color = colors[idx % colors.length];
+        const fishMesh = createDetailedFish(color);
+        fishMesh.position.set(-35 + spacing*(idx+1), 0, 0);
+
+        const hex = '#' + color.toString(16).padStart(6,'0');
+        fishMesh.add(createNameSprite(name, hex));
+
+        fishes.push({
+          mesh: fishMesh,
+          name,
+          color,
+          position: 0,
+          speed: rand(0.45, 0.75),        // 3x faster: was 0.16-0.28, now 0.45-0.75
+          targetSpeed: rand(0.45, 0.75),  // 3x faster: was 0.16-0.28, now 0.45-0.75
+          stamina: 1.0,
+          burstCD: 0,
+          slipCD: 0,
+          scriptedBoostUntil: 0,
+          scriptedFatigueUntil: 0,
+          isWinner: false,
+        });
+
+        scene.add(fishMesh);
+      });
+    }
+
+    function createBird(x, y, z) {
+      const g = new THREE.Group();
+      const bodyGeo = new THREE.SphereGeometry(0.2, 8, 8); bodyGeo.scale(1.5,1,0.8);
+      const bodyMat = new THREE.MeshPhongMaterial({ color: 0x8B4513 });
+      g.add(new THREE.Mesh(bodyGeo, bodyMat));
+
+      const wingGeo = new THREE.ConeGeometry(0.3, 0.8, 3);
+      const wingMat = new THREE.MeshPhongMaterial({ color: 0xA0522D });
+      const lw = new THREE.Mesh(wingGeo, wingMat); lw.rotation.z = Math.PI/2; lw.position.set(0,0,0.3); g.add(lw);
+      const rw = new THREE.Mesh(wingGeo, wingMat); rw.rotation.z = Math.PI/2; rw.position.set(0,0,-0.3); g.add(rw);
+
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 8), bodyMat);
+      head.position.set(0.25,0,0); g.add(head);
+
+      g.position.set(x,y,z);
+      return { mesh:g, leftWing:lw, rightWing:rw, startZ:z };
+    }
+
+    function createFisherman(x, z) {
+      const group = new THREE.Group();
+
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1, 4, 8), new THREE.MeshPhongMaterial({ color: 0x3498db }));
+      body.position.y = 2; body.castShadow = true; group.add(body);
+
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.8, 8, 8), new THREE.MeshPhongMaterial({ color: 0xfdbcb4 }));
+      head.position.y = 5; head.castShadow = true; group.add(head);
+
+      const hat = new THREE.Mesh(new THREE.ConeGeometry(1, 1, 8), new THREE.MeshPhongMaterial({ color: 0xf39c12 }));
+      hat.position.y = 6.2; hat.castShadow = true; group.add(hat);
+
+      const armGeo = new THREE.CylinderGeometry(0.25, 0.25, 2.5, 6);
+      const armMat = new THREE.MeshPhongMaterial({ color: 0xfdbcb4 });
+      const la = new THREE.Mesh(armGeo, armMat); la.position.set(-1.2,3,0); la.rotation.z=Math.PI/6; group.add(la);
+      const ra = new THREE.Mesh(armGeo, armMat); ra.position.set( 1.2,3,0); ra.rotation.z=-Math.PI/3; group.add(ra);
+
+      const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 6, 6), new THREE.MeshPhongMaterial({ color: 0x8b4513 }));
+      rod.rotation.z = -Math.PI/4; rod.position.set(2,3.5,0); group.add(rod);
+
+      const line = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 10, 4), new THREE.MeshPhongMaterial({ color: 0x333333 }));
+      line.position.set(5,-2,0); line.visible = false; group.add(line);
+
+      const net = new THREE.Mesh(new THREE.ConeGeometry(1.5, 2, 8), new THREE.MeshPhongMaterial({ color: 0x00ff00, transparent:true, opacity:0.7, wireframe:true }));
+      net.rotation.z = Math.PI; net.position.set(5,-2,0); net.visible = false; group.add(net);
+
+      group.position.set(x,2,z);
+
+      return {
+        mesh: group, rod, line, net,
+        isCatching:false, catchCooldown:0, catchProgress:0,
+        x, z, targetFish:null, cameraFocusActive:false, initialFishPos:null
+      };
+    }
+
+    function setupSideActors() {
+      birds.forEach(b => scene.remove(b.mesh));
+      birds = [];
+      for (let i = 0; i < 12; i++) {
+        const side = Math.random() > 0.5 ? 1 : -1;
+        const b = createBird(side*(30+Math.random()*18), 16+Math.random()*10, (Math.random()-0.5)*1200);
+        birds.push(b); scene.add(b.mesh);
+      }
+
+      fishermen.forEach(f => scene.remove(f.mesh));
+      fishermen = [];
+
+      const count = 16;
+      for (let i = 0; i < count; i++) {
+        const side = i % 2 === 0 ? 1 : -1;
+        const x = side * 24;
+        const z = -raceDistance * 0.1 - i * (raceDistance * 0.05);
+        const fm = createFisherman(x, z);
+        fishermen.push(fm);
+        scene.add(fm.mesh);
+      }
+
+      addEventLog(`🎣 Có ${fishermen.length} người câu dọc sông...`, 'info');
+    }
+
+    // ===== Player list =====
+    function updatePlayerList() {
+      const fishEmojis = ['🐟','🐠','🐡','🦈','🐋','🐬','🦑','🐙','🦞','🦀','🦐','🐢','🦭','🐊','🦦'];
+      playerList.innerHTML = players.map((name, i) => `
+        <div class="player-item">
+          <span><span class="fish-icon">${fishEmojis[i % fishEmojis.length]}</span>${name}</span>
+          <button class="remove-btn" data-idx="${i}">Xóa</button>
+        </div>
+      `).join('');
+
+      playerList.querySelectorAll('.remove-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const idx = parseInt(e.currentTarget.getAttribute('data-idx'), 10);
+          players.splice(idx, 1);
+          playerInput.value = players.join('\n');
+          updatePlayerList();
+          startBtn.disabled = players.length < 2;
+        });
+      });
+    }
+
+    playerInput.addEventListener('input', () => {
+      const text = playerInput.value.trim();
+      players = text ? text.split('\n').map(s => s.trim()).filter(Boolean) : [];
+      updatePlayerList();
+      startBtn.disabled = players.length < 2;
+    });
+
+    // ===== Catch logic (log "in-game" only) =====
+    function tryScheduleCatch() {
+      const elapsed = (Date.now() - raceStartTime) / 1000;
+      const remaining = Math.max(0, raceDuration - elapsed);
+
+      const elimLimit = Math.floor(totalPlayers * maxEliminationPercent);
+      const canCatchMore = eliminatedFishes.length < elimLimit;
+
+      if (!canCatchMore) return;
+      if (remaining <= 4) return;
+      if (catchInProgress) return;
+      if (Date.now() < nextCatchAt) return;
+
+      const alive = fishes.filter(f => !eliminatedFishes.includes(f.name));
+      if (!alive.length) return;
+
+      const sorted = [...alive].sort((a,b)=>a.position-b.position);
+      const topK = sorted.slice(0, Math.max(2, Math.floor(sorted.length*0.5)));
+      const targetFish = pick(topK);
+
+      let best = null, bestD = Infinity;
+      for (const fm of fishermen) {
+        if (fm.isCatching || fm.catchCooldown > 0) continue;
+        const d = Math.hypot(targetFish.mesh.position.x - fm.x, targetFish.mesh.position.z - fm.z);
+        if (d < bestD) { bestD = d; best = fm; }
+      }
+
+      if (!best || bestD > 20) {
+        nextCatchAt = Date.now() + Math.floor(rand(CATCH_GAP_MIN, CATCH_GAP_MAX));
+        return;
+      }
+
+      best.isCatching = true;
+      best.targetFish = targetFish;
+      best.catchProgress = 0;
+      best.line.visible = true;
+      best.net.visible = true;
+      best.initialFishPos = { x: targetFish.mesh.position.x, y: targetFish.mesh.position.y, z: targetFish.mesh.position.z };
+      best.cameraFocusActive = true;
+
+      catchInProgress = true;
+      addEventLog(`🎣 Có người câu nhắm tới ${targetFish.name}...`, 'info');
+    }
+
+    function onCatchComplete() {
+      catchInProgress = false;
+      nextCatchAt = Date.now() + Math.floor(rand(CATCH_GAP_MIN, CATCH_GAP_MAX));
+    }
+
+    // ===== Overtake drama (log "in-game" only) =====
+    function scheduleOvertakeIfNeeded() {
+      if (Date.now() < nextOvertakeAt) return;
+      nextOvertakeAt = Date.now() + Math.floor(rand(OVERTAKE_GAP_MIN, OVERTAKE_GAP_MAX));
+
+      const alive = fishes.filter(f => !eliminatedFishes.includes(f.name));
+      if (alive.length < 2) return;
+
+      const leader = alive.reduce((a,b)=> (b.position < a.position ? b : a));
+      const candidates = alive.filter(f => f.name !== leader.name);
+      const chosen = pick(candidates);
+
+      const now = Date.now();
+      chosen.scriptedBoostUntil = now + 2200 + Math.floor(Math.random()*400);
+      chosen.scriptedFatigueUntil = chosen.scriptedBoostUntil + 1600 + Math.floor(Math.random()*500);
+
+      addEventLog(`⚡ ${chosen.name} bất ngờ bứt lên!`, 'info');
+      setTimeout(() => {
+        if (!winner && !eliminatedFishes.includes(chosen.name)) addEventLog(`😵 ${chosen.name} có vẻ chậm lại...`, 'info');
+      }, 1800);
+    }
+
+    // ===== Winner cinematic (CHASE + BITE) =====
+    let winCine = { active:false, fish:null, phase:'CHASE', startAt:0, biteAt:0 };
+
+    function setWinner(name, reasonText) {
+      if (winner) return;
+      winner = name;
+
+      const wf = fishes.find(f => f.name === name);
+      if (!wf) return;
+
+      wf.isWinner = true;
+      addEventLog(reasonText, 'caught');
+
+      mode = MODE.WIN_CINEMATIC;
+      winCine.active = true;
+      winCine.fish = wf;
+      winCine.phase = 'CHASE';
+      winCine.startAt = Date.now();
+      winCine.biteAt = 0;
+
+      fishermen.forEach(fm => {
+        fm.isCatching = false;
+        fm.cameraFocusActive = false;
+        fm.line.visible = false;
+        fm.net.visible = false;
+      });
+      catchInProgress = false;
+    }
+
+    function updateWinnerCinematic(time) {
+      if (!winCine.active || !winCine.fish) return;
+      const wf = winCine.fish;
+      if (!aiAgent) return;
+
+      const targetZ = aiAgent.position + 0.8;
+      const dz = targetZ - wf.position;
+
+      if (winCine.phase === 'CHASE') {
+        wf.targetSpeed = 4.5;  // Much faster: was 1.6, now 4.5 for dramatic chase
+        wf.speed += (wf.targetSpeed - wf.speed) * 0.12;
+
+        wf.position += dz * 0.08;
+        wf.mesh.position.z = wf.position;
+
+        wf.mesh.position.y = Math.sin(time * 14) * 1.2 + 1.0;
+        wf.mesh.rotation.y = -Math.PI/2 + Math.sin(time * 10) * 0.35;
+        wf.mesh.rotation.z = Math.sin(time * 12) * 0.25;
+
+        const camT = { x: wf.mesh.position.x * 0.4, y: 28, z: wf.mesh.position.z + 18 };
+        camera.position.x += (camT.x - camera.position.x) * 0.12;
+        camera.position.y += (camT.y - camera.position.y) * 0.12;
+        camera.position.z += (camT.z - camera.position.z) * 0.12;
+        camera.lookAt(wf.mesh.position.x, wf.mesh.position.y + 2, wf.mesh.position.z);
+
+        if (Math.abs(dz) < 1.2) {
+          winCine.phase = 'BITE';
+          winCine.biteAt = Date.now();
+          addEventLog(`😈 ${wf.name} lao tới...`, 'info');
+        }
+      }
+
+      if (winCine.phase === 'BITE') {
+        const p = clamp((Date.now() - winCine.biteAt) / 900, 0, 1);
+
+        wf.position += (targetZ - wf.position) * 0.20;
+        wf.mesh.position.z = wf.position;
+
+        const bitePulse = 1 + Math.sin(p * Math.PI) * 0.6;
+        wf.mesh.scale.set(bitePulse, bitePulse, bitePulse);
+
+        wf.mesh.rotation.y = -Math.PI/2 + Math.sin(time * 20) * 0.5;
+        wf.mesh.position.y = 2 + Math.sin(time * 18) * 0.6;
+
+        aiAgent.mesh.rotation.y = Math.sin(time * 18) * 0.6;
+        aiAgent.mesh.position.y = Math.sin(time * 14) * 0.8;
+
+        const camT = { x: wf.mesh.position.x * 0.3, y: 24, z: wf.mesh.position.z + 14 };
+        camera.position.x += (camT.x - camera.position.x) * 0.14;
+        camera.position.y += (camT.y - camera.position.y) * 0.14;
+        camera.position.z += (camT.z - camera.position.z) * 0.14;
+        camera.lookAt(wf.mesh.position.x, wf.mesh.position.y + 1.5, wf.mesh.position.z);
+
+        if (p >= 1) {
+          addEventLog(`💥 ${wf.name} đớp trúng AI Agent!`, 'caught');
+          winCine.phase = 'SHOW';
+          setTimeout(() => announceWinnerUI(), 450);
+        }
+      }
+    }
+
+    function announceWinnerUI() {
+      mode = MODE.ENDED;
+      winCine.active = false;
+
+      winnerNameEl.textContent = winner;
+      winnerPanel.classList.remove('hidden');
+      setTimeout(() => winnerPanel.classList.add('show'), 100);
+
+      createConfetti();
+    }
+
+    // ===== Confetti =====
+    function createConfetti() {
+      const colors = [0xff6b81,0x70a1ff,0xfeca57,0x48dbfb,0xff6348];
+      for (let i=0;i<160;i++){
+        const geo = new THREE.BoxGeometry(0.3,0.3,0.1);
+        const mat = new THREE.MeshPhongMaterial({ color: colors[Math.floor(Math.random()*colors.length)] });
+        const c = new THREE.Mesh(geo, mat);
+        c.position.set((Math.random()-0.5)*50, 18+Math.random()*22, camera.position.z + (Math.random()-0.5)*30);
+        c.rotation.set(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI);
+        scene.add(c);
+        animateConfetti(c);
+      }
+    }
+    function animateConfetti(c) {
+      const fall = 0.18 + Math.random()*0.35;
+      function step(){
+        c.position.y -= fall;
+        c.rotation.x += 0.08; c.rotation.y += 0.08;
+        if (c.position.y > -10) requestAnimationFrame(step);
+        else scene.remove(c);
+      }
+      step();
+    }
+
+    // ===== Reset / Start =====
+    function resetRace() {
+      winner = null;
+      eliminatedFishes = [];
+
+      fishes.forEach(f => scene.remove(f.mesh));
+      fishes = [];
+
+      fishermen.forEach(f => scene.remove(f.mesh));
+      fishermen = [];
+
+      birds.forEach(b => scene.remove(b.mesh));
+      birds = [];
+
+      if (aiAgent && aiAgent.mesh) scene.remove(aiAgent.mesh);
+      aiAgent = null;
+
+      winCine = { active:false, fish:null, phase:'CHASE', startAt:0, biteAt:0 };
+
+      nextCatchAt = Date.now() + 2500;
+      catchInProgress = false;
+
+      nextOvertakeAt = Date.now() + 4500;
+
+      buildTiles(0);
+    }
+
+    function startRace() {
+      if (!scene) initThree();
+      resetRace();
+
+      totalPlayers = players.length;
+      createAIAgent();
+      createFishes();
+      setupSideActors();
+
+      raceStartTime = Date.now();
+      mode = MODE.RACING;
+
+      raceInfo.style.display = 'block';
+      progressBar.style.display = 'block';
+      eventLog.style.display = 'block';
+
+      addEventLog('🏁 Cuộc đua bắt đầu!', 'info');
+    }
+
+    // ===== Main Loop =====
+    function tick() {
+      requestAnimationFrame(tick);
+      if (!scene) return;
+
+      const time = Date.now() * 0.001;
+
+      // water anim
+      for (const seg of tileSegments) {
+        if (seg && seg.waterMesh && seg.waterMesh.material) {
+          seg.waterMesh.material.opacity = 0.76 + Math.sin(time*2) * 0.06;
+        }
+      }
+
+      if (mode === MODE.SETUP) {
+        renderer.render(scene, camera);
+        return;
+      }
+
+      // time UI
+      const elapsed = (Date.now() - raceStartTime) / 1000;
+      const remaining = Math.max(0, raceDuration - elapsed);
+      const timeEl = document.getElementById('timeRemaining');
+      if (timeEl) timeEl.textContent = `⏱️ ${Math.ceil(remaining)}s`;
+
+      recycleTiles();
+
+      // birds
+      birds.forEach((b, i) => {
+        const flap = Math.sin(time*8 + i)*0.5;
+        b.leftWing.rotation.x = flap;
+        b.rightWing.rotation.x = -flap;
+        const radius = 6;
+        const speed = 0.28 + i*0.06;
+        b.mesh.position.x += Math.cos(time*speed + i)*0.1;
+        b.mesh.position.z = b.startZ + Math.sin(time*speed + i)*radius;
+        b.mesh.position.y += Math.sin(time*2 + i)*0.05;
+        b.mesh.rotation.y = Math.sin(time*speed + i)*0.3;
+      });
+
+      if (mode === MODE.WIN_CINEMATIC) {
+        updateWinnerCinematic(time);
+        renderer.render(scene, camera);
+        return;
+      }
+
+      if (mode !== MODE.RACING) {
+        renderer.render(scene, camera);
+        return;
+      }
+
+      // slow motion during catch
+      const activeCatch = fishermen.find(fm => fm.isCatching && fm.catchProgress > 0 && fm.catchProgress < 1);
+      const timeScale = activeCatch ? 0.6 : 1.0;
+
+      // AI move
+      aiAgent.position -= aiAgent.speed * timeScale;
+      aiAgent.mesh.position.z = aiAgent.position;
+      aiAgent.mesh.position.y = Math.sin(time*3)*0.3;
+      aiAgent.mesh.rotation.y = Math.sin(time*2)*0.2;
+
+      tryScheduleCatch();
+      scheduleOvertakeIfNeeded();
+
+      // fishermen
+      fishermen.forEach(fm => {
+        fm.catchCooldown = Math.max(0, fm.catchCooldown - 1);
+
+        if (!fm.isCatching) {
+          fm.rod.rotation.z = -Math.PI/4 + Math.sin(time + fm.z) * 0.1;
+          return;
+        }
+
+        fm.catchProgress += 0.008;
+        const fish = fm.targetFish;
+
+        if (!fish || eliminatedFishes.includes(fish.name)) {
+          fm.isCatching = false;
+          fm.cameraFocusActive = false;
+          fm.line.visible = false;
+          fm.net.visible = false;
+          fm.rod.rotation.z = -Math.PI/4;
+          onCatchComplete();
+          return;
+        }
+
+        const p = Math.min(fm.catchProgress, 1);
+
+        if (fm.cameraFocusActive && p < 0.9 && !winner) {
+          const targetCam = {
+            x: (fm.x + fish.mesh.position.x) / 2,
+            y: 45,
+            z: (fm.z + fish.mesh.position.z) / 2 + 28
+          };
+          camera.position.x += (targetCam.x - camera.position.x) * 0.08;
+          camera.position.y += (targetCam.y - camera.position.y) * 0.08;
+          camera.position.z += (targetCam.z - camera.position.z) * 0.08;
+          camera.lookAt((fm.x + fish.mesh.position.x)/2, 8, (fm.z + fish.mesh.position.z)/2);
+        }
+
+        if (p < 0.35) {
+          const pp = p / 0.35;
+          const tx = fm.initialFishPos.x - fm.x;
+          const tz = fm.initialFishPos.z - fm.z;
+          fm.net.position.x = 5*(1-pp) + tx*pp;
+          fm.net.position.z = tz*pp;
+          fm.net.position.y = -2*(1-pp) + fm.initialFishPos.y*pp;
+        } else {
+          const tt = (p - 0.35) / 0.65;
+          const inv = 1 - tt;
+
+          const sx = fm.initialFishPos.x - fm.x;
+          const sz = fm.initialFishPos.z - fm.z;
+          const sy = fm.initialFishPos.y;
+
+          const mx = sx * 0.5;
+          const mz = sz * 0.5;
+          const my = 20;
+
+          const ex = 0, ez = 0, ey = 8;
+
+          const fx = inv*inv*sx + 2*inv*tt*mx + tt*tt*ex;
+          const fz = inv*inv*sz + 2*inv*tt*mz + tt*tt*ez;
+          const fy = inv*inv*sy + 2*inv*tt*my + tt*tt*ey;
+
+          fish.mesh.position.set(fm.x + fx, fy, fm.z + fz);
+
+          const struggle = Math.sin(tt * Math.PI);
+          fish.mesh.rotation.x = Math.sin(time*15)*0.8*struggle;
+          fish.mesh.rotation.y = -Math.PI/2 + Math.cos(time*12)*1.4*struggle;
+          fish.mesh.rotation.z = Math.sin(time*18)*0.6*struggle;
+
+          fm.net.position.set(fx, fy, fz);
+          fm.net.rotation.x = Math.sin(time*10)*0.2;
+        }
+
+        const lineLen = Math.hypot(fm.net.position.x, fm.net.position.z, fm.net.position.y + 2);
+        fm.line.scale.y = Math.max(0.1, lineLen / 10);
+        fm.line.position.x = fm.net.position.x / 2;
+        fm.line.position.z = fm.net.position.z / 2;
+        fm.line.position.y = (fm.net.position.y - 2) / 2;
+
+        const aXZ = Math.atan2(fm.net.position.z, fm.net.position.x);
+        const aY = Math.atan2(fm.net.position.y + 2, Math.hypot(fm.net.position.x, fm.net.position.z));
+        fm.line.rotation.y = aXZ;
+        fm.line.rotation.x = Math.PI/2 - aY;
+
+        fm.rod.rotation.z = -Math.PI/4 - p*0.6;
+
+        if (fm.catchProgress >= 1) {
+          eliminatedFishes.push(fish.name);
+          scene.remove(fish.mesh);
+
+          addEventLog(`🎣 ${fish.name} đã bị vớt!`, 'eliminated');
+
+          const elimLimit = Math.floor(totalPlayers * maxEliminationPercent);
+          if (eliminatedFishes.length >= elimLimit) {
+            addEventLog(`🎣 Người câu tạm dừng...`, 'info');
+          }
+
+          fm.isCatching = false;
+          fm.cameraFocusActive = false;
+          fm.line.visible = false;
+          fm.net.visible = false;
+          fm.catchCooldown = 180;
+          fm.rod.rotation.z = -Math.PI/4;
+
+          onCatchComplete();
+        }
+      });
+
+      const alive = fishes.filter(f => !eliminatedFishes.includes(f.name));
+      if (!alive.length) {
+        renderer.render(scene, camera);
+        return;
+      }
+
+      const leader = alive.reduce((a,b)=> (b.position < a.position ? b : a));
+
+      fishes.forEach((fish, idx) => {
+        if (eliminatedFishes.includes(fish.name)) return;
+
+        const beingCaught = fishermen.some(fm => fm.isCatching && fm.targetFish && fm.targetFish.name === fish.name);
+        if (beingCaught) return;
+
+        fish.burstCD = Math.max(0, fish.burstCD - 1);
+        fish.slipCD  = Math.max(0, fish.slipCD  - 1);
+
+        const drain = Math.max(0, fish.speed - 0.60) * 0.003; // Adjusted threshold: was 0.22, now 0.60
+        const regen = Math.max(0, 0.65 - fish.speed) * 0.002; // Adjusted threshold: was 0.24, now 0.65
+        fish.stamina = clamp(fish.stamina - drain + regen, 0, 1);
+
+        const distFromLeader = Math.abs(fish.position - leader.position);
+        if (distFromLeader > 16) fish.targetSpeed = Math.max(fish.targetSpeed, 0.70); // 2.7x: was 0.26
+        if (distFromLeader < 3)  fish.targetSpeed = Math.min(fish.targetSpeed, 0.50); // 2.8x: was 0.18
+
+        fish.targetSpeed = clamp(fish.targetSpeed + (Math.random()-0.5)*0.05, 0.40, 1.10); // Range: was 0.14-0.40, now 0.40-1.10
+
+        const now = Date.now();
+        if (now < fish.scriptedBoostUntil) fish.targetSpeed = Math.max(fish.targetSpeed, 1.50); // 2.7x: was 0.55
+        else if (now < fish.scriptedFatigueUntil) fish.targetSpeed = Math.min(fish.targetSpeed, 0.50); // 2.8x: was 0.18
+
+        if (fish.burstCD === 0 && fish.stamina > 0.35 && Math.random() < 0.012) {
+          fish.targetSpeed = 1.10 + Math.random()*0.40; // 2.75x: was 0.40 + 0.14
+          fish.stamina = Math.max(0, fish.stamina - 0.22);
+          fish.burstCD = 95;
+        }
+        if (fish.slipCD === 0 && fish.stamina < 0.25 && Math.random() < 0.01) {
+          fish.targetSpeed = 0.35 + Math.random()*0.25; // 2.9x: was 0.12 + 0.10
+          fish.slipCD = 85;
+        }
+
+        fish.speed += (fish.targetSpeed - fish.speed) * 0.08;
+
+        fish.position -= fish.speed * timeScale;
+        fish.mesh.position.z = fish.position;
+
+        const swimIntensity = fish.speed / 0.30; // Adjusted divisor: was 0.1, now 0.30 for new speed range
+        fish.mesh.position.y = Math.sin(time*4 + idx)*0.4*Math.max(0.5, swimIntensity);
+        fish.mesh.rotation.y = -Math.PI/2 + Math.sin(time*3 + idx)*0.15;
+        fish.mesh.rotation.z = Math.sin(time*2 + idx)*0.08;
+
+        fish.mesh.position.x = clamp(fish.mesh.position.x + (Math.random()-0.5)*0.18, -35, 35);
+      });
+
+      // Log "in-game": dẫn đầu
+      const sec = Math.floor(elapsed);
+      if (sec > 0 && sec % 5 === 0 && !window['lead_' + sec]) {
+        window['lead_' + sec] = true;
+        addEventLog(`🏁 Dẫn đầu: ${leader.name}`, 'info');
+      }
+
+      // Progress bar
+      const startZ = 0;
+      const finishZ = aiAgent.position;
+      const prog = clamp((startZ - leader.position) / (startZ - finishZ), 0, 1);
+      progressFill.style.width = (prog*100).toFixed(1) + '%';
+
+      // Camera follow (nếu không đang zoom lúc vớt)
+      const cineCatch = fishermen.find(fm => fm.cameraFocusActive && fm.catchProgress < 0.9);
+      if (!cineCatch) {
+        const back = alive.reduce((a,b)=> (b.position > a.position ? b : a));
+        const center = (leader.position + back.position)/2;
+        const spread = Math.abs(leader.position - back.position);
+
+        const camDist = 42 + Math.min(spread * 0.45, 110);
+        const camH    = 42 + Math.min(spread * 0.25, 35);
+
+        const tx = 0, ty = camH, tz = center + camDist;
+        camera.position.x += (tx - camera.position.x)*0.10;
+        camera.position.y += (ty - camera.position.y)*0.10;
+        camera.position.z += (tz - camera.position.z)*0.10;
+        camera.lookAt(0, 2, center - 18);
+      }
+
+      // Winner rule
+      if (elapsed >= raceDuration && !winner) {
+        const leader2 = alive.reduce((a,b)=> (b.position < a.position ? b : a));
+        setWinner(leader2.name, `⏰ Hết giờ! ${leader2.name} lao tới AI Agent!`);
+      } else {
+        if (!winner) {
+          const close = alive.filter(f => (f.position - aiAgent.position) <= 1.0);
+          if (close.length) {
+            const w = pick(close);
+            setWinner(w.name, `🏆 ${w.name} áp sát AI Agent!`);
+          }
+        }
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    // ===== Start / Restart =====
+    startBtn.addEventListener('click', () => {
+      const text = playerInput.value.trim();
+      if (!text) return alert('Vui lòng nhập danh sách người chơi!');
+      players = text.split('\n').map(s=>s.trim()).filter(Boolean);
+      if (players.length < 2) return alert('Cần ít nhất 2 người chơi!');
+
+      raceDuration = Math.max(1, parseInt(raceDurationInput.value, 10) || 30);
+      raceDistance = raceDuration * 10;
+
+      setupPanel.classList.add('hidden');
+      const timeEl = document.getElementById('timeRemaining');
+      if (timeEl) timeEl.textContent = `⏱️ ${raceDuration}s`;
+
+      mode = MODE.SETUP;
+      startRace();
+    });
+
+    restartBtn.addEventListener('click', () => location.reload());
+
+    window.addEventListener('resize', () => {
+      if (camera && renderer) {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      }
+    });
+
+    // init
+    updatePlayerList();
+    initThree();
+    tick();
+  </script>
+</body>
+</html>

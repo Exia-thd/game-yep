@@ -1,0 +1,2058 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Survivor Game - 3D Robot Chase</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #fff;
+            overflow: hidden;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #canvas3d {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        #setupPanel {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(22, 33, 62, 0.95);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            max-width: 600px;
+            width: 90%;
+            border: 2px solid #e94560;
+        }
+
+        #setupPanel h1 {
+            color: #e94560;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 2em;
+            text-shadow: 0 0 10px rgba(233, 69, 96, 0.5);
+        }
+
+        #setupPanel label {
+            display: block;
+            margin: 20px 0 10px;
+            color: #a8dadc;
+            font-weight: bold;
+        }
+
+        #setupPanel textarea {
+            width: 100%;
+            height: 150px;
+            padding: 15px;
+            border: 2px solid #457b9d;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            font-size: 14px;
+            resize: vertical;
+        }
+
+        #setupPanel input[type="number"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #457b9d;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            font-size: 16px;
+        }
+
+        #startBtn {
+            width: 100%;
+            padding: 15px;
+            margin-top: 25px;
+            background: linear-gradient(135deg, #e94560 0%, #d62839 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(233, 69, 96, 0.4);
+        }
+
+        #startBtn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(233, 69, 96, 0.6);
+        }
+
+        #gameUI {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 20px;
+            display: none;
+        }
+
+        #stats {
+            background: rgba(22, 33, 62, 0.9);
+            padding: 20px;
+            border-radius: 15px;
+            display: inline-block;
+            border: 2px solid #457b9d;
+        }
+
+        #stats h2 {
+            color: #e94560;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+
+        #stats p {
+            margin: 8px 0;
+            font-size: 1.1em;
+            color: #a8dadc;
+        }
+
+        .highlight {
+            color: #00ff88;
+            font-weight: bold;
+            font-size: 1.3em;
+        }
+
+        #captureAlert {
+            position: absolute;
+            top: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(233, 69, 96, 0.95);
+            padding: 20px 40px;
+            border-radius: 15px;
+            font-size: 1.5em;
+            font-weight: bold;
+            display: none;
+            animation: pulse 0.5s;
+            box-shadow: 0 0 30px rgba(233, 69, 96, 0.8);
+            border: 3px solid #fff;
+            z-index: 1000;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.1); }
+        }
+
+        #winnerPanel {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(22, 33, 62, 0.98);
+            padding: 60px;
+            border-radius: 25px;
+            text-align: center;
+            display: none;
+            border: 3px solid #00ff88;
+            box-shadow: 0 0 80px rgba(0, 255, 136, 0.6);
+        }
+
+        #winnerPanel h1 {
+            color: #00ff88;
+            font-size: 3em;
+            margin-bottom: 20px;
+            text-shadow: 0 0 20px rgba(0, 255, 136, 0.8);
+        }
+
+        #winnerPanel p {
+            font-size: 1.5em;
+            margin: 15px 0;
+            color: #a8dadc;
+        }
+
+        #restartBtn {
+            margin-top: 30px;
+            padding: 15px 40px;
+            background: linear-gradient(135deg, #00ff88 0%, #00cc6a 100%);
+            color: #1a1a2e;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.2em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        #restartBtn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 20px rgba(0, 255, 136, 0.5);
+        }
+
+        .name-label {
+            position: absolute;
+            color: #ffffff;
+            font-size: 14px;
+            font-weight: bold;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 4px 8px;
+            border-radius: 8px;
+            border: 2px solid #00ffff;
+            pointer-events: none;
+            white-space: nowrap;
+            text-shadow: 0 0 5px rgba(0, 255, 255, 0.8);
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+        }
+
+        #actionLog {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 320px;
+            max-height: 80vh;
+            background: rgba(22, 33, 62, 0.9);
+            border: 2px solid #457b9d;
+            border-radius: 15px;
+            padding: 15px;
+            display: none;
+            overflow: hidden;
+        }
+
+        #actionLog h3 {
+            color: #00ffff;
+            margin: 0 0 15px 0;
+            font-size: 1.2em;
+            text-align: center;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+        }
+
+        #actionList {
+            max-height: calc(80vh - 60px);
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        #actionList::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #actionList::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 4px;
+        }
+
+        #actionList::-webkit-scrollbar-thumb {
+            background: #457b9d;
+            border-radius: 4px;
+        }
+
+        #actionList::-webkit-scrollbar-thumb:hover {
+            background: #00ffff;
+        }
+
+        .action-item {
+            background: rgba(0, 0, 0, 0.4);
+            padding: 10px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            border-left: 3px solid;
+            font-size: 0.9em;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .action-item.chase {
+            border-left-color: #ffa500;
+        }
+
+        .action-item.capture {
+            border-left-color: #e94560;
+        }
+
+        .action-item.start {
+            border-left-color: #00ff88;
+        }
+
+        .action-item.timeup {
+            border-left-color: #ffff00;
+        }
+
+        .action-time {
+            color: #a8dadc;
+            font-size: 0.85em;
+            margin-bottom: 4px;
+        }
+
+        .action-text {
+            color: #ffffff;
+            line-height: 1.4;
+        }
+
+        .action-icon {
+            display: inline-block;
+            margin-right: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="canvas3d"></canvas>
+        <div id="nameLabels"></div>
+        
+        <div id="setupPanel">
+            <h1>🤖 AI SURVIVOR GAME 🤖</h1>
+            <label>Danh sách tên (mỗi tên một dòng):</label>
+            <textarea id="nameInput" placeholder="Nhập tên người chơi...&#10;Ví dụ:&#10;Nguyễn Văn A&#10;Trần Thị B&#10;Lê Văn C&#10;...">Nguyễn Văn An
+Trần Thị Bình
+Lê Hoàng Cường
+Phạm Thị Dung
+Hoàng Văn Em
+Vũ Thị Phương
+Đặng Minh Giang
+Bùi Thị Hương
+Đinh Văn Inh
+Ngô Thị Kim</textarea>
+            
+            <label>Thời gian mỗi lần bắt (giây):</label>
+            <input type="number" id="captureTime" value="3" min="1" max="10">
+            
+            <label>Tổng thời gian game (giây):</label>
+            <input type="number" id="totalGameTime" value="60" min="10" max="300">
+            
+            <button id="startBtn">BẮT ĐẦU GAME</button>
+        </div>
+
+        <div id="gameUI">
+            <div id="stats">
+                <h2>📊 THỐNG KÊ</h2>
+                <p>Còn lại: <span id="remaining" class="highlight">0</span> người</p>
+                <p>Đã bắt: <span id="captured" class="highlight">0</span> người</p>
+                <p>Thời gian: <span id="timer" class="highlight">0</span>s / <span id="totalTime" class="highlight">0</span>s</p>
+            </div>
+        </div>
+
+        <div id="actionLog">
+            <h3>📜 LỊCH SỬ HÀNH ĐỘNG</h3>
+            <div id="actionList"></div>
+        </div>
+
+        <div id="captureAlert"></div>
+
+        <div id="winnerPanel">
+            <h1>🎉 CHIẾN THẮNG! 🎉</h1>
+            <p>Người sống sót:</p>
+            <p id="winnerName" style="color: #00ff88; font-size: 2em; font-weight: bold;"></p>
+            <p id="gameStats"></p>
+            <button id="restartBtn">CHƠI LẠI</button>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        let scene, camera, renderer;
+        let people = [];
+        let robot;
+        let names = [];
+        let captureInterval;
+        let gameTime = 0;
+        let timerInterval;
+        let capturedCount = 0;
+        let captureTimeSeconds = 3;
+        let totalGameTimeSeconds = 60;
+        let currentTargets = []; // Changed to array for multiple targets
+        let chaseSpeed = 0.15;
+        let isChasing = false;
+        let robotClones = []; // For multiple chase animations
+        let actionLog = []; // Store last 20 actions
+        const MAX_ACTIONS = 20;
+        const ESCAPE_CHANCE = 0.3; // 30% chance to escape each chase
+        let isFinalCapture = false; // Flag for final capture - no escape allowed
+        
+        // Audio elements
+        let bgMusic;
+        let chaseSound;
+        let captureSound;
+        let winSound;
+        let escapeSound;
+        let audioInitialized = false;
+
+        function initAudio() {
+            if (audioInitialized) return;
+            
+            try {
+                // Create Audio Context for synthesized sounds
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                const audioCtx = new AudioContext();
+                
+                // Background music - simple upbeat loop
+                bgMusic = createBackgroundMusic(audioCtx);
+                
+                // Chase sound - tense alert
+                chaseSound = createChaseSound(audioCtx);
+                
+                // Capture sound - dramatic hit
+                captureSound = createCaptureSound(audioCtx);
+                
+                // Win sound - victory fanfare
+                winSound = createWinSound(audioCtx);
+                
+                // Escape sound - quick getaway
+                escapeSound = createEscapeSound(audioCtx);
+                
+                audioInitialized = true;
+            } catch (e) {
+                console.log('Audio not supported:', e);
+            }
+        }
+
+        function createBackgroundMusic(audioCtx) {
+            // Epic background music with multiple layers
+            const music = {
+                playing: false,
+                oscillators: [],
+                gainNodes: []
+            };
+            
+            music.play = function() {
+                if (this.playing) return;
+                this.playing = true;
+                
+                // Main melody loop - dramatic chase theme
+                const playMelody = () => {
+                    if (!this.playing) return;
+                    
+                    // Intense melody pattern (minor scale for tension)
+                    const melodyPattern = [
+                        { note: 220, duration: 0.2 },   // A3
+                        { note: 247, duration: 0.2 },   // B3
+                        { note: 262, duration: 0.3 },   // C4
+                        { note: 220, duration: 0.2 },   // A3
+                        { note: 294, duration: 0.4 },   // D4
+                        { note: 262, duration: 0.3 },   // C4
+                        { note: 247, duration: 0.2 },   // B3
+                        { note: 220, duration: 0.5 },   // A3
+                        
+                        { note: 220, duration: 0.2 },   // A3
+                        { note: 247, duration: 0.2 },   // B3
+                        { note: 294, duration: 0.3 },   // D4
+                        { note: 330, duration: 0.4 },   // E4
+                        { note: 294, duration: 0.3 },   // D4
+                        { note: 262, duration: 0.3 },   // C4
+                        { note: 247, duration: 0.5 },   // B3
+                        { note: 220, duration: 0.6 },   // A3
+                    ];
+                    
+                    let currentTime = audioCtx.currentTime;
+                    
+                    melodyPattern.forEach((note, i) => {
+                        // Lead synth
+                        const osc = audioCtx.createOscillator();
+                        const gainNode = audioCtx.createGain();
+                        const filter = audioCtx.createBiquadFilter();
+                        
+                        osc.connect(filter);
+                        filter.connect(gainNode);
+                        gainNode.connect(audioCtx.destination);
+                        
+                        osc.frequency.value = note.note;
+                        osc.type = 'triangle';
+                        
+                        filter.type = 'lowpass';
+                        filter.frequency.value = 2000;
+                        
+                        gainNode.gain.setValueAtTime(0, currentTime);
+                        gainNode.gain.linearRampToValueAtTime(0.12, currentTime + 0.01);
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, currentTime + note.duration);
+                        
+                        osc.start(currentTime);
+                        osc.stop(currentTime + note.duration);
+                        
+                        currentTime += note.duration;
+                    });
+                    
+                    const totalDuration = melodyPattern.reduce((sum, n) => sum + n.duration, 0);
+                    setTimeout(playMelody, totalDuration * 1000);
+                };
+                
+                // Bass line - driving rhythm
+                const playBass = () => {
+                    if (!this.playing) return;
+                    
+                    const bassPattern = [
+                        { note: 110, duration: 0.4 },   // A2
+                        { note: 110, duration: 0.4 },   // A2
+                        { note: 147, duration: 0.4 },   // D3
+                        { note: 110, duration: 0.4 },   // A2
+                    ];
+                    
+                    let currentTime = audioCtx.currentTime;
+                    
+                    bassPattern.forEach((note, i) => {
+                        const osc = audioCtx.createOscillator();
+                        const gainNode = audioCtx.createGain();
+                        
+                        osc.connect(gainNode);
+                        gainNode.connect(audioCtx.destination);
+                        
+                        osc.frequency.value = note.note;
+                        osc.type = 'sawtooth';
+                        
+                        gainNode.gain.setValueAtTime(0, currentTime);
+                        gainNode.gain.linearRampToValueAtTime(0.25, currentTime + 0.01);  // Increased from 0.15
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, currentTime + note.duration * 0.8);
+                        
+                        osc.start(currentTime);
+                        osc.stop(currentTime + note.duration);
+                        
+                        currentTime += note.duration;
+                    });
+                    
+                    setTimeout(playBass, 1600);
+                };
+                
+                // Drum beat - percussive rhythm
+                const playDrums = () => {
+                    if (!this.playing) return;
+                    
+                    const drumPattern = [
+                        { type: 'kick', time: 0 },
+                        { type: 'hat', time: 0.2 },
+                        { type: 'kick', time: 0.4 },
+                        { type: 'hat', time: 0.6 },
+                        { type: 'snare', time: 0.8 },
+                        { type: 'hat', time: 1.0 },
+                        { type: 'kick', time: 1.2 },
+                        { type: 'hat', time: 1.4 },
+                    ];
+                    
+                    drumPattern.forEach(drum => {
+                        const currentTime = audioCtx.currentTime + drum.time;
+                        
+                        if (drum.type === 'kick') {
+                            // Kick drum - low thump (LOUDER)
+                            const osc = audioCtx.createOscillator();
+                            const gainNode = audioCtx.createGain();
+                            
+                            osc.connect(gainNode);
+                            gainNode.connect(audioCtx.destination);
+                            
+                            osc.frequency.setValueAtTime(150, currentTime);
+                            osc.frequency.exponentialRampToValueAtTime(40, currentTime + 0.05);
+                            osc.type = 'sine';
+                            
+                            gainNode.gain.setValueAtTime(0.35, currentTime);  // Increased from 0.2
+                            gainNode.gain.exponentialRampToValueAtTime(0.01, currentTime + 0.15);
+                            
+                            osc.start(currentTime);
+                            osc.stop(currentTime + 0.15);
+                        } else if (drum.type === 'snare') {
+                            // Snare - white noise burst (LOUDER)
+                            const bufferSize = audioCtx.sampleRate * 0.1;
+                            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                            const data = buffer.getChannelData(0);
+                            
+                            for (let i = 0; i < bufferSize; i++) {
+                                data[i] = Math.random() * 2 - 1;
+                            }
+                            
+                            const noise = audioCtx.createBufferSource();
+                            const gainNode = audioCtx.createGain();
+                            const filter = audioCtx.createBiquadFilter();
+                            
+                            noise.buffer = buffer;
+                            noise.connect(filter);
+                            filter.connect(gainNode);
+                            gainNode.connect(audioCtx.destination);
+                            
+                            filter.type = 'highpass';
+                            filter.frequency.value = 1000;
+                            
+                            gainNode.gain.setValueAtTime(0.25, currentTime);  // Increased from 0.15
+                            gainNode.gain.exponentialRampToValueAtTime(0.01, currentTime + 0.1);
+                            
+                            noise.start(currentTime);
+                        } else if (drum.type === 'hat') {
+                            // Hi-hat - short noise
+                            const bufferSize = audioCtx.sampleRate * 0.05;
+                            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                            const data = buffer.getChannelData(0);
+                            
+                            for (let i = 0; i < bufferSize; i++) {
+                                data[i] = Math.random() * 2 - 1;
+                            }
+                            
+                            const noise = audioCtx.createBufferSource();
+                            const gainNode = audioCtx.createGain();
+                            const filter = audioCtx.createBiquadFilter();
+                            
+                            noise.buffer = buffer;
+                            noise.connect(filter);
+                            filter.connect(gainNode);
+                            gainNode.connect(audioCtx.destination);
+                            
+                            filter.type = 'highpass';
+                            filter.frequency.value = 5000;
+                            
+                            gainNode.gain.setValueAtTime(0.12, currentTime);  // Increased from 0.08
+                            gainNode.gain.exponentialRampToValueAtTime(0.01, currentTime + 0.05);
+                            
+                            noise.start(currentTime);
+                        }
+                    });
+                    
+                    setTimeout(playDrums, 1600);
+                };
+                
+                // Atmospheric pad
+                const playPad = () => {
+                    if (!this.playing) return;
+                    
+                    const padNotes = [220, 262, 330]; // A minor chord
+                    
+                    padNotes.forEach(freq => {
+                        const osc = audioCtx.createOscillator();
+                        const gainNode = audioCtx.createGain();
+                        const filter = audioCtx.createBiquadFilter();
+                        
+                        osc.connect(filter);
+                        filter.connect(gainNode);
+                        gainNode.connect(audioCtx.destination);
+                        
+                        osc.frequency.value = freq;
+                        osc.type = 'sine';
+                        
+                        filter.type = 'lowpass';
+                        filter.frequency.value = 800;
+                        
+                        const currentTime = audioCtx.currentTime;
+                        gainNode.gain.setValueAtTime(0, currentTime);
+                        gainNode.gain.linearRampToValueAtTime(0.04, currentTime + 0.5);
+                        gainNode.gain.linearRampToValueAtTime(0.04, currentTime + 3);
+                        gainNode.gain.linearRampToValueAtTime(0, currentTime + 3.5);
+                        
+                        osc.start(currentTime);
+                        osc.stop(currentTime + 3.5);
+                    });
+                    
+                    setTimeout(playPad, 3200);
+                };
+                
+                // Start all layers
+                playMelody();
+                playBass();
+                playDrums();
+                playPad();
+            };
+            
+            music.stop = function() {
+                this.playing = false;
+            };
+            
+            return music;
+        }
+
+        function createChaseSound(audioCtx) {
+            return {
+                play: function() {
+                    const osc = audioCtx.createOscillator();
+                    const gainNode = audioCtx.createGain();
+                    
+                    osc.connect(gainNode);
+                    gainNode.connect(audioCtx.destination);
+                    
+                    osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(400, audioCtx.currentTime + 0.1);
+                    osc.type = 'sawtooth';
+                    
+                    gainNode.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+                    
+                    osc.start(audioCtx.currentTime);
+                    osc.stop(audioCtx.currentTime + 0.2);
+                }
+            };
+        }
+
+        function createCaptureSound(audioCtx) {
+            return {
+                play: function() {
+                    // Dramatic downward sweep
+                    const osc = audioCtx.createOscillator();
+                    const gainNode = audioCtx.createGain();
+                    
+                    osc.connect(gainNode);
+                    gainNode.connect(audioCtx.destination);
+                    
+                    osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.3);
+                    osc.type = 'square';
+                    
+                    gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                    
+                    osc.start(audioCtx.currentTime);
+                    osc.stop(audioCtx.currentTime + 0.3);
+                }
+            };
+        }
+
+        function createWinSound(audioCtx) {
+            return {
+                play: function() {
+                    // Victory fanfare
+                    const notes = [523, 659, 784, 1047]; // C5, E5, G5, C6
+                    
+                    notes.forEach((freq, i) => {
+                        const osc = audioCtx.createOscillator();
+                        const gainNode = audioCtx.createGain();
+                        
+                        osc.connect(gainNode);
+                        gainNode.connect(audioCtx.destination);
+                        
+                        osc.frequency.value = freq;
+                        osc.type = 'sine';
+                        
+                        const startTime = audioCtx.currentTime + i * 0.15;
+                        gainNode.gain.setValueAtTime(0, startTime);
+                        gainNode.gain.linearRampToValueAtTime(0.2, startTime + 0.01);
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + 0.3);
+                        
+                        osc.start(startTime);
+                        osc.stop(startTime + 0.3);
+                    });
+                }
+            };
+        }
+
+        function createEscapeSound(audioCtx) {
+            return {
+                play: function() {
+                    // Quick upward sweep - escape!
+                    const osc = audioCtx.createOscillator();
+                    const gainNode = audioCtx.createGain();
+                    
+                    osc.connect(gainNode);
+                    gainNode.connect(audioCtx.destination);
+                    
+                    osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.2);
+                    osc.type = 'triangle';
+                    
+                    gainNode.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+                    
+                    osc.start(audioCtx.currentTime);
+                    osc.stop(audioCtx.currentTime + 0.2);
+                }
+            };
+        }
+
+        function addAction(type, text) {
+            const timestamp = gameTime;
+            const action = { type, text, timestamp };
+            actionLog.unshift(action);
+            
+            // Keep only last 20 actions
+            if (actionLog.length > MAX_ACTIONS) {
+                actionLog.pop();
+                // Remove last item from UI
+                const actionList = document.getElementById('actionList');
+                if (actionList.children.length >= MAX_ACTIONS) {
+                    actionList.removeChild(actionList.lastChild);
+                }
+            }
+            
+            // Add new action to UI (insert at beginning)
+            addActionToUI(action);
+        }
+
+        function addActionToUI(action) {
+            const actionList = document.getElementById('actionList');
+            
+            const actionItem = document.createElement('div');
+            actionItem.className = `action-item ${action.type}`;
+            
+            let icon = '';
+            switch(action.type) {
+                case 'chase': icon = '🏃'; break;
+                case 'capture': icon = '🤖'; break;
+                case 'start': icon = '🎮'; break;
+                case 'timeup': icon = '⏰'; break;
+            }
+            
+            actionItem.innerHTML = `
+                <div class="action-time">[${action.timestamp}s]</div>
+                <div class="action-text"><span class="action-icon">${icon}</span>${action.text}</div>
+            `;
+            
+            // Insert at the beginning (prepend)
+            actionList.insertBefore(actionItem, actionList.firstChild);
+        }
+
+        function updateActionLog() {
+            // This function is now only used for initial setup if needed
+            const actionList = document.getElementById('actionList');
+            actionList.innerHTML = '';
+            
+            actionLog.forEach(action => {
+                addActionToUI(action);
+            });
+        }
+
+        function init3DScene() {
+            scene = new THREE.Scene();
+            
+            // Forest atmosphere - greenish sky through canopy
+            scene.background = new THREE.Color(0x8fbc8f); // Dark sea green
+            scene.fog = new THREE.Fog(0x6b8e23, 25, 60); // Olive fog for depth
+
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 15, 25);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('canvas3d'), antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+            // Forest lighting - filtered through canopy
+            const ambientLight = new THREE.AmbientLight(0x7d9b6f, 0.5); // Green-tinted ambient
+            scene.add(ambientLight);
+
+            // Dappled sunlight filtering through trees
+            const sunLight = new THREE.DirectionalLight(0xfff4e6, 0.8);
+            sunLight.position.set(15, 35, 5);
+            sunLight.castShadow = true;
+            sunLight.shadow.camera.left = -50;
+            sunLight.shadow.camera.right = 50;
+            sunLight.shadow.camera.top = 50;
+            sunLight.shadow.camera.bottom = -50;
+            scene.add(sunLight);
+
+            // Soft fill light from sky
+            const fillLight = new THREE.DirectionalLight(0xa8d5a8, 0.3);
+            fillLight.position.set(-10, 10, -10);
+            scene.add(fillLight);
+
+            // Subtle colored lights for atmosphere
+            const greenLight = new THREE.PointLight(0x90ee90, 0.3);
+            greenLight.position.set(-10, 5, -10);
+            scene.add(greenLight);
+
+            const yellowLight = new THREE.PointLight(0xffd700, 0.2);
+            yellowLight.position.set(10, 8, 10);
+            scene.add(yellowLight);
+
+            // Ground - forest floor (brown dirt)
+            const groundGeometry = new THREE.CircleGeometry(35, 64);
+            const groundMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x5d4e37, // Dark brown dirt
+                metalness: 0.0,
+                roughness: 1.0
+            });
+            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.rotation.x = -Math.PI / 2;
+            ground.receiveShadow = true;
+            scene.add(ground);
+
+            // Add patches of grass on the ground
+            for (let i = 0; i < 30; i++) {
+                const grassPatch = new THREE.Mesh(
+                    new THREE.CircleGeometry(0.5 + Math.random() * 1, 8),
+                    new THREE.MeshStandardMaterial({ 
+                        color: 0x3d5a2c,
+                        metalness: 0.0,
+                        roughness: 1.0
+                    })
+                );
+                grassPatch.rotation.x = -Math.PI / 2;
+                grassPatch.position.x = (Math.random() - 0.5) * 50;
+                grassPatch.position.z = (Math.random() - 0.5) * 50;
+                grassPatch.position.y = 0.02;
+                scene.add(grassPatch);
+            }
+
+            // Remove grid for forest look
+            // const gridHelper = new THREE.GridHelper(60, 30, 0x90ee90, 0xa8d5a8);
+            // gridHelper.position.y = 0.01;
+            // scene.add(gridHelper);
+
+            // Add trees around the arena
+            addTrees();
+            
+            // Add clouds in the sky
+            addClouds();
+
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function addTrees() {
+            // Dense forest - many more trees
+            const treePositions = [];
+            
+            // Outer ring of trees (dense)
+            for (let angle = 0; angle < Math.PI * 2; angle += 0.3) {
+                const radius = 26 + Math.random() * 4;
+                treePositions.push([
+                    Math.cos(angle) * radius,
+                    0,
+                    Math.sin(angle) * radius
+                ]);
+            }
+            
+            // Second ring
+            for (let angle = 0; angle < Math.PI * 2; angle += 0.4) {
+                const radius = 20 + Math.random() * 3;
+                treePositions.push([
+                    Math.cos(angle) * radius,
+                    0,
+                    Math.sin(angle) * radius
+                ]);
+            }
+            
+            // Random scattered trees
+            for (let i = 0; i < 15; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const radius = 15 + Math.random() * 8;
+                treePositions.push([
+                    Math.cos(angle) * radius,
+                    0,
+                    Math.sin(angle) * radius
+                ]);
+            }
+
+            treePositions.forEach(pos => {
+                const tree = createTree();
+                tree.position.set(pos[0], pos[1], pos[2]);
+                // Random rotation
+                tree.rotation.y = Math.random() * Math.PI * 2;
+                // Random scale for variety
+                const scale = 0.8 + Math.random() * 0.6;
+                tree.scale.set(scale, scale, scale);
+                scene.add(tree);
+            });
+            
+            // Add bushes/undergrowth
+            addBushes();
+            
+            // Add rocks
+            addRocks();
+            
+            // Add fallen logs
+            addLogs();
+        }
+
+        function addRocks() {
+            for (let i = 0; i < 20; i++) {
+                const rock = createRock();
+                const angle = Math.random() * Math.PI * 2;
+                const radius = 5 + Math.random() * 18;
+                rock.position.x = Math.cos(angle) * radius;
+                rock.position.z = Math.sin(angle) * radius;
+                rock.position.y = 0;
+                scene.add(rock);
+            }
+        }
+
+        function createRock() {
+            const size = 0.3 + Math.random() * 0.6;
+            const rockGeometry = new THREE.DodecahedronGeometry(size, 0);
+            const rockMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x696969,
+                metalness: 0.1,
+                roughness: 0.95
+            });
+            const rock = new THREE.Mesh(rockGeometry, rockMaterial);
+            rock.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+            rock.castShadow = true;
+            return rock;
+        }
+
+        function addLogs() {
+            for (let i = 0; i < 8; i++) {
+                const log = createLog();
+                const angle = Math.random() * Math.PI * 2;
+                const radius = 8 + Math.random() * 12;
+                log.position.x = Math.cos(angle) * radius;
+                log.position.z = Math.sin(angle) * radius;
+                log.position.y = 0.2;
+                log.rotation.y = Math.random() * Math.PI * 2;
+                scene.add(log);
+            }
+        }
+
+        function createLog() {
+            const logGeometry = new THREE.CylinderGeometry(0.3, 0.35, 3, 8);
+            const logMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x4a3728,
+                metalness: 0.0,
+                roughness: 0.95
+            });
+            const log = new THREE.Mesh(logGeometry, logMaterial);
+            log.rotation.z = Math.PI / 2;
+            log.castShadow = true;
+            return log;
+        }
+
+        function addBushes() {
+            for (let i = 0; i < 40; i++) {
+                const bush = createBush();
+                const angle = Math.random() * Math.PI * 2;
+                const radius = 8 + Math.random() * 15;
+                bush.position.x = Math.cos(angle) * radius;
+                bush.position.z = Math.sin(angle) * radius;
+                bush.position.y = 0;
+                scene.add(bush);
+            }
+        }
+
+        function createBush() {
+            const bushGroup = new THREE.Group();
+            const bushMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x2d5016,
+                metalness: 0.0,
+                roughness: 1.0
+            });
+
+            // Multiple small spheres for bushy look
+            for (let i = 0; i < 3 + Math.floor(Math.random() * 3); i++) {
+                const size = 0.4 + Math.random() * 0.5;
+                const sphere = new THREE.Mesh(
+                    new THREE.SphereGeometry(size, 8, 8),
+                    bushMaterial
+                );
+                sphere.position.x = (Math.random() - 0.5) * 1.2;
+                sphere.position.y = size * 0.5;
+                sphere.position.z = (Math.random() - 0.5) * 1.2;
+                sphere.castShadow = true;
+                bushGroup.add(sphere);
+            }
+
+            return bushGroup;
+        }
+
+        function createTree() {
+            const treeGroup = new THREE.Group();
+
+            // Trunk
+            const trunkGeometry = new THREE.CylinderGeometry(0.3, 0.4, 3, 8);
+            const trunkMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x6b4423,
+                metalness: 0.1,
+                roughness: 0.9
+            });
+            const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+            trunk.position.y = 1.5;
+            trunk.castShadow = true;
+            treeGroup.add(trunk);
+
+            // Foliage (3 layers)
+            const foliageMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x228b22,
+                metalness: 0.0,
+                roughness: 0.9
+            });
+
+            const foliage1 = new THREE.Mesh(
+                new THREE.ConeGeometry(1.5, 2.5, 8),
+                foliageMaterial
+            );
+            foliage1.position.y = 4;
+            foliage1.castShadow = true;
+            treeGroup.add(foliage1);
+
+            const foliage2 = new THREE.Mesh(
+                new THREE.ConeGeometry(1.2, 2, 8),
+                foliageMaterial
+            );
+            foliage2.position.y = 5;
+            foliage2.castShadow = true;
+            treeGroup.add(foliage2);
+
+            const foliage3 = new THREE.Mesh(
+                new THREE.ConeGeometry(0.8, 1.5, 8),
+                foliageMaterial
+            );
+            foliage3.position.y = 6;
+            foliage3.castShadow = true;
+            treeGroup.add(foliage3);
+
+            return treeGroup;
+        }
+
+        function addClouds() {
+            for (let i = 0; i < 15; i++) {
+                const cloud = createCloud();
+                cloud.position.x = (Math.random() - 0.5) * 100;
+                cloud.position.y = 15 + Math.random() * 15;
+                cloud.position.z = (Math.random() - 0.5) * 100;
+                cloud.userData.isCloud = true;
+                scene.add(cloud);
+            }
+        }
+
+        function createCloud() {
+            const cloudGroup = new THREE.Group();
+            const cloudMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0xffffff,
+                metalness: 0.0,
+                roughness: 1.0,
+                transparent: true,
+                opacity: 0.7
+            });
+
+            // Create fluffy cloud with multiple spheres
+            const sphereCount = 3 + Math.floor(Math.random() * 3);
+            for (let i = 0; i < sphereCount; i++) {
+                const size = 1 + Math.random() * 1.5;
+                const sphere = new THREE.Mesh(
+                    new THREE.SphereGeometry(size, 8, 8),
+                    cloudMaterial
+                );
+                sphere.position.x = (Math.random() - 0.5) * 3;
+                sphere.position.y = (Math.random() - 0.5) * 0.5;
+                sphere.position.z = (Math.random() - 0.5) * 2;
+                cloudGroup.add(sphere);
+            }
+
+            // Animate clouds (drift slowly)
+            cloudGroup.userData.driftSpeed = 0.005 + Math.random() * 0.01;
+
+            return cloudGroup;
+        }
+
+        function createRobot() {
+            const robotGroup = new THREE.Group();
+
+            // Body
+            const bodyGeometry = new THREE.BoxGeometry(2, 3, 1.5);
+            const bodyMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0xff3366,
+                metalness: 0.9,
+                roughness: 0.1,
+                emissive: 0xff0066,
+                emissiveIntensity: 0.5
+            });
+            const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+            body.position.y = 3;
+            body.castShadow = true;
+            robotGroup.add(body);
+
+            // Head
+            const headGeometry = new THREE.SphereGeometry(0.8, 32, 32);
+            const headMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0xff0044,
+                metalness: 0.9,
+                roughness: 0.1,
+                emissive: 0xff0044,
+                emissiveIntensity: 0.7
+            });
+            const head = new THREE.Mesh(headGeometry, headMaterial);
+            head.position.y = 5.3;
+            head.castShadow = true;
+            robotGroup.add(head);
+
+            // Eyes
+            const eyeGeometry = new THREE.SphereGeometry(0.25, 16, 16);
+            const eyeMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x00ff00,
+                emissive: 0x00ff00,
+                emissiveIntensity: 2
+            });
+            
+            const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+            leftEye.position.set(-0.3, 5.4, 0.7);
+            robotGroup.add(leftEye);
+
+            const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+            rightEye.position.set(0.3, 5.4, 0.7);
+            robotGroup.add(rightEye);
+
+            // Arms
+            const armGeometry = new THREE.CylinderGeometry(0.3, 0.3, 2.5, 16);
+            const armMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0xff1a4d,
+                metalness: 0.8,
+                roughness: 0.2,
+                emissive: 0xff0033,
+                emissiveIntensity: 0.3
+            });
+            
+            const leftArm = new THREE.Mesh(armGeometry, armMaterial);
+            leftArm.position.set(-1.5, 3, 0);
+            leftArm.castShadow = true;
+            robotGroup.add(leftArm);
+
+            const rightArm = new THREE.Mesh(armGeometry, armMaterial);
+            rightArm.position.set(1.5, 3, 0);
+            rightArm.castShadow = true;
+            robotGroup.add(rightArm);
+
+            // Claws
+            const clawGeometry = new THREE.SphereGeometry(0.4, 16, 16);
+            const clawMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0xffff00,
+                metalness: 0.9,
+                roughness: 0.1,
+                emissive: 0xffff00,
+                emissiveIntensity: 0.5
+            });
+            
+            const leftClaw = new THREE.Mesh(clawGeometry, clawMaterial);
+            leftClaw.position.set(-1.5, 1.5, 0);
+            robotGroup.add(leftClaw);
+
+            const rightClaw = new THREE.Mesh(clawGeometry, clawMaterial);
+            rightClaw.position.set(1.5, 1.5, 0);
+            robotGroup.add(rightClaw);
+
+            robotGroup.position.set(0, 0, -15);
+            scene.add(robotGroup);
+            return robotGroup;
+        }
+
+        function createPerson(name, index, total) {
+            const personGroup = new THREE.Group();
+
+            // Bright random colors for clothing
+            const colors = [
+                0xff6b6b, // Red
+                0x4ecdc4, // Cyan
+                0xffe66d, // Yellow
+                0x95e1d3, // Mint
+                0xf38181, // Pink
+                0xaa96da, // Purple
+                0xfcbad3, // Light Pink
+                0xa8e6cf, // Light Green
+                0xff8b94, // Coral
+                0xc7ceea  // Lavender
+            ];
+            const shirtColor = colors[index % colors.length];
+            const pantsColor = colors[(index + 5) % colors.length];
+
+            // Feet/Shoes
+            const footGeometry = new THREE.BoxGeometry(0.3, 0.15, 0.4);
+            const footMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x333333,
+                metalness: 0.2,
+                roughness: 0.8
+            });
+            
+            const leftFoot = new THREE.Mesh(footGeometry, footMaterial);
+            leftFoot.position.set(-0.2, 0.08, 0.1);
+            leftFoot.castShadow = true;
+            personGroup.add(leftFoot);
+
+            const rightFoot = new THREE.Mesh(footGeometry, footMaterial);
+            rightFoot.position.set(0.2, 0.08, 0.1);
+            rightFoot.castShadow = true;
+            personGroup.add(rightFoot);
+
+            // Legs (pants)
+            const legGeometry = new THREE.CylinderGeometry(0.18, 0.15, 0.9, 8);
+            const legMaterial = new THREE.MeshStandardMaterial({ 
+                color: pantsColor,
+                metalness: 0.1,
+                roughness: 0.8
+            });
+            
+            const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
+            leftLeg.position.set(-0.2, 0.6, 0);
+            leftLeg.castShadow = true;
+            personGroup.add(leftLeg);
+
+            const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
+            rightLeg.position.set(0.2, 0.6, 0);
+            rightLeg.castShadow = true;
+            personGroup.add(rightLeg);
+
+            // Body (torso/shirt)
+            const bodyGeometry = new THREE.CylinderGeometry(0.5, 0.4, 1.1, 12);
+            const bodyMaterial = new THREE.MeshStandardMaterial({ 
+                color: shirtColor,
+                metalness: 0.1,
+                roughness: 0.7
+            });
+            const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+            body.position.y = 1.6;
+            body.castShadow = true;
+            personGroup.add(body);
+
+            // Arms
+            const armGeometry = new THREE.CylinderGeometry(0.13, 0.11, 0.9, 8);
+            const skinMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0xffd7b5,
+                metalness: 0.1,
+                roughness: 0.9
+            });
+            
+            const leftArm = new THREE.Mesh(armGeometry, skinMaterial);
+            leftArm.position.set(-0.65, 1.5, 0);
+            leftArm.rotation.z = 0.4;
+            leftArm.castShadow = true;
+            personGroup.add(leftArm);
+
+            const rightArm = new THREE.Mesh(armGeometry, skinMaterial);
+            rightArm.position.set(0.65, 1.5, 0);
+            rightArm.rotation.z = -0.4;
+            rightArm.castShadow = true;
+            personGroup.add(rightArm);
+
+            // Hands
+            const handGeometry = new THREE.SphereGeometry(0.15, 8, 8);
+            const leftHand = new THREE.Mesh(handGeometry, skinMaterial);
+            leftHand.position.set(-0.85, 1.1, 0);
+            personGroup.add(leftHand);
+
+            const rightHand = new THREE.Mesh(handGeometry, skinMaterial);
+            rightHand.position.set(0.85, 1.1, 0);
+            personGroup.add(rightHand);
+
+            // Neck
+            const neckGeometry = new THREE.CylinderGeometry(0.18, 0.18, 0.25, 8);
+            const neck = new THREE.Mesh(neckGeometry, skinMaterial);
+            neck.position.y = 2.25;
+            personGroup.add(neck);
+
+            // Head
+            const headGeometry = new THREE.SphereGeometry(0.4, 16, 16);
+            const head = new THREE.Mesh(headGeometry, skinMaterial);
+            head.position.y = 2.65;
+            head.castShadow = true;
+            personGroup.add(head);
+
+            // Hair
+            const hairGeometry = new THREE.SphereGeometry(0.42, 16, 16, 0, Math.PI * 2, 0, Math.PI / 1.5);
+            const hairColors = [0x2c1810, 0x6b4423, 0x3d2314, 0x1a0f0a, 0x8b6f47];
+            const hairMaterial = new THREE.MeshStandardMaterial({ 
+                color: hairColors[index % hairColors.length],
+                metalness: 0.3,
+                roughness: 0.8
+            });
+            const hair = new THREE.Mesh(hairGeometry, hairMaterial);
+            hair.position.y = 2.75;
+            personGroup.add(hair);
+
+            // Eyes
+            const eyeGeometry = new THREE.SphereGeometry(0.08, 8, 8);
+            const eyeMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x000000,
+                metalness: 0.9,
+                roughness: 0.1
+            });
+            
+            const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+            leftEye.position.set(-0.15, 2.7, 0.35);
+            personGroup.add(leftEye);
+
+            const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+            rightEye.position.set(0.15, 2.7, 0.35);
+            personGroup.add(rightEye);
+
+            // Eye whites
+            const whiteGeometry = new THREE.SphereGeometry(0.1, 8, 8);
+            const whiteMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0xffffff,
+                metalness: 0.1,
+                roughness: 0.9
+            });
+            
+            const leftWhite = new THREE.Mesh(whiteGeometry, whiteMaterial);
+            leftWhite.position.set(-0.15, 2.7, 0.33);
+            personGroup.add(leftWhite);
+
+            const rightWhite = new THREE.Mesh(whiteGeometry, whiteMaterial);
+            rightWhite.position.set(0.15, 2.7, 0.33);
+            personGroup.add(rightWhite);
+
+            // Smile
+            const smileGeometry = new THREE.TorusGeometry(0.15, 0.03, 8, 16, Math.PI);
+            const smileMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x8b0000,
+                metalness: 0.2,
+                roughness: 0.8
+            });
+            const smile = new THREE.Mesh(smileGeometry, smileMaterial);
+            smile.position.set(0, 2.5, 0.38);
+            smile.rotation.z = Math.PI;
+            smile.rotation.x = -0.3;
+            personGroup.add(smile);
+
+            // Name label (glowing sphere above head)
+            const labelGeometry = new THREE.SphereGeometry(0.2, 16, 16);
+            const labelMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0xffffff,
+                emissive: 0x00ffff,
+                emissiveIntensity: 0.6,
+                transparent: true,
+                opacity: 0.8
+            });
+            const label = new THREE.Mesh(labelGeometry, labelMaterial);
+            label.position.y = 3.3;
+            personGroup.add(label);
+
+            // Create HTML label
+            const htmlLabel = document.createElement('div');
+            htmlLabel.className = 'name-label';
+            htmlLabel.textContent = name;
+            htmlLabel.style.display = 'none';
+            document.getElementById('nameLabels').appendChild(htmlLabel);
+            personGroup.userData.htmlLabel = htmlLabel;
+
+            // Position in circle
+            const radius = 12;
+            const angle = (index / total) * Math.PI * 2;
+            personGroup.position.x = Math.cos(angle) * radius;
+            personGroup.position.z = Math.sin(angle) * radius;
+
+            // Random movement data
+            personGroup.userData.name = name;
+            personGroup.userData.captured = false;
+            personGroup.userData.wanderAngle = Math.random() * Math.PI * 2;
+            personGroup.userData.wanderSpeed = 0.03 + Math.random() * 0.02;
+
+            scene.add(personGroup);
+            return personGroup;
+        }
+
+        function startGame() {
+            const nameText = document.getElementById('nameInput').value.trim();
+            captureTimeSeconds = parseInt(document.getElementById('captureTime').value);
+            totalGameTimeSeconds = parseInt(document.getElementById('totalGameTime').value);
+            
+            names = nameText.split('\n').filter(n => n.trim() !== '');
+            
+            if (names.length < 2) {
+                alert('Vui lòng nhập ít nhất 2 tên!');
+                return;
+            }
+
+            document.getElementById('setupPanel').style.display = 'none';
+            document.getElementById('gameUI').style.display = 'block';
+            document.getElementById('actionLog').style.display = 'block';
+            document.getElementById('totalTime').textContent = totalGameTimeSeconds;
+
+            // Initialize audio (no background music)
+            initAudio();
+
+            init3DScene();
+            robot = createRobot();
+
+            // Create people
+            names.forEach((name, index) => {
+                const person = createPerson(name.trim(), index, names.length);
+                people.push(person);
+            });
+
+            // Add start action
+            addAction('start', `Game bắt đầu với ${names.length} người chơi!`);
+
+            updateStats();
+            startCapturing();
+            startTimer();
+            animate();
+        }
+
+        function startCapturing() {
+            captureInterval = setInterval(() => {
+                const alivePeople = people.filter(p => !p.userData.captured);
+                
+                // Stop if only 1 person left
+                if (alivePeople.length <= 1) {
+                    clearInterval(captureInterval);
+                    endGame();
+                    return;
+                }
+
+                // Calculate how many people to catch at once
+                const timeRemaining = totalGameTimeSeconds - gameTime;
+                
+                if (timeRemaining <= 0) {
+                    // Time is up - this shouldn't happen as timer handles it
+                    return;
+                }
+                
+                const capturesNeeded = alivePeople.length - 1; // Need to catch this many to leave 1
+                const roundsLeft = Math.ceil(timeRemaining / captureTimeSeconds);
+                const capturesPerRound = Math.ceil(capturesNeeded / roundsLeft);
+                
+                let numToCapture = Math.max(1, capturesPerRound);
+                
+                // Make sure we don't leave more than 1 person
+                numToCapture = Math.min(numToCapture, alivePeople.length - 1);
+
+                // Select random targets
+                currentTargets = [];
+                const shuffled = [...alivePeople].sort(() => Math.random() - 0.5);
+                
+                for (let i = 0; i < numToCapture; i++) {
+                    currentTargets.push(shuffled[i]);
+                }
+                
+                isChasing = true;
+                
+                // Play chase sound
+                if (chaseSound) chaseSound.play();
+                
+                // Show chasing alert
+                const alert = document.getElementById('captureAlert');
+                if (currentTargets.length === 1) {
+                    alert.textContent = `🤖 ĐANG ĐUỔI: ${currentTargets[0].userData.name}`;
+                    addAction('chase', `Robot đuổi theo ${currentTargets[0].userData.name}`);
+                } else {
+                    alert.textContent = `🤖 ĐANG ĐUỔI ${currentTargets.length} NGƯỜI!`;
+                    const names = currentTargets.map(t => t.userData.name).join(', ');
+                    addAction('chase', `Robot đuổi ${currentTargets.length} người: ${names}`);
+                }
+                alert.style.background = 'rgba(255, 165, 0, 0.95)';
+                alert.style.display = 'block';
+                
+                // Create robot clones for multiple targets
+                createRobotClones();
+                
+            }, captureTimeSeconds * 1000);
+        }
+
+        function createRobotClones() {
+            // Remove old clones
+            robotClones.forEach(clone => scene.remove(clone));
+            robotClones = [];
+            
+            // Create clones for additional targets (skip first one, main robot handles it)
+            for (let i = 1; i < currentTargets.length; i++) {
+                const clone = robot.clone();
+                clone.position.copy(robot.position);
+                scene.add(clone);
+                robotClones.push(clone);
+            }
+        }
+
+        function capturePerson(person, robotEntity) {
+            if (person.userData.captured) return; // Already captured
+            
+            // Random chance to escape THIS CHASE - BUT NOT in final capture!
+            if (!isFinalCapture && Math.random() < ESCAPE_CHANCE) {
+                // ESCAPED THIS TIME!
+                
+                // Play escape sound
+                if (escapeSound) escapeSound.play();
+                
+                // Remove from current targets
+                currentTargets = currentTargets.filter(t => t !== person);
+                
+                // Add escape action to log
+                addAction('chase', `${person.userData.name} đã thoát truy đuổi lần này! 🏃💨`);
+                
+                // Show escape alert
+                const alert = document.getElementById('captureAlert');
+                alert.textContent = `💨 ${person.userData.name} THOÁT TRUY ĐUỔI!`;
+                alert.style.background = 'rgba(0, 255, 136, 0.95)';
+                alert.style.display = 'block';
+                
+                setTimeout(() => {
+                    if (currentTargets.length === 0) {
+                        alert.style.display = 'none';
+                    }
+                }, 1500);
+                
+                // Escape animation - person runs away fast
+                const escapeAngle = Math.random() * Math.PI * 2;
+                let escapeProgress = 0;
+                
+                const escapeAnimation = setInterval(() => {
+                    escapeProgress++;
+                    
+                    // Run away fast
+                    person.position.x += Math.cos(escapeAngle) * 0.5;
+                    person.position.z += Math.sin(escapeAngle) * 0.5;
+                    
+                    // Jump/celebrate
+                    person.position.y = Math.abs(Math.sin(escapeProgress * 0.3)) * 2;
+                    person.rotation.y += 0.4;
+                    
+                    if (escapeProgress > 20) {
+                        clearInterval(escapeAnimation);
+                        // Reset position back to wandering
+                        person.position.y = 0;
+                    }
+                }, 30);
+                
+                // Remove the robot clone if it was used
+                if (robotEntity && robotEntity !== robot) {
+                    scene.remove(robotEntity);
+                    robotClones = robotClones.filter(c => c !== robotEntity);
+                }
+                
+                // If no more targets, stop chasing
+                if (currentTargets.length === 0) {
+                    isChasing = false;
+                    robotClones.forEach(clone => scene.remove(clone));
+                    robotClones = [];
+                }
+                
+                updateStats();
+                return; // Don't capture THIS TIME - can be chased again
+            }
+            
+            // CAPTURED (original logic)
+            person.userData.captured = true;
+            capturedCount++;
+            
+            // Play capture sound
+            if (captureSound) captureSound.play();
+            
+            // Add capture action to log
+            addAction('capture', `Đã bắt ${person.userData.name}!`);
+            
+            // Remove from current targets
+            currentTargets = currentTargets.filter(t => t !== person);
+            
+            // If no more targets, stop chasing
+            if (currentTargets.length === 0) {
+                isChasing = false;
+                // Clean up robot clones
+                robotClones.forEach(clone => scene.remove(clone));
+                robotClones = [];
+                
+                // Hide alert
+                const alert = document.getElementById('captureAlert');
+                alert.style.display = 'none';
+                
+                // Check if game should end (1 or 0 survivors left)
+                const alivePeople = people.filter(p => !p.userData.captured);
+                if (alivePeople.length <= 1) {
+                    setTimeout(() => endGame(), 500); // Small delay for animation
+                }
+            }
+
+            // Show capture alert
+            const alert = document.getElementById('captureAlert');
+            const alivePeople = people.filter(p => !p.userData.captured);
+            
+            if (currentTargets.length === 0) {
+                alert.textContent = `🤖 ĐÃ BẮT: ${person.userData.name}`;
+            } else {
+                alert.textContent = `🤖 ĐÃ BẮT: ${person.userData.name}`;
+            }
+            alert.style.background = 'rgba(233, 69, 96, 0.95)';
+            alert.style.display = 'block';
+
+            // Animate capture - person flies towards camera then slides down
+            const startPos = {
+                x: person.position.x,
+                y: person.position.y,
+                z: person.position.z
+            };
+            
+            // Calculate direction to camera
+            const cameraPos = camera.position;
+            const dirX = cameraPos.x - startPos.x;
+            const dirY = cameraPos.y - startPos.y;
+            const dirZ = cameraPos.z - startPos.z;
+            
+            // Normalize direction
+            const length = Math.sqrt(dirX * dirX + dirY * dirY + dirZ * dirZ);
+            const normalX = dirX / length;
+            const normalY = dirY / length;
+            const normalZ = dirZ / length;
+            
+            let flyProgress = 0;
+            const flySpeed = 0.8; // Speed towards camera
+            let hitScreen = false;
+            let slideProgress = 0;
+            
+            const captureAnimation = setInterval(() => {
+                if (!hitScreen) {
+                    // Phase 1: Fly towards camera
+                    flyProgress += flySpeed;
+                    
+                    person.position.x += normalX * flySpeed;
+                    person.position.y += normalY * flySpeed;
+                    person.position.z += normalZ * flySpeed;
+                    
+                    // Spin wildly
+                    person.rotation.x += 0.3;
+                    person.rotation.y += 0.4;
+                    person.rotation.z += 0.2;
+                    
+                    // Scale up as approaching camera
+                    const scale = 1 + flyProgress * 0.08;
+                    person.scale.set(scale, scale, scale);
+                    
+                    // Check if reached camera
+                    const distToCamera = Math.sqrt(
+                        Math.pow(person.position.x - cameraPos.x, 2) +
+                        Math.pow(person.position.y - cameraPos.y, 2) +
+                        Math.pow(person.position.z - cameraPos.z, 2)
+                    );
+                    
+                    if (distToCamera < 3 || flyProgress > 25) {
+                        hitScreen = true;
+                        // Stop spinning when hit
+                        person.rotation.x = 0;
+                        person.rotation.z = 0;
+                    }
+                } else {
+                    // Phase 2: Slide down
+                    slideProgress++;
+                    
+                    // Slide down along the screen plane
+                    person.position.y -= 0.4;
+                    
+                    // Slight rotation while sliding
+                    person.rotation.z += 0.05;
+                    
+                    // Fade out / shrink
+                    const fadeScale = Math.max(0, 1 - slideProgress * 0.03);
+                    const currentScale = 1 + flyProgress * 0.08;
+                    person.scale.set(currentScale * fadeScale, currentScale * fadeScale, currentScale * fadeScale);
+                    
+                    // Remove after sliding down enough
+                    if (slideProgress > 30 || person.position.y < -10) {
+                        clearInterval(captureAnimation);
+                        scene.remove(person);
+                    }
+                }
+            }, 30);
+
+            // Remove the robot clone if it was used
+            if (robotEntity && robotEntity !== robot) {
+                scene.remove(robotEntity);
+                robotClones = robotClones.filter(c => c !== robotEntity);
+            }
+
+            updateStats();
+        }
+
+        function updateStats() {
+            const remaining = people.filter(p => !p.userData.captured).length;
+            document.getElementById('remaining').textContent = remaining;
+            document.getElementById('captured').textContent = capturedCount;
+        }
+
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                gameTime++;
+                document.getElementById('timer').textContent = gameTime;
+                
+                // Check if game time is up
+                if (gameTime >= totalGameTimeSeconds) {
+                    // Stop timer first
+                    clearInterval(timerInterval);
+                    clearInterval(captureInterval);
+                    
+                    // Check survivors
+                    const alivePeople = people.filter(p => !p.userData.captured);
+                    
+                    if (alivePeople.length > 1) {
+                        // Time's up with multiple survivors - catch all except 1
+                        const winnerIndex = Math.floor(Math.random() * alivePeople.length);
+                        currentTargets = alivePeople.filter((p, idx) => idx !== winnerIndex);
+                        
+                        isChasing = true;
+                        isFinalCapture = true; // FINAL CAPTURE - NO ESCAPE ALLOWED!
+                        
+                        const alert = document.getElementById('captureAlert');
+                        alert.textContent = `⏰ HẾT GIỜ! BẮT ${currentTargets.length} NGƯỜI CUỐI!`;
+                        alert.style.background = 'rgba(255, 0, 0, 0.95)';
+                        alert.style.display = 'block';
+                        
+                        // Add time up action
+                        addAction('timeup', `Hết giờ! Còn ${alivePeople.length} người. Robot sẽ bắt ${currentTargets.length} người!`);
+                        
+                        createRobotClones();
+                        
+                        // Give robots time to catch everyone (don't end game immediately)
+                        // endGame() will be called when all targets are caught
+                    } else {
+                        // Only 1 or 0 survivors - end immediately
+                        endGame();
+                    }
+                }
+            }, 1000);
+        }
+
+        function endGame() {
+            clearInterval(captureInterval);
+            clearInterval(timerInterval);
+            isChasing = false;
+            currentTargets = [];
+            
+            // Clean up robot clones
+            robotClones.forEach(clone => scene.remove(clone));
+            robotClones = [];
+
+            const survivors = people.filter(p => !p.userData.captured);
+            
+            // Play win sound if there's a winner
+            if (survivors.length === 1 && winSound) {
+                winSound.play();
+            }
+            
+            let winnerText = '';
+            if (survivors.length === 0) {
+                winnerText = 'ROBOT THẮNG - Tất cả đã bị bắt!';
+                document.getElementById('winnerPanel').querySelector('h1').textContent = '🤖 ROBOT CHIẾN THẮNG! 🤖';
+                document.getElementById('winnerPanel').querySelector('h1').style.color = '#ff3366';
+            } else if (survivors.length === 1) {
+                winnerText = survivors[0].userData.name;
+                document.getElementById('winnerPanel').querySelector('h1').textContent = '🎉 CHIẾN THẮNG! 🎉';
+                document.getElementById('winnerPanel').querySelector('h1').style.color = '#00ff88';
+            } else {
+                // This should not happen with the new logic, but just in case
+                winnerText = 'LỖI: Còn ' + survivors.length + ' người - ' + survivors.map(s => s.userData.name).join(', ');
+                document.getElementById('winnerPanel').querySelector('h1').textContent = '⚠️ LỖI GAME ⚠️';
+                document.getElementById('winnerPanel').querySelector('h1').style.color = '#ffff00';
+            }
+            
+            document.getElementById('winnerName').textContent = winnerText;
+            document.getElementById('gameStats').textContent = 
+                `Thời gian: ${gameTime}s / ${totalGameTimeSeconds}s | Đã bắt: ${capturedCount} người | Còn lại: ${survivors.length} người`;
+            document.getElementById('winnerPanel').style.display = 'block';
+
+            // Celebrate survivors
+            survivors.forEach(survivor => {
+                const winnerLight = new THREE.PointLight(0x00ff88, 2);
+                winnerLight.position.copy(survivor.position);
+                winnerLight.position.y += 5;
+                scene.add(winnerLight);
+            });
+        }
+
+        function updateNameLabels() {
+            people.forEach(person => {
+                if (person.userData.captured || !person.userData.htmlLabel) return;
+                
+                // Get label position (above head)
+                const labelPos = new THREE.Vector3();
+                labelPos.copy(person.position);
+                labelPos.y += 3.8; // Position above the taller model
+                
+                // Project 3D position to 2D screen coordinates
+                const screenPos = labelPos.project(camera);
+                
+                // Convert to pixel coordinates
+                const x = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
+                const y = (screenPos.y * -0.5 + 0.5) * window.innerHeight;
+                
+                // Update label position
+                const label = person.userData.htmlLabel;
+                label.style.display = 'block';
+                label.style.left = `${x}px`;
+                label.style.top = `${y}px`;
+                label.style.transform = 'translate(-50%, -100%)';
+                
+                // Hide label if behind camera
+                if (screenPos.z > 1) {
+                    label.style.display = 'none';
+                }
+            });
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Robot chase behavior - main robot chases first target
+            if (robot && isChasing && currentTargets.length > 0) {
+                const target = currentTargets[0];
+                if (target && !target.userData.captured) {
+                    // Calculate direction to target
+                    const robotPos = robot.position;
+                    const targetPos = target.position;
+                    const dx = targetPos.x - robotPos.x;
+                    const dz = targetPos.z - robotPos.z;
+                    const distance = Math.sqrt(dx * dx + dz * dz);
+                    
+                    if (distance > 1) {
+                        // Move robot towards target
+                        robot.position.x += (dx / distance) * chaseSpeed;
+                        robot.position.z += (dz / distance) * chaseSpeed;
+                        
+                        // Rotate robot to face target
+                        robot.rotation.y = Math.atan2(dx, dz);
+                        
+                        // Animate robot arms while chasing
+                        const armRotation = Math.sin(Date.now() * 0.01) * 0.5;
+                        if (robot.children[3]) robot.children[3].rotation.z = 0.3 + armRotation;
+                        if (robot.children[4]) robot.children[4].rotation.z = -0.3 - armRotation;
+                    } else {
+                        // Robot caught the target
+                        capturePerson(target, robot);
+                    }
+                }
+                
+                // Robot clones chase additional targets
+                robotClones.forEach((clone, index) => {
+                    const targetIndex = index + 1; // Skip first target
+                    if (targetIndex < currentTargets.length) {
+                        const target = currentTargets[targetIndex];
+                        if (target && !target.userData.captured) {
+                            const clonePos = clone.position;
+                            const targetPos = target.position;
+                            const dx = targetPos.x - clonePos.x;
+                            const dz = targetPos.z - clonePos.z;
+                            const distance = Math.sqrt(dx * dx + dz * dz);
+                            
+                            if (distance > 1) {
+                                clone.position.x += (dx / distance) * chaseSpeed;
+                                clone.position.z += (dz / distance) * chaseSpeed;
+                                clone.rotation.y = Math.atan2(dx, dz);
+                                
+                                // Animate clone arms
+                                const armRotation = Math.sin(Date.now() * 0.01 + index) * 0.5;
+                                if (clone.children[3]) clone.children[3].rotation.z = 0.3 + armRotation;
+                                if (clone.children[4]) clone.children[4].rotation.z = -0.3 - armRotation;
+                            } else {
+                                capturePerson(target, clone);
+                            }
+                        }
+                    }
+                });
+                
+            } else if (robot && !isChasing) {
+                // Robot idle animation - rotate slowly
+                robot.rotation.y += 0.01;
+            }
+
+            // Animate people
+            people.forEach((person, index) => {
+                if (!person.userData.captured) {
+                    // Check if this person is being chased
+                    const isBeingChased = currentTargets.includes(person);
+                    
+                    // If being chased, make them "run" (move away from nearest robot)
+                    if (isChasing && isBeingChased) {
+                        // Find nearest robot (main or clone)
+                        let nearestRobot = robot;
+                        let minDistance = Infinity;
+                        
+                        [robot, ...robotClones].forEach(r => {
+                            const dx = person.position.x - r.position.x;
+                            const dz = person.position.z - r.position.z;
+                            const dist = Math.sqrt(dx * dx + dz * dz);
+                            if (dist < minDistance) {
+                                minDistance = dist;
+                                nearestRobot = r;
+                            }
+                        });
+                        
+                        const dx = person.position.x - nearestRobot.position.x;
+                        const dz = person.position.z - nearestRobot.position.z;
+                        const distance = Math.sqrt(dx * dx + dz * dz);
+                        
+                        if (distance < 15 && distance > 1) {
+                            // Run away FAST
+                            person.position.x += (dx / distance) * 0.12;
+                            person.position.z += (dz / distance) * 0.12;
+                            
+                            // Keep within arena
+                            const distFromCenter = Math.sqrt(person.position.x ** 2 + person.position.z ** 2);
+                            if (distFromCenter > 25) {
+                                person.position.x *= 25 / distFromCenter;
+                                person.position.z *= 25 / distFromCenter;
+                            }
+                            
+                            // Look away from robot
+                            person.rotation.y = Math.atan2(dx, dz);
+                            
+                            // Frantic movement
+                            person.rotation.z = Math.sin(Date.now() * 0.02) * 0.15;
+                            
+                            // Running animation - faster bobbing
+                            person.position.y = Math.abs(Math.sin(Date.now() * 0.015 + index)) * 0.3;
+                            
+                            // Arm swinging
+                            if (person.children[4]) person.children[4].rotation.x = Math.sin(Date.now() * 0.02) * 0.8;
+                            if (person.children[5]) person.children[5].rotation.x = -Math.sin(Date.now() * 0.02) * 0.8;
+                        }
+                    } else {
+                        // Not being chased - WANDER AROUND randomly
+                        // Random wandering behavior
+                        person.userData.wanderAngle += (Math.random() - 0.5) * 0.1;
+                        
+                        const moveX = Math.cos(person.userData.wanderAngle) * person.userData.wanderSpeed;
+                        const moveZ = Math.sin(person.userData.wanderAngle) * person.userData.wanderSpeed;
+                        
+                        person.position.x += moveX;
+                        person.position.z += moveZ;
+                        
+                        // Keep within arena
+                        const distFromCenter = Math.sqrt(person.position.x ** 2 + person.position.z ** 2);
+                        if (distFromCenter > 20) {
+                            // Bounce back towards center
+                            person.userData.wanderAngle = Math.atan2(-person.position.z, -person.position.x) + (Math.random() - 0.5) * 0.5;
+                        }
+                        
+                        // Look in movement direction
+                        person.rotation.y = person.userData.wanderAngle;
+                        person.rotation.z = 0;
+                        
+                        // Walking animation - gentle bobbing
+                        person.position.y = Math.abs(Math.sin(Date.now() * 0.005 + index)) * 0.15;
+                        
+                        // Gentle arm swing
+                        if (person.children[4]) person.children[4].rotation.x = Math.sin(Date.now() * 0.005 + index) * 0.3;
+                        if (person.children[5]) person.children[5].rotation.x = -Math.sin(Date.now() * 0.005 + index) * 0.3;
+                    }
+                } else {
+                    // Hide label when captured
+                    if (person.userData.htmlLabel) {
+                        person.userData.htmlLabel.style.display = 'none';
+                    }
+                }
+            });
+
+            // Update name labels position
+            updateNameLabels();
+
+            // Animate clouds
+            scene.children.forEach(child => {
+                if (child.userData.isCloud) {
+                    child.position.x += child.userData.driftSpeed;
+                    // Loop clouds back
+                    if (child.position.x > 50) child.position.x = -50;
+                }
+            });
+
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            updateNameLabels();
+        }
+
+        document.getElementById('startBtn').addEventListener('click', startGame);
+        
+        document.getElementById('restartBtn').addEventListener('click', () => {
+            location.reload();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,993 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>AI Startup Launch – Office 3D</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+html,body{
+  margin:0;height:100%;
+  background:#eef5ff;
+  font-family:system-ui,Arial;
+  color:#0b1020;
+}
+#ui{
+  position:fixed;top:12px;left:12px;width:360px;
+  background:rgba(255,255,255,.9);
+  border-radius:14px;padding:12px;
+  box-shadow:0 10px 30px rgba(0,0,0,.15);
+  z-index:10;
+}
+textarea,input{
+  width:100%;margin:6px 0 10px;padding:8px;
+  border-radius:8px;border:1px solid #ccc;
+}
+button{
+  width:100%;padding:10px;border-radius:10px;
+  border:none;font-weight:700;cursor:pointer;
+  background:linear-gradient(90deg,#00d4ff,#00ffb3);
+  color:#000;
+}
+button:hover{
+  opacity:0.9;
+}
+#hud{
+  position:fixed;right:12px;top:12px;width:320px;
+  max-height:calc(100vh - 24px);
+  overflow-y:auto;
+  background:rgba(255,255,255,.85);
+  border-radius:14px;padding:12px;
+  box-shadow:0 10px 30px rgba(0,0,0,.12);
+  z-index:10;
+}
+#debug{font-size:12px;margin-bottom:6px;color:#0a5;}
+#event{
+  font-weight:700;
+  margin-bottom:6px;
+}
+#eventProgress{
+  display:flex;
+  flex-wrap:wrap;
+  gap:4px;
+  margin-bottom:8px;
+  max-height:150px;
+  overflow-y:auto;
+  font-size:11px;
+}
+.player-progress{
+  display:flex;
+  align-items:center;
+  gap:4px;
+  width:100%;
+  padding:2px;
+  background:rgba(0,0,0,0.05);
+  border-radius:4px;
+}
+.player-name{
+  min-width:80px;
+  font-weight:600;
+  font-size:10px;
+}
+.progress-bar-container{
+  flex:1;
+  height:12px;
+  background:#e0e0e0;
+  border-radius:6px;
+  overflow:hidden;
+  position:relative;
+}
+.progress-bar-fill{
+  height:100%;
+  transition:width 0.3s,background-color 0.3s;
+  border-radius:6px;
+}
+.progress-percent{
+  position:absolute;
+  right:4px;
+  top:50%;
+  transform:translateY(-50%);
+  font-size:9px;
+  font-weight:700;
+  color:#000;
+}
+#timer{font-size:12px;margin-bottom:6px;}
+#top{white-space:pre;font-size:13px;}
+#winner{
+  position:fixed;left:50%;top:50%;
+  transform:translate(-50%,-50%);
+  background:white;padding:18px 22px;
+  border-radius:16px;
+  font-size:22px;font-weight:900;
+  display:none;z-index:20;
+  box-shadow:0 20px 50px rgba(0,0,0,.25);
+}
+canvas{display:block}
+</style>
+</head>
+
+<body>
+
+<div id="ui">
+  <b>🚀 AI Startup Launch – Office 3D</b><br>
+  Danh sách người chơi (mỗi dòng 1 người)
+  <textarea id="players" rows="6">Player 1
+Player 2
+Player 3
+Player 4</textarea>
+  Thời gian chơi (giây)
+  <input id="duration" type="number" value="120">
+  Thời gian mỗi event (giây)
+  <input id="eventInterval" type="number" value="3">
+  <button id="start">START</button>
+</div>
+
+<div id="hud">
+  <div id="debug">Three.js: loading...</div>
+  <div id="event">Event: —</div>
+  <div id="eventLog" style="font-size:13px;font-weight:600;color:#333;margin-bottom:8px;max-height:80px;overflow-y:auto;line-height:1.5;"></div>
+  <div id="eventProgress"></div>
+  <div id="timer">Time: —</div>
+  <div id="top">Top: —</div>
+</div>
+
+<div id="winner"></div>
+
+<!-- THREE.JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<script>
+/* ================= CHECK THREE ================= */
+if(typeof THREE==="undefined"){
+  alert("Three.js NOT loaded");
+}else{
+  document.getElementById("debug").innerText="Three.js loaded ✓";
+}
+
+/* ================= SCENE ================= */
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x87ceeb); // Blue sky
+
+const camera=new THREE.PerspectiveCamera(55,innerWidth/innerHeight,0.1,500);
+camera.position.set(0,15,25);
+camera.lookAt(0,0,0);
+
+// Camera controls
+let cameraDistance=Math.sqrt(camera.position.x**2+camera.position.y**2+camera.position.z**2);
+let cameraAngleH=0;
+let cameraAngleV=Math.PI/6;
+let cameraTarget=new THREE.Vector3(0,0,0);
+let isDragging=false;
+let lastMouseX=0,lastMouseY=0;
+let keys={};
+
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(innerWidth,innerHeight);
+renderer.shadowMap.enabled=true;
+document.body.appendChild(renderer.domElement);
+
+/* ================= LIGHT ================= */
+scene.add(new THREE.AmbientLight(0xffffff,0.9));
+const sun=new THREE.DirectionalLight(0xfff1cc,1.2);
+sun.position.set(-30,50,20);
+sun.castShadow=true;
+sun.shadow.camera.left=-50;
+sun.shadow.camera.right=50;
+sun.shadow.camera.top=50;
+sun.shadow.camera.bottom=-50;
+scene.add(sun);
+
+/* ================= FLOOR ================= */
+const floor=new THREE.Mesh(
+  new THREE.PlaneGeometry(300,300),
+  new THREE.MeshStandardMaterial({color:0x808080})
+);
+floor.rotation.x=-Math.PI/2;
+floor.receiveShadow=true;
+scene.add(floor);
+
+/* ================= BUILDING INTERIOR ================= */
+// Columns throughout the office - placed away from desk area
+const columnMaterial=new THREE.MeshStandardMaterial({color:0xb0b0b0});
+for(let x=-140;x<=140;x+=70){
+  for(let z=-140;z<=140;z+=70){
+    // Skip center area where desks are
+    if(Math.abs(x)<50 && Math.abs(z)<50) continue;
+    
+    const column=new THREE.Mesh(
+      new THREE.BoxGeometry(1,8,1),
+      columnMaterial
+    );
+    column.position.set(x,4,z);
+    column.castShadow=true;
+    scene.add(column);
+  }
+}
+
+/* ================= GAME DATA ================= */
+let names=[],progress=[],bars=[],desks=[],persons=[],labels=[],progressTexts=[];
+let duration=120,elapsed=0,timer=null,eventInterval=3;
+let isGameRunning=false;
+let lastEventValues=[];
+let isOvertime=false;
+let overtimeTimer=null;
+let cameraMoveEnabled=false;
+let eventLogs=[];
+let waterCoolers=[];
+let personStates=[]; // 'working', 'walking_to_water', 'drinking', 'walking_back'
+let personTargets=[];
+let personOriginalPos=[];
+
+const EVENTS=[
+ {n:"💸 Nhận vốn VC",v:6},
+ {n:"⚡ Tăng tốc GPU",v:4},
+ {n:"🌐 Viral trên mạng",v:8},
+ {n:"🤖 Đột phá công nghệ",v:10},
+ {n:"🐛 Lỗi hệ thống",v:-4},
+ {n:"💻 Server sập",v:-6},
+ {n:"⚖️ Vấn đề pháp lý",v:-3},
+ {n:"📈 Thị trường tăng",v:5},
+ {n:"🎯 Ra mắt sản phẩm",v:7},
+ {n:"🔥 Đối thủ tấn công",v:-5},
+ {n:"💡 Sáng kiến mới",v:6},
+ {n:"⚠️ Bị tấn công bảo mật",v:-7}
+];
+
+const SPECIAL_EVENTS=[
+ {n:"🏆 Đột phá công nghệ lớn",bonus:15,count:1},
+ {n:"💎 Đầu tư lớn",bonus:12,count:2},
+ {n:"🎁 Gặp nhà đầu tư thiên thần",bonus:10,count:3},
+ {n:"⭐ Bằng sáng chế được duyệt",bonus:8,count:2},
+ {n:"🚀 Ký hợp đồng hợp tác",bonus:7,count:3}
+];
+
+/* ================= CREATE TEXT SPRITE ================= */
+function createTextSprite(text){
+  const canvas=document.createElement('canvas');
+  const context=canvas.getContext('2d');
+  canvas.width=1024;
+  canvas.height=256;
+  
+  context.fillStyle='rgba(255,255,255,0.95)';
+  context.fillRect(0,0,canvas.width,canvas.height);
+  
+  context.font='bold 96px Arial';
+  context.fillStyle='#0b1020';
+  context.textAlign='center';
+  context.textBaseline='middle';
+  context.fillText(text,512,128);
+  
+  const texture=new THREE.Texture(canvas);
+  texture.needsUpdate=true;
+  
+  const spriteMaterial=new THREE.SpriteMaterial({map:texture});
+  const sprite=new THREE.Sprite(spriteMaterial);
+  sprite.scale.set(6,1.5,1);
+  
+  return sprite;
+}
+
+function createProgressTextSprite(percent){
+  const canvas=document.createElement('canvas');
+  const context=canvas.getContext('2d');
+  canvas.width=512;
+  canvas.height=256;
+  
+  context.fillStyle='rgba(0,0,0,0.8)';
+  context.fillRect(0,0,canvas.width,canvas.height);
+  
+  context.font='bold 96px Arial';
+  context.fillStyle='#ffffff';
+  context.textAlign='center';
+  context.textBaseline='middle';
+  context.fillText(percent.toFixed(0)+'%',256,128);
+  
+  const texture=new THREE.Texture(canvas);
+  texture.needsUpdate=true;
+  
+  const spriteMaterial=new THREE.SpriteMaterial({map:texture});
+  const sprite=new THREE.Sprite(spriteMaterial);
+  sprite.scale.set(2.5,1.25,1);
+  
+  return sprite;
+}
+
+function updateProgressTextSprite(sprite,percent){
+  const canvas=sprite.material.map.image;
+  const context=canvas.getContext('2d');
+  
+  context.fillStyle='rgba(0,0,0,0.8)';
+  context.fillRect(0,0,canvas.width,canvas.height);
+  
+  context.font='bold 96px Arial';
+  context.fillStyle='#ffffff';
+  context.textAlign='center';
+  context.textBaseline='middle';
+  context.fillText(percent.toFixed(0)+'%',256,128);
+  
+  sprite.material.map.needsUpdate=true;
+}
+
+/* ================= CREATE PERSON MODEL ================= */
+function createPersonModel(){
+  const group=new THREE.Group();
+  
+  // Body (sitting)
+  const body=new THREE.Mesh(
+    new THREE.BoxGeometry(0.6,0.8,0.4),
+    new THREE.MeshStandardMaterial({color:0x3b82f6})
+  );
+  body.position.y=0.9;
+  body.castShadow=true;
+  group.add(body);
+  
+  // Head
+  const head=new THREE.Mesh(
+    new THREE.SphereGeometry(0.25,8,8),
+    new THREE.MeshStandardMaterial({color:0xffdbac})
+  );
+  head.position.y=1.5;
+  head.castShadow=true;
+  group.add(head);
+  
+  // Arms (reaching to keyboard)
+  const armL=new THREE.Mesh(
+    new THREE.BoxGeometry(0.15,0.6,0.15),
+    new THREE.MeshStandardMaterial({color:0x3b82f6})
+  );
+  armL.position.set(-0.35,0.7,0.3);
+  armL.rotation.x=Math.PI/4;
+  armL.castShadow=true;
+  group.add(armL);
+  
+  const armR=new THREE.Mesh(
+    new THREE.BoxGeometry(0.15,0.6,0.15),
+    new THREE.MeshStandardMaterial({color:0x3b82f6})
+  );
+  armR.position.set(0.35,0.7,0.3);
+  armR.rotation.x=Math.PI/4;
+  armR.castShadow=true;
+  group.add(armR);
+  
+  // Legs
+  const legL=new THREE.Mesh(
+    new THREE.BoxGeometry(0.2,0.5,0.2),
+    new THREE.MeshStandardMaterial({color:0x1e3a8a})
+  );
+  legL.position.set(-0.2,0.25,-0.1);
+  legL.castShadow=true;
+  group.add(legL);
+  
+  const legR=new THREE.Mesh(
+    new THREE.BoxGeometry(0.2,0.5,0.2),
+    new THREE.MeshStandardMaterial({color:0x1e3a8a})
+  );
+  legR.position.set(0.2,0.25,-0.1);
+  legR.castShadow=true;
+  group.add(legR);
+  
+  return group;
+}
+
+/* ================= CREATE WATER COOLER ================= */
+function createWaterCooler(){
+  const group=new THREE.Group();
+  
+  // Base
+  const base=new THREE.Mesh(
+    new THREE.CylinderGeometry(0.3,0.35,0.2,8),
+    new THREE.MeshStandardMaterial({color:0x333333})
+  );
+  base.position.y=0.1;
+  base.castShadow=true;
+  group.add(base);
+  
+  // Body
+  const body=new THREE.Mesh(
+    new THREE.CylinderGeometry(0.25,0.25,1.2,8),
+    new THREE.MeshStandardMaterial({color:0xe0e0e0})
+  );
+  body.position.y=0.8;
+  body.castShadow=true;
+  group.add(body);
+  
+  // Water bottle (blue)
+  const bottle=new THREE.Mesh(
+    new THREE.CylinderGeometry(0.22,0.22,0.8,8),
+    new THREE.MeshStandardMaterial({
+      color:0x4fc3f7,
+      transparent:true,
+      opacity:0.6
+    })
+  );
+  bottle.position.y=1.2;
+  group.add(bottle);
+  
+  // Top cap
+  const cap=new THREE.Mesh(
+    new THREE.CylinderGeometry(0.15,0.15,0.1,8),
+    new THREE.MeshStandardMaterial({color:0x1976d2})
+  );
+  cap.position.y=1.65;
+  cap.castShadow=true;
+  group.add(cap);
+  
+  return group;
+}
+
+/* ================= CREATE COMPUTER SETUP ================= */
+function createComputerSetup(){
+  const group=new THREE.Group();
+  
+  // Monitor
+  const monitor=new THREE.Mesh(
+    new THREE.BoxGeometry(1.2,0.9,0.1),
+    new THREE.MeshStandardMaterial({color:0x1f2937})
+  );
+  monitor.position.set(0,1.3,-0.5);
+  monitor.castShadow=true;
+  group.add(monitor);
+  
+  // Screen (glowing)
+  const screen=new THREE.Mesh(
+    new THREE.BoxGeometry(1.1,0.8,0.05),
+    new THREE.MeshStandardMaterial({
+      color:0x60a5fa,
+      emissive:0x3b82f6,
+      emissiveIntensity:0.5
+    })
+  );
+  screen.position.set(0,1.3,-0.45);
+  group.add(screen);
+  
+  // Monitor stand
+  const stand=new THREE.Mesh(
+    new THREE.CylinderGeometry(0.08,0.08,0.3,8),
+    new THREE.MeshStandardMaterial({color:0x374151})
+  );
+  stand.position.set(0,0.95,-0.5);
+  stand.castShadow=true;
+  group.add(stand);
+  
+  // Keyboard
+  const keyboard=new THREE.Mesh(
+    new THREE.BoxGeometry(0.8,0.05,0.3),
+    new THREE.MeshStandardMaterial({color:0x1f2937})
+  );
+  keyboard.position.set(0,0.81,0.2);
+  keyboard.castShadow=true;
+  group.add(keyboard);
+  
+  // Mouse
+  const mouse=new THREE.Mesh(
+    new THREE.BoxGeometry(0.1,0.05,0.15),
+    new THREE.MeshStandardMaterial({color:0x374151})
+  );
+  mouse.position.set(0.5,0.81,0.3);
+  mouse.castShadow=true;
+  group.add(mouse);
+  
+  return group;
+}
+
+/* ================= BUILD OFFICE ================= */
+function buildOffice(count){
+  // Clear previous objects
+  bars.forEach(b=>scene.remove(b));
+  desks.forEach(d=>scene.remove(d));
+  persons.forEach(p=>scene.remove(p));
+  labels.forEach(l=>scene.remove(l));
+  progressTexts.forEach(t=>scene.remove(t));
+  waterCoolers.forEach(w=>scene.remove(w));
+  bars=[];
+  desks=[];
+  persons=[];
+  labels=[];
+  progressTexts=[];
+  waterCoolers=[];
+  personStates=[];
+  personTargets=[];
+  personOriginalPos=[];
+  lastEventValues=new Array(count).fill(0);
+  
+  const cols=Math.ceil(Math.sqrt(count));
+  const spacing=6;
+  const offset=(cols-1)*spacing/2;
+
+  for(let i=0;i<count;i++){
+    const x=(i%cols)*spacing-offset;
+    const z=Math.floor(i/cols)*spacing-offset;
+
+    // Desk
+    const desk=new THREE.Mesh(
+      new THREE.BoxGeometry(2.5,0.15,1.5),
+      new THREE.MeshStandardMaterial({color:0xd1d5db})
+    );
+    desk.position.set(x,0.75,z);
+    desk.castShadow=true;
+    desk.receiveShadow=true;
+    scene.add(desk);
+    desks.push(desk);
+    
+    // Desk legs
+    const legPositions=[[-1,0.5],[-1,-0.5],[1,0.5],[1,-0.5]];
+    legPositions.forEach(([dx,dz])=>{
+      const leg=new THREE.Mesh(
+        new THREE.BoxGeometry(0.08,0.7,0.08),
+        new THREE.MeshStandardMaterial({color:0x9ca3af})
+      );
+      leg.position.set(x+dx,0.35,z+dz);
+      leg.castShadow=true;
+      scene.add(leg);
+      desks.push(leg);
+    });
+
+    // Computer setup on desk
+    const computer=createComputerSetup();
+    computer.position.set(x,0.05,z);
+    scene.add(computer);
+    desks.push(computer);
+
+    // Person sitting at desk
+    const person=createPersonModel();
+    person.position.set(x,0.05,z+0.6);
+    scene.add(person);
+    persons.push(person);
+    
+    // Initialize person state
+    personStates.push('working');
+    personTargets.push(null);
+    personOriginalPos.push({x:x,y:0.05,z:z+0.6});
+
+    // Name label above person
+    const label=createTextSprite(names[i]);
+    label.position.set(x,3.5,z);
+    scene.add(label);
+    labels.push(label);
+
+    // Progress bar BESIDE the desk
+    const barBase=new THREE.Mesh(
+      new THREE.BoxGeometry(0.3,0.1,0.3),
+      new THREE.MeshStandardMaterial({color:0x6b7280})
+    );
+    barBase.position.set(x-2,0.8,z);
+    barBase.castShadow=true;
+    scene.add(barBase);
+    desks.push(barBase);
+    
+    const bar=new THREE.Mesh(
+      new THREE.BoxGeometry(0.25,3,0.25),
+      new THREE.MeshStandardMaterial({
+        color:0x00d4ff,
+        emissive:0x00aaff,
+        emissiveIntensity:0.6
+      })
+    );
+    bar.position.set(x-2,1.5,z);
+    bar.castShadow=true;
+    scene.add(bar);
+    bars.push(bar);
+    
+    // Progress percentage text above bar
+    const progressText=createProgressTextSprite(0);
+    progressText.position.set(x-2,4,z);
+    scene.add(progressText);
+    progressTexts.push(progressText);
+  }
+  
+  // Add water coolers (one per 10 people, minimum 2)
+  const numCoolers=Math.max(2,Math.ceil(count/10));
+  for(let i=0;i<numCoolers;i++){
+    const cooler=createWaterCooler();
+    const angle=(i/numCoolers)*Math.PI*2;
+    const radius=offset+10;
+    cooler.position.set(
+      Math.cos(angle)*radius,
+      0,
+      Math.sin(angle)*radius
+    );
+    scene.add(cooler);
+    waterCoolers.push(cooler);
+  }
+}
+
+/* ================= GAME LOOP ================= */
+function startGame(){
+  if(isGameRunning){
+    alert("Game đang chạy!");
+    return;
+  }
+  
+  names=document.getElementById("players").value
+    .split("\n").map(s=>s.trim()).filter(Boolean);
+  
+  if(names.length<2){
+    alert("Cần ít nhất 2 người chơi!");
+    return;
+  }
+
+  duration=parseInt(document.getElementById("duration").value)||120;
+  eventInterval=parseInt(document.getElementById("eventInterval").value)||3;
+  elapsed=0;
+  progress=new Array(names.length).fill(0);
+  lastEventValues=new Array(names.length).fill(0);
+  isGameRunning=true;
+  isOvertime=false;
+  cameraMoveEnabled=true; // Enable WASD movement
+  eventLogs=[]; // Clear event logs
+  
+  // Hide UI panel and winner if showing
+  document.getElementById("ui").style.display="none";
+  document.getElementById("winner").style.display="none";
+  document.getElementById("eventLog").innerHTML='';
+  
+  buildOffice(names.length);
+
+  if(timer)clearInterval(timer);
+  timer=setInterval(tick,eventInterval*1000);
+  
+  // Initial UI update
+  document.getElementById("event").innerText="Event: Game Started!";
+  document.getElementById("timer").innerText=`Time: 0s / ${duration}s`;
+  updateLeaderboard();
+  updateEventProgress();
+}
+
+function tick(){
+  elapsed+=eventInterval;
+  
+  // Regular events
+  const ev=EVENTS[Math.floor(Math.random()*EVENTS.length)];
+  
+  document.getElementById("event").innerText=
+    "Event: "+ev.n+" ("+(ev.v>0?"+":"")+ev.v+"%)";
+
+  // Random special event (20% chance)
+  let specialEvent=null;
+  if(Math.random()<0.2){
+    specialEvent=SPECIAL_EVENTS[Math.floor(Math.random()*SPECIAL_EVENTS.length)];
+  }
+  
+  // Random water break (10% chance per person if working)
+  for(let i=0;i<progress.length;i++){
+    if(personStates[i]==='working' && Math.random()<0.1){
+      personStates[i]='walking_to_water';
+      const coolerIdx=Math.floor(Math.random()*waterCoolers.length);
+      personTargets[i]={
+        x:waterCoolers[coolerIdx].position.x,
+        y:0.05,
+        z:waterCoolers[coolerIdx].position.z,
+        drinkTime:0
+      };
+      
+      // If missing a negative event, get double penalty!
+      if(ev.v<0){
+        addEventLog(`💧⚠️ ${names[i]} đi uống nước trong event âm (x2 penalty: ${ev.v*2}%)`);
+        personTargets[i].penalty=ev.v*2;
+      }else{
+        addEventLog(`💧 ${names[i]} đi uống nước (bỏ lỡ event)`);
+        personTargets[i].penalty=0;
+      }
+    }
+  }
+
+  for(let i=0;i<progress.length;i++){
+    // If person is not working, apply penalty if exists
+    if(personStates[i]!=='working'){
+      if(personTargets[i] && personTargets[i].penalty!==undefined && personTargets[i].penalty!==0){
+        const penalty=personTargets[i].penalty*(0.5+Math.random()*0.5);
+        progress[i]=Math.max(0,progress[i]+penalty);
+        lastEventValues[i]=penalty;
+        
+        bars[i].material.color.setHex(0xff4444);
+        bars[i].material.emissive.setHex(0xcc0000);
+        
+        const scale=Math.max(0.05,progress[i]/100);
+        bars[i].scale.y=scale;
+        bars[i].position.y=0.9+(scale*1.5);
+        
+        updateProgressTextSprite(progressTexts[i],progress[i]);
+        personTargets[i].penalty=0;
+      }else{
+        lastEventValues[i]=0;
+      }
+      continue;
+    }
+    
+    // Normal progress
+    const baseDelta=Math.random()*0.8;
+    const eventImpact=ev.v*(0.2+Math.random()*0.3);
+    let delta=baseDelta+eventImpact;
+    
+    // Check special event bonus
+    if(specialEvent && Math.random()<(specialEvent.count/progress.length)){
+      delta+=specialEvent.bonus;
+      addEventLog(`✨ ${names[i]}: ${specialEvent.n} (+${specialEvent.bonus}%)`);
+    }
+    
+    progress[i]=Math.max(0,Math.min(95,progress[i]+delta)); // Max 95%
+    
+    lastEventValues[i]=delta;
+    
+    const barColor=delta>=0?0x00d4ff:0xff4444;
+    const emissiveColor=delta>=0?0x00aaff:0xcc0000;
+    bars[i].material.color.setHex(barColor);
+    bars[i].material.emissive.setHex(emissiveColor);
+    
+    const scale=Math.max(0.05,progress[i]/100);
+    bars[i].scale.y=scale;
+    bars[i].position.y=0.9+(scale*1.5);
+    
+    updateProgressTextSprite(progressTexts[i],progress[i]);
+  }
+
+  document.getElementById("timer").innerText=
+    `Time: ${elapsed}s / ${duration}s`;
+
+  updateLeaderboard();
+  updateEventProgress();
+
+  // Check if time is up and enter overtime
+  if(elapsed>=duration&&!isOvertime){
+    isOvertime=true;
+    document.getElementById("event").innerText="⏰ OVERTIME!";
+    document.getElementById("timer").innerText=`⏰ OVERTIME`;
+    addEventLog("⏰ OVERTIME! Đang chọn người bức phá...");
+    
+    // Immediately pick one random person and set to 100%
+    const workingIndices=[];
+    for(let i=0;i<progress.length;i++){
+      if(personStates[i]==='working'){
+        workingIndices.push(i);
+      }
+    }
+    
+    if(workingIndices.length>0){
+      const luckyIndex=workingIndices[Math.floor(Math.random()*workingIndices.length)];
+      progress[luckyIndex]=100;
+      
+      // Update the lucky person's bar - GREEN for winner
+      bars[luckyIndex].scale.y=1;
+      bars[luckyIndex].position.y=0.9+1.5;
+      bars[luckyIndex].material.color.setHex(0x00ff00); // Bright green
+      bars[luckyIndex].material.emissive.setHex(0x00dd00);
+      bars[luckyIndex].material.emissiveIntensity=0.8;
+      updateProgressTextSprite(progressTexts[luckyIndex],100);
+      
+      // Store that this person won (to prevent color override)
+      lastEventValues[luckyIndex]=100;
+      
+      addEventLog(`🍀 ${names[luckyIndex]} may mắn được chọn!`);
+      
+      // Stop the timer and show winner
+      clearInterval(timer);
+      timer=null;
+      isGameRunning=false;
+      
+      updateLeaderboard();
+      updateEventProgress();
+      
+      // Show winner after a short delay
+      setTimeout(()=>{
+        showWinner();
+      },500);
+      
+      return; // Exit tick function
+    }
+  }
+}
+
+function updateLeaderboard(){
+  const rank=[...progress].map((p,i)=>({p,i}))
+    .sort((a,b)=>b.p-a.p).slice(0,15);
+
+  document.getElementById("top").innerText=
+    rank.map((r,i)=>`${i+1}. ${names[r.i]} ${r.p.toFixed(1)}%`).join("\n");
+}
+
+function updateEventProgress(){
+  const container=document.getElementById("eventProgress");
+  container.innerHTML='';
+  
+  // Show top 10 in event progress
+  const topPlayers=[...progress].map((p,i)=>({p,i}))
+    .sort((a,b)=>b.p-a.p).slice(0,10);
+  
+  topPlayers.forEach(player=>{
+    const div=document.createElement('div');
+    div.className='player-progress';
+    
+    const p=progress[player.i];
+    const isPositive=lastEventValues[player.i]>=0;
+    const barColor=isPositive?'linear-gradient(90deg,#00d4ff,#00ffb3)':'linear-gradient(90deg,#ff4444,#ff8866)';
+    
+    div.innerHTML=`
+      <div class="player-name">${names[player.i]}</div>
+      <div class="progress-bar-container">
+        <div class="progress-bar-fill" style="width:${p}%;background:${barColor}"></div>
+        <div class="progress-percent">${p.toFixed(0)}%</div>
+      </div>
+    `;
+    container.appendChild(div);
+  });
+}
+
+function addEventLog(message){
+  eventLogs.push(message);
+  if(eventLogs.length>5) eventLogs.shift(); // Keep only last 5
+  
+  const logContainer=document.getElementById("eventLog");
+  logContainer.innerHTML=eventLogs.join('<br>');
+}
+
+function showWinner(){
+  // Find first person who reached 100%
+  let winnerIndex=-1;
+  for(let i=0;i<progress.length;i++){
+    if(progress[i]>=100){
+      winnerIndex=i;
+      break;
+    }
+  }
+  
+  // If no one reached 100% (shouldn't happen now), show highest progress
+  if(winnerIndex===-1){
+    winnerIndex=progress.indexOf(Math.max(...progress));
+  }
+  
+  document.getElementById("winner").innerText=
+    "🏆 "+names[winnerIndex]+" BỨC PHÁ THÀNH CÔNG!";
+  document.getElementById("winner").style.display="block";
+  
+  // Show UI panel again for replay
+  document.getElementById("ui").style.display="block";
+}
+
+/* ================= RENDER ================= */
+function updatePersonAnimations(){
+  const walkSpeed=0.1;
+  
+  for(let i=0;i<persons.length;i++){
+    if(personStates[i]==='walking_to_water' && personTargets[i]){
+      const dx=personTargets[i].x-persons[i].position.x;
+      const dz=personTargets[i].z-persons[i].position.z;
+      const dist=Math.sqrt(dx*dx+dz*dz);
+      
+      if(dist>0.5){
+        persons[i].position.x+=dx/dist*walkSpeed;
+        persons[i].position.z+=dz/dist*walkSpeed;
+        labels[i].position.x=persons[i].position.x;
+        labels[i].position.z=persons[i].position.z;
+      }else{
+        personStates[i]='drinking';
+        personTargets[i].drinkTime=30; // frames
+      }
+    }
+    else if(personStates[i]==='drinking' && personTargets[i]){
+      personTargets[i].drinkTime--;
+      if(personTargets[i].drinkTime<=0){
+        personStates[i]='walking_back';
+      }
+    }
+    else if(personStates[i]==='walking_back'){
+      const dx=personOriginalPos[i].x-persons[i].position.x;
+      const dz=personOriginalPos[i].z-persons[i].position.z;
+      const dist=Math.sqrt(dx*dx+dz*dz);
+      
+      if(dist>0.3){
+        persons[i].position.x+=dx/dist*walkSpeed;
+        persons[i].position.z+=dz/dist*walkSpeed;
+        labels[i].position.x=persons[i].position.x;
+        labels[i].position.z=persons[i].position.z;
+      }else{
+        persons[i].position.x=personOriginalPos[i].x;
+        persons[i].position.z=personOriginalPos[i].z;
+        labels[i].position.x=personOriginalPos[i].x;
+        labels[i].position.z=personOriginalPos[i].z;
+        personStates[i]='working';
+        personTargets[i]=null;
+      }
+    }
+  }
+}
+
+function updateCamera(){
+  // WASD camera panning relative to camera angle - only if enabled
+  if(cameraMoveEnabled){
+    const panSpeed=0.5;
+    
+    // Get camera direction (where camera is looking at)
+    const cameraDir=new THREE.Vector3();
+    camera.getWorldDirection(cameraDir);
+    cameraDir.y=0; // Keep movement on horizontal plane
+    cameraDir.normalize();
+    
+    // Right vector is perpendicular to camera direction
+    const rightDir=new THREE.Vector3(-cameraDir.z,0,cameraDir.x);
+    
+    if(keys['w']||keys['W']){
+      cameraTarget.x+=cameraDir.x*panSpeed;
+      cameraTarget.z+=cameraDir.z*panSpeed;
+    }
+    if(keys['s']||keys['S']){
+      cameraTarget.x-=cameraDir.x*panSpeed;
+      cameraTarget.z-=cameraDir.z*panSpeed;
+    }
+    if(keys['a']||keys['A']){
+      cameraTarget.x-=rightDir.x*panSpeed;
+      cameraTarget.z-=rightDir.z*panSpeed;
+    }
+    if(keys['d']||keys['D']){
+      cameraTarget.x+=rightDir.x*panSpeed;
+      cameraTarget.z+=rightDir.z*panSpeed;
+    }
+  }
+  
+  camera.position.x=cameraTarget.x+cameraDistance*Math.sin(cameraAngleV)*Math.cos(cameraAngleH);
+  camera.position.y=cameraTarget.y+cameraDistance*Math.cos(cameraAngleV);
+  camera.position.z=cameraTarget.z+cameraDistance*Math.sin(cameraAngleV)*Math.sin(cameraAngleH);
+  camera.lookAt(cameraTarget);
+}
+
+function animate(){
+  requestAnimationFrame(animate);
+  updatePersonAnimations();
+  updateCamera();
+  renderer.render(scene,camera);
+}
+animate();
+
+/* ================= EVENT LISTENERS ================= */
+document.getElementById("start").addEventListener("click",startGame);
+
+// Keyboard controls for camera panning (WASD)
+document.addEventListener("keydown",(e)=>{
+  keys[e.key]=true;
+});
+
+document.addEventListener("keyup",(e)=>{
+  keys[e.key]=false;
+});
+
+// Mouse controls for camera
+renderer.domElement.addEventListener("mousedown",(e)=>{
+  isDragging=true;
+  lastMouseX=e.clientX;
+  lastMouseY=e.clientY;
+});
+
+document.addEventListener("mouseup",()=>{
+  isDragging=false;
+});
+
+document.addEventListener("mousemove",(e)=>{
+  if(!isDragging)return;
+  
+  const deltaX=e.clientX-lastMouseX;
+  const deltaY=e.clientY-lastMouseY;
+  
+  cameraAngleH-=deltaX*0.01;
+  cameraAngleV=Math.max(0.1,Math.min(Math.PI/2-0.1,cameraAngleV+deltaY*0.01));
+  
+  lastMouseX=e.clientX;
+  lastMouseY=e.clientY;
+});
+
+// Zoom with mouse wheel
+renderer.domElement.addEventListener("wheel",(e)=>{
+  e.preventDefault();
+  cameraDistance+=e.deltaY*0.02;
+  cameraDistance=Math.max(10,Math.min(60,cameraDistance));
+});
+
+window.addEventListener("resize",()=>{
+  camera.aspect=innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+});
+
+// Initial scene setup
+console.log("Game ready! Drag to rotate, scroll to zoom, WASD to move");
+</script>
+</body>
+</html>

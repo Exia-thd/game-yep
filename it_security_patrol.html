@@ -1,0 +1,1127 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>IT Security Patrol – TMA Office 3D</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+html,body{
+  margin:0;height:100%;
+  background:#eef5ff;
+  font-family:system-ui,Arial;
+  color:#0b1020;
+}
+#ui{
+  position:fixed;top:12px;left:12px;width:360px;
+  background:rgba(255,255,255,.95);
+  border-radius:14px;padding:16px;
+  box-shadow:0 10px 30px rgba(0,0,0,.15);
+  z-index:10;
+}
+.form-group{
+  margin-bottom:12px;
+}
+.form-group label{
+  display:block;
+  font-weight:600;
+  margin-bottom:4px;
+  color:#1f2937;
+}
+textarea,input{
+  width:100%;padding:8px;
+  border-radius:8px;border:1px solid #d1d5db;
+  font-family:inherit;
+}
+button{
+  width:100%;padding:12px;border-radius:10px;
+  border:none;font-weight:700;cursor:pointer;
+  background:linear-gradient(90deg,#3b82f6,#2563eb);
+  color:white;
+  font-size:15px;
+}
+button:hover{
+  opacity:0.9;
+}
+#hud{
+  position:fixed;right:12px;top:12px;width:320px;
+  background:rgba(255,255,255,.9);
+  border-radius:14px;padding:12px;
+  box-shadow:0 10px 30px rgba(0,0,0,.12);
+  z-index:10;
+}
+#status{
+  font-size:14px;
+  font-weight:600;
+  margin-bottom:8px;
+  color:#1f2937;
+}
+#caughtList{
+  font-size:12px;
+  line-height:1.6;
+  max-height:200px;
+  overflow-y:auto;
+  padding:8px;
+  background:rgba(0,0,0,0.03);
+  border-radius:6px;
+}
+.violation-item{
+  padding:4px 0;
+  border-bottom:1px solid rgba(0,0,0,0.05);
+}
+.violation-item:last-child{
+  border-bottom:none;
+}
+
+/* Popup overlay */
+#popupOverlay{
+  position:fixed;
+  top:0;left:0;right:0;bottom:0;
+  background:rgba(0,0,0,0.7);
+  display:none;
+  z-index:100;
+  align-items:center;
+  justify-content:center;
+}
+#popup{
+  background:white;
+  border-radius:16px;
+  padding:24px;
+  max-width:500px;
+  width:90%;
+  box-shadow:0 20px 60px rgba(0,0,0,.3);
+}
+#popup.large{
+  max-width:700px;
+  max-height:85vh;
+  overflow-y:auto;
+}
+#popup h2{
+  margin:0 0 16px 0;
+  color:#1f2937;
+  font-size:24px;
+}
+.tma-title{
+  color:#3b82f6;
+  font-size:32px;
+  font-weight:900;
+  margin:8px 0;
+}
+.status-badge{
+  display:inline-block;
+  padding:8px 16px;
+  border-radius:8px;
+  font-weight:700;
+  font-size:16px;
+  margin:12px 0;
+}
+.status-ok{
+  background:#10b981;
+  color:white;
+}
+.status-violation{
+  background:#ef4444;
+  color:white;
+}
+.violation-detail{
+  background:#fef2f2;
+  border-left:4px solid #ef4444;
+  padding:12px;
+  border-radius:6px;
+  margin:12px 0;
+  font-size:14px;
+  color:#991b1b;
+}
+#popupButton{
+  width:100%;
+  margin-top:16px;
+  padding:12px;
+  background:linear-gradient(90deg,#3b82f6,#2563eb);
+  color:white;
+  border:none;
+  border-radius:10px;
+  font-weight:700;
+  font-size:15px;
+  cursor:pointer;
+}
+#popupButton:hover{
+  opacity:0.9;
+}
+
+/* Final report popup */
+#finalReport{
+  max-height:400px;
+  overflow-y:auto;
+  margin-bottom:16px;
+}
+.report-item{
+  padding:12px 16px;
+  background:#f9fafb;
+  border-radius:8px;
+  margin-bottom:12px;
+  border-left:4px solid #ef4444;
+  font-size:15px;
+}
+.report-item strong{
+  font-size:16px;
+  color:#1f2937;
+}
+.report-item .violation-text{
+  color:#991b1b;
+  margin-top:4px;
+  display:block;
+}
+.loading-spinner{
+  display:inline-block;
+  width:50px;
+  height:50px;
+  border:5px solid #f3f4f6;
+  border-top:5px solid #3b82f6;
+  border-radius:50%;
+  animation:spin 1s linear infinite;
+  margin:20px auto;
+}
+@keyframes spin{
+  0%{transform:rotate(0deg);}
+  100%{transform:rotate(360deg);}
+}
+.loading-text{
+  text-align:center;
+  color:#6b7280;
+  font-size:14px;
+  margin-top:12px;
+}
+#copyButton{
+  width:100%;
+  margin-bottom:8px;
+  padding:12px;
+  background:linear-gradient(90deg,#10b981,#059669);
+  color:white;
+  border:none;
+  border-radius:10px;
+  font-weight:700;
+  font-size:15px;
+  cursor:pointer;
+}
+#copyButton:hover{
+  opacity:0.9;
+}
+#resetButton{
+  width:100%;
+  padding:12px;
+  background:linear-gradient(90deg,#3b82f6,#2563eb);
+  color:white;
+  border:none;
+  border-radius:10px;
+  font-weight:700;
+  font-size:15px;
+  cursor:pointer;
+}
+#resetButton:hover{
+  opacity:0.9;
+}
+canvas{display:block}
+</style>
+</head>
+
+<body>
+
+<div id="ui">
+  <h2 style="margin:0 0 12px 0;">🚔 IT Security Patrol</h2>
+  
+  <div class="form-group">
+    <label>Danh sách nhân viên (mỗi dòng 1 người):</label>
+    <textarea id="players" rows="6">Nguyễn Văn A
+Trần Thị B
+Lê Văn C
+Phạm Thị D
+Hoàng Văn E
+Võ Thị F</textarea>
+  </div>
+  
+  <div class="form-group">
+    <label>Số lượng vi phạm cần bắt:</label>
+    <input id="targetViolations" type="number" value="3" min="1">
+  </div>
+  
+  <div class="form-group">
+    <label>Tỷ lệ nhân viên không vi phạm (%):</label>
+    <input id="noViolationRate" type="number" value="75" min="0" max="100">
+  </div>
+  
+  <div class="form-group">
+    <label>Thời gian mỗi lần kiểm tra (giây):</label>
+    <input id="checkInterval" type="number" value="2" min="1" max="10">
+  </div>
+  
+  <button id="start">BẮT ĐẦU TUẦN TRA</button>
+</div>
+
+<div id="hud">
+  <div id="status">Chưa bắt đầu</div>
+  <div id="caughtList"></div>
+</div>
+
+<!-- Popup overlay -->
+<div id="popupOverlay">
+  <div id="popup">
+    <div id="popupContent"></div>
+    <button id="popupButton">TIẾP TỤC</button>
+  </div>
+</div>
+
+<!-- THREE.JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<script>
+/* ================= GAME DATA ================= */
+let names=[];
+let targetViolations=3;
+let checkInterval=2; // seconds between checks
+let noViolationRate=75; // percentage of non-violating employees
+let caughtViolations=[];
+let checkedViolators=[]; // Track only violators who have been caught
+let isGameRunning=false;
+let isPaused=false;
+
+let securityGuard=null;
+let securityPosition={x:0,y:0,z:0};
+let securityTarget=null;
+let patrolSpeed=0.15;
+let checkingEmployee=false;
+let currentCheckIndex=-1;
+
+let desks=[];
+let persons=[];
+let labels=[];
+let employeeStates=[]; // 'working' or 'violating'
+let employeeViolations=[];
+
+const VIOLATIONS=[
+  "Quên thẻ nhân viên",
+  "Chơi game trong giờ làm việc",
+  "Ăn uống trong văn phòng",
+  "Xem phim trong giờ làm việc",
+  "Tán chuyện ngoài công việc",
+  "Nhảy nhót trong giờ làm việc",
+  "Ngồi khóc thất tình",
+  "Livestream bán hàng trong giờ làm việc",
+  "Cài game vào PC",
+  "Nhấp vào email phishing",
+  "Máy tính nhiễm virus do nhấn link lạ",
+  "Ngủ gục trong giờ làm việc",
+  "Đi làm trễ"
+];
+
+// Track violation usage to reduce probability
+let violationWeights=[];
+let usedViolations=[];
+
+/* ================= SCENE SETUP ================= */
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x87ceeb);
+
+const camera=new THREE.PerspectiveCamera(55,innerWidth/innerHeight,0.1,500);
+camera.position.set(0,25,35);
+camera.lookAt(0,0,0);
+
+// Camera controls
+let cameraDistance=Math.sqrt(camera.position.x**2+camera.position.y**2+camera.position.z**2);
+let cameraAngleH=0;
+let cameraAngleV=Math.PI/4;
+let cameraTarget=new THREE.Vector3(0,0,0);
+let isDragging=false;
+let lastMouseX=0,lastMouseY=0;
+let keys={};
+
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(innerWidth,innerHeight);
+renderer.shadowMap.enabled=true;
+document.body.appendChild(renderer.domElement);
+
+/* ================= LIGHTING ================= */
+scene.add(new THREE.AmbientLight(0xffffff,0.9));
+const sun=new THREE.DirectionalLight(0xfff1cc,1.2);
+sun.position.set(-30,50,20);
+sun.castShadow=true;
+sun.shadow.camera.left=-50;
+sun.shadow.camera.right=50;
+sun.shadow.camera.top=50;
+sun.shadow.camera.bottom=-50;
+scene.add(sun);
+
+/* ================= FLOOR ================= */
+const floor=new THREE.Mesh(
+  new THREE.PlaneGeometry(300,300),
+  new THREE.MeshStandardMaterial({color:0x808080})
+);
+floor.rotation.x=-Math.PI/2;
+floor.receiveShadow=true;
+scene.add(floor);
+
+/* ================= OFFICE COLUMNS ================= */
+const columnMaterial=new THREE.MeshStandardMaterial({color:0xb0b0b0});
+for(let x=-140;x<=140;x+=70){
+  for(let z=-140;z<=140;z+=70){
+    if(Math.abs(x)<50 && Math.abs(z)<50) continue;
+    
+    const column=new THREE.Mesh(
+      new THREE.BoxGeometry(1,8,1),
+      columnMaterial
+    );
+    column.position.set(x,4,z);
+    column.castShadow=true;
+    scene.add(column);
+  }
+}
+
+/* ================= CREATE TEXT SPRITE ================= */
+function getWeightedRandomViolation(){
+  // If no weights initialized, set all to 1.0
+  if(violationWeights.length===0){
+    violationWeights=new Array(VIOLATIONS.length).fill(1.0);
+  }
+  
+  // Calculate total weight
+  let totalWeight=violationWeights.reduce((sum,w)=>sum+w,0);
+  
+  // Pick random value
+  let random=Math.random()*totalWeight;
+  let cumulative=0;
+  
+  for(let i=0;i<VIOLATIONS.length;i++){
+    cumulative+=violationWeights[i];
+    if(random<=cumulative){
+      // Reduce weight for this violation (multiply by 0.5)
+      violationWeights[i]*=0.5;
+      usedViolations.push(i);
+      return VIOLATIONS[i];
+    }
+  }
+  
+  // Fallback
+  return VIOLATIONS[0];
+}
+
+/* ================= CREATE TEXT SPRITE ================= */
+function createTextSprite(text,bgColor,textColor){
+  if(!bgColor) bgColor='rgba(255,255,255,0.95)';
+  if(!textColor) textColor='#0b1020';
+  
+  const canvas=document.createElement('canvas');
+  const context=canvas.getContext('2d');
+  canvas.width=1024;
+  canvas.height=256;
+  
+  context.fillStyle=bgColor;
+  context.fillRect(0,0,canvas.width,canvas.height);
+  
+  context.font='bold 96px Arial';
+  context.fillStyle=textColor;
+  context.textAlign='center';
+  context.textBaseline='middle';
+  context.fillText(text,512,128);
+  
+  const texture=new THREE.Texture(canvas);
+  texture.needsUpdate=true;
+  
+  const spriteMaterial=new THREE.SpriteMaterial({map:texture});
+  const sprite=new THREE.Sprite(spriteMaterial);
+  sprite.scale.set(6,1.5,1);
+  
+  return sprite;
+}
+
+function updateTextSprite(sprite,text,bgColor,textColor){
+  if(!bgColor) bgColor='rgba(255,255,255,0.95)';
+  if(!textColor) textColor='#0b1020';
+  
+  const canvas=sprite.material.map.image;
+  const context=canvas.getContext('2d');
+  
+  context.fillStyle=bgColor;
+  context.fillRect(0,0,canvas.width,canvas.height);
+  
+  context.font='bold 96px Arial';
+  context.fillStyle=textColor;
+  context.textAlign='center';
+  context.textBaseline='middle';
+  context.fillText(text,512,128);
+  
+  sprite.material.map.needsUpdate=true;
+}
+
+/* ================= CREATE PERSON MODEL ================= */
+function createPersonModel(isGuard=false){
+  const group=new THREE.Group();
+  
+  const bodyColor=isGuard?0x1f2937:0x3b82f6;
+  
+  // Body
+  const body=new THREE.Mesh(
+    new THREE.BoxGeometry(0.6,0.8,0.4),
+    new THREE.MeshStandardMaterial({color:bodyColor})
+  );
+  body.position.y=0.9;
+  body.castShadow=true;
+  group.add(body);
+  
+  // Head
+  const head=new THREE.Mesh(
+    new THREE.SphereGeometry(0.25,8,8),
+    new THREE.MeshStandardMaterial({color:0xffdbac})
+  );
+  head.position.y=1.5;
+  head.castShadow=true;
+  group.add(head);
+  
+  if(isGuard){
+    // Police hat (cone on top)
+    const hatBase=new THREE.Mesh(
+      new THREE.CylinderGeometry(0.28,0.28,0.08,8),
+      new THREE.MeshStandardMaterial({color:0x1e40af})
+    );
+    hatBase.position.y=1.78;
+    hatBase.castShadow=true;
+    group.add(hatBase);
+    
+    const hatTop=new THREE.Mesh(
+      new THREE.ConeGeometry(0.2,0.3,8),
+      new THREE.MeshStandardMaterial({color:0x1e40af})
+    );
+    hatTop.position.y=2.05;
+    hatTop.castShadow=true;
+    group.add(hatTop);
+    
+    // Badge on body
+    const badge=new THREE.Mesh(
+      new THREE.CircleGeometry(0.1,8),
+      new THREE.MeshStandardMaterial({
+        color:0xffd700,
+        emissive:0xffa500,
+        emissiveIntensity:0.5
+      })
+    );
+    badge.position.set(0,1.2,0.21);
+    group.add(badge);
+  }
+  
+  // Arms
+  const armL=new THREE.Mesh(
+    new THREE.BoxGeometry(0.15,0.6,0.15),
+    new THREE.MeshStandardMaterial({color:bodyColor})
+  );
+  armL.position.set(-0.35,0.7,0);
+  armL.castShadow=true;
+  group.add(armL);
+  
+  const armR=new THREE.Mesh(
+    new THREE.BoxGeometry(0.15,0.6,0.15),
+    new THREE.MeshStandardMaterial({color:bodyColor})
+  );
+  armR.position.set(0.35,0.7,0);
+  armR.castShadow=true;
+  group.add(armR);
+  
+  // Legs
+  const legL=new THREE.Mesh(
+    new THREE.BoxGeometry(0.2,0.5,0.2),
+    new THREE.MeshStandardMaterial({color:0x1e3a8a})
+  );
+  legL.position.set(-0.2,0.25,0);
+  legL.castShadow=true;
+  group.add(legL);
+  
+  const legR=new THREE.Mesh(
+    new THREE.BoxGeometry(0.2,0.5,0.2),
+    new THREE.MeshStandardMaterial({color:0x1e3a8a})
+  );
+  legR.position.set(0.2,0.25,0);
+  legR.castShadow=true;
+  group.add(legR);
+  
+  return group;
+}
+
+/* ================= CREATE COMPUTER SETUP ================= */
+function createComputerSetup(){
+  const group=new THREE.Group();
+  
+  // Monitor
+  const monitor=new THREE.Mesh(
+    new THREE.BoxGeometry(1.2,0.9,0.1),
+    new THREE.MeshStandardMaterial({color:0x1f2937})
+  );
+  monitor.position.set(0,1.3,-0.5);
+  monitor.castShadow=true;
+  group.add(monitor);
+  
+  // Screen
+  const screen=new THREE.Mesh(
+    new THREE.BoxGeometry(1.1,0.8,0.05),
+    new THREE.MeshStandardMaterial({
+      color:0x60a5fa,
+      emissive:0x3b82f6,
+      emissiveIntensity:0.5
+    })
+  );
+  screen.position.set(0,1.3,-0.45);
+  group.add(screen);
+  
+  // Monitor stand
+  const stand=new THREE.Mesh(
+    new THREE.CylinderGeometry(0.08,0.08,0.3,8),
+    new THREE.MeshStandardMaterial({color:0x374151})
+  );
+  stand.position.set(0,0.95,-0.5);
+  stand.castShadow=true;
+  group.add(stand);
+  
+  // Keyboard
+  const keyboard=new THREE.Mesh(
+    new THREE.BoxGeometry(0.8,0.05,0.3),
+    new THREE.MeshStandardMaterial({color:0x1f2937})
+  );
+  keyboard.position.set(0,0.81,0.2);
+  keyboard.castShadow=true;
+  group.add(keyboard);
+  
+  // Mouse
+  const mouse=new THREE.Mesh(
+    new THREE.BoxGeometry(0.1,0.05,0.15),
+    new THREE.MeshStandardMaterial({color:0x374151})
+  );
+  mouse.position.set(0.5,0.81,0.3);
+  mouse.castShadow=true;
+  group.add(mouse);
+  
+  return group;
+}
+
+/* ================= BUILD OFFICE ================= */
+function buildOffice(count){
+  // Clear previous
+  desks.forEach(d=>scene.remove(d));
+  persons.forEach(p=>scene.remove(p));
+  labels.forEach(l=>scene.remove(l));
+  if(securityGuard){
+    scene.remove(securityGuard);
+  }
+  
+  desks=[];
+  persons=[];
+  labels=[];
+  employeeStates=[];
+  employeeViolations=[];
+  
+  const cols=Math.ceil(Math.sqrt(count));
+  const spacing=6;
+  const offset=(cols-1)*spacing/2;
+
+  for(let i=0;i<count;i++){
+    const x=(i%cols)*spacing-offset;
+    const z=Math.floor(i/cols)*spacing-offset;
+
+    // Desk
+    const desk=new THREE.Mesh(
+      new THREE.BoxGeometry(2.5,0.15,1.5),
+      new THREE.MeshStandardMaterial({color:0xd1d5db})
+    );
+    desk.position.set(x,0.75,z);
+    desk.castShadow=true;
+    desk.receiveShadow=true;
+    scene.add(desk);
+    desks.push(desk);
+    
+    // Desk legs
+    const legPositions=[[-1,0.5],[-1,-0.5],[1,0.5],[1,-0.5]];
+    legPositions.forEach(([dx,dz])=>{
+      const leg=new THREE.Mesh(
+        new THREE.BoxGeometry(0.08,0.7,0.08),
+        new THREE.MeshStandardMaterial({color:0x9ca3af})
+      );
+      leg.position.set(x+dx,0.35,z+dz);
+      leg.castShadow=true;
+      scene.add(leg);
+      desks.push(leg);
+    });
+
+    // Computer
+    const computer=createComputerSetup();
+    computer.position.set(x,0.05,z);
+    scene.add(computer);
+    desks.push(computer);
+
+    // Person
+    const person=createPersonModel(false);
+    person.position.set(x,0.05,z+0.6);
+    scene.add(person);
+    persons.push(person);
+    
+    // Randomly assign violation status based on configured rate
+    const violationChance=(100-noViolationRate)/100; // Convert to decimal
+    if(Math.random()<violationChance){
+      employeeStates.push('violating');
+      employeeViolations.push(getWeightedRandomViolation());
+    }else{
+      employeeStates.push('working');
+      employeeViolations.push(null);
+    }
+
+    // Label
+    const label=createTextSprite(names[i]);
+    label.position.set(x,3.5,z);
+    scene.add(label);
+    labels.push(label);
+  }
+  
+  // Create security guard (3x bigger)
+  securityGuard=createPersonModel(true);
+  securityGuard.scale.set(3,3,3);
+  securityGuard.position.set(0,0.05,0);
+  scene.add(securityGuard);
+  
+  // Security label (also bigger and higher)
+  const guardLabel=createTextSprite("🚔 IT Security",'rgba(30,64,175,0.9)','#ffffff');
+  guardLabel.position.set(0,8,0); // Higher position for bigger guard
+  guardLabel.scale.set(9,2.25,1); // 3x scale for label too
+  scene.add(guardLabel);
+  labels.push(guardLabel);
+  
+  securityPosition={x:0,y:0.05,z:0};
+}
+
+/* ================= GAME LOGIC ================= */
+function startGame(){
+  if(isGameRunning){
+    alert("Game đang chạy!");
+    return;
+  }
+  
+  names=document.getElementById("players").value
+    .split("\n").map(s=>s.trim()).filter(Boolean);
+  
+  if(names.length<2){
+    alert("Cần ít nhất 2 nhân viên!");
+    return;
+  }
+  
+  targetViolations=parseInt(document.getElementById("targetViolations").value)||3;
+  checkInterval=parseInt(document.getElementById("checkInterval").value)||2;
+  noViolationRate=parseInt(document.getElementById("noViolationRate").value)||75;
+  
+  // Validate no violation rate
+  if(noViolationRate<0) noViolationRate=0;
+  if(noViolationRate>100) noViolationRate=100;
+  
+  if(targetViolations>names.length){
+    alert("Số lượng vi phạm cần bắt không được lớn hơn số nhân viên!");
+    return;
+  }
+  
+  caughtViolations=[];
+  checkedViolators=[]; // Reset only violators list
+  violationWeights=[]; // Reset violation weights
+  usedViolations=[]; // Reset used violations
+  isGameRunning=true;
+  isPaused=false;
+  checkingEmployee=false;
+  currentCheckIndex=-1;
+  securityTarget=null;
+  
+  document.getElementById("ui").style.display="none";
+  
+  buildOffice(names.length);
+  updateHUD();
+  
+  // Start patrol
+  pickNextTarget();
+}
+
+function pickNextTarget(){
+  if(!isGameRunning || isPaused) return;
+  
+  // Get list of employees who haven't been caught for violations
+  let availableEmployees=[];
+  for(let i=0;i<persons.length;i++){
+    if(!checkedViolators.includes(i)){
+      availableEmployees.push(i);
+    }
+  }
+  
+  // If everyone who violates has been caught, game ends
+  if(availableEmployees.length===0){
+    showFinalReport();
+    return;
+  }
+  
+  // Pick random available employee (can recheck non-violators)
+  currentCheckIndex=availableEmployees[Math.floor(Math.random()*availableEmployees.length)];
+  const targetPos=persons[currentCheckIndex].position;
+  
+  securityTarget={
+    x:targetPos.x,
+    y:0.05,
+    z:targetPos.z+3 // Stand further from desk (bigger guard needs more space)
+  };
+}
+
+function checkEmployee(){
+  if(!isGameRunning || checkingEmployee) return;
+  
+  checkingEmployee=true;
+  isPaused=true;
+  
+  const employeeName=names[currentCheckIndex];
+  const isViolating=employeeStates[currentCheckIndex]==='violating';
+  const violation=employeeViolations[currentCheckIndex];
+  
+  // Show popup with loading
+  const popup=document.getElementById("popupOverlay");
+  const popupDiv=document.getElementById("popup");
+  const content=document.getElementById("popupContent");
+  
+  // Reset popup size
+  popupDiv.classList.remove('large');
+  
+  // Show loading state
+  content.innerHTML=`
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <h2 style="margin:0;">🚔 Kiểm tra nhân viên</h2>
+      <div class="tma-title" style="margin:0;">TMA</div>
+    </div>
+    <p style="font-size:20px;font-weight:700;color:#1f2937;margin:12px 0;">
+      ${employeeName}
+    </p>
+    <div style="text-align:center;padding:20px 0;">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">Đang kiểm tra...</div>
+    </div>
+  `;
+  
+  // Hide continue button during loading
+  document.getElementById("popupButton").style.display="none";
+  
+  popup.style.display="flex";
+  
+  // Wait 2 seconds before showing result
+  setTimeout(()=>{
+    if(isViolating){
+      // Mark this violator as checked (won't check again)
+      checkedViolators.push(currentCheckIndex);
+      
+      content.innerHTML=`
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <h2 style="margin:0;">🚔 Kiểm tra nhân viên</h2>
+          <div class="tma-title" style="margin:0;">TMA</div>
+        </div>
+        <p style="font-size:20px;font-weight:700;color:#1f2937;margin:12px 0;">
+          ${employeeName}
+        </p>
+        <div class="status-badge status-violation">VI PHẠM</div>
+        <div class="violation-detail">
+          <strong>Nội dung vi phạm:</strong><br>
+          ${violation}
+        </div>
+      `;
+      
+      // Change label color to red
+      updateTextSprite(labels[currentCheckIndex],employeeName,'rgba(239,68,68,0.9)','#ffffff');
+      
+      // Add to caught list
+      caughtViolations.push({name:employeeName,violation:violation});
+      updateHUD();
+      
+    }else{
+      // Non-violator - don't mark as checked, can be checked again
+      content.innerHTML=`
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <h2 style="margin:0;">🚔 Kiểm tra nhân viên</h2>
+          <div class="tma-title" style="margin:0;">TMA</div>
+        </div>
+        <p style="font-size:20px;font-weight:700;color:#1f2937;margin:12px 0;">
+          ${employeeName}
+        </p>
+        <div class="status-badge status-ok">KHÔNG VI PHẠM</div>
+        <p style="color:#059669;font-weight:600;margin-top:12px;">
+          Nhân viên đang làm việc chăm chỉ ✓
+        </p>
+      `;
+    }
+    
+    // Show continue button after result is displayed
+    document.getElementById("popupButton").style.display="block";
+  },2000);
+}
+
+function continuePatrol(){
+  const popup=document.getElementById("popupOverlay");
+  popup.style.display="none";
+  
+  checkingEmployee=false;
+  
+  // Check if we've caught enough violations
+  if(caughtViolations.length>=targetViolations){
+    showFinalReport();
+  }else{
+    // Wait for check interval before next patrol
+    setTimeout(()=>{
+      if(isGameRunning){
+        isPaused=false;
+        pickNextTarget();
+      }
+    },checkInterval*1000);
+  }
+}
+
+function showFinalReport(){
+  isGameRunning=false;
+  
+  const popup=document.getElementById("popupOverlay");
+  const popupDiv=document.getElementById("popup");
+  const content=document.getElementById("popupContent");
+  
+  // Make popup larger
+  popupDiv.classList.add('large');
+  
+  let reportHTML=`
+    <h2 style="color:#ef4444;margin:0 0 16px 0;font-size:28px;">📋 Báo cáo vi phạm TMA</h2>
+    <p style="font-weight:600;margin-bottom:16px;font-size:16px;">
+      Đã bắt đủ ${targetViolations} vi phạm!
+    </p>
+    <div id="finalReport">
+  `;
+  
+  caughtViolations.forEach((item,idx)=>{
+    reportHTML+=`
+      <div class="report-item">
+        <strong>${idx+1}. ${item.name}</strong>
+        <span class="violation-text">${item.violation}</span>
+      </div>
+    `;
+  });
+  
+  reportHTML+=`</div>
+    <button id="copyButton">📋 COPY DANH SÁCH</button>
+    <button id="resetButton">🔄 CHƠI LẠI</button>
+  `;
+  
+  content.innerHTML=reportHTML;
+  
+  popup.style.display="flex";
+  
+  // Add copy button listener
+  document.getElementById("copyButton").addEventListener("click",copyViolationList);
+  document.getElementById("resetButton").addEventListener("click",resetGame);
+}
+
+function copyViolationList(){
+  let text="📋 DANH SÁCH VI PHẠM TMA\n";
+  text+="=".repeat(40)+"\n\n";
+  
+  caughtViolations.forEach((item,idx)=>{
+    text+=`${idx+1}. ${item.name}\n`;
+    text+=`   Vi phạm: ${item.violation}\n\n`;
+  });
+  
+  text+="=".repeat(40)+"\n";
+  text+=`Tổng số vi phạm: ${caughtViolations.length}`;
+  
+  // Copy to clipboard
+  navigator.clipboard.writeText(text).then(()=>{
+    const btn=document.getElementById("copyButton");
+    const originalText=btn.innerText;
+    btn.innerText="✓ ĐÃ COPY!";
+    btn.style.background="linear-gradient(90deg,#059669,#047857)";
+    
+    setTimeout(()=>{
+      btn.innerText=originalText;
+      btn.style.background="linear-gradient(90deg,#10b981,#059669)";
+    },2000);
+  }).catch(err=>{
+    alert("Không thể copy: "+err);
+  });
+}
+
+function resetGame(){
+  const popup=document.getElementById("popupOverlay");
+  const popupDiv=document.getElementById("popup");
+  popup.style.display="none";
+  popupDiv.classList.remove('large');
+  document.getElementById("ui").style.display="block";
+  
+  isGameRunning=false;
+  isPaused=false;
+  caughtViolations=[];
+  checkedViolators=[];
+  updateHUD();
+}
+
+function updateHUD(){
+  const status=document.getElementById("status");
+  const list=document.getElementById("caughtList");
+  
+  if(!isGameRunning){
+    status.innerText="Chưa bắt đầu";
+    list.innerHTML='';
+    return;
+  }
+  
+  status.innerHTML=`
+    <strong>Đã bắt:</strong> ${caughtViolations.length}/${targetViolations}<br>
+    <span style="color:#6b7280;font-size:12px;">
+      ${isPaused?'⏸️ Đang kiểm tra':'🚔 Đang tuần tra'}
+    </span>
+  `;
+  
+  if(caughtViolations.length>0){
+    let listHTML='<strong>Danh sách vi phạm:</strong><br>';
+    caughtViolations.forEach((item,idx)=>{
+      listHTML+=`
+        <div class="violation-item">
+          ${idx+1}. <strong>${item.name}</strong><br>
+          <span style="color:#991b1b;font-size:11px;">${item.violation}</span>
+        </div>
+      `;
+    });
+    list.innerHTML=listHTML;
+  }else{
+    list.innerHTML='<em style="color:#9ca3af;">Chưa có vi phạm</em>';
+  }
+}
+
+/* ================= UPDATE SECURITY MOVEMENT ================= */
+function updateSecurity(){
+  if(!isGameRunning || !securityGuard || !securityTarget || isPaused) return;
+  
+  const dx=securityTarget.x-securityPosition.x;
+  const dz=securityTarget.z-securityPosition.z;
+  const dist=Math.sqrt(dx*dx+dz*dz);
+  
+  if(dist>0.5){ // Slightly larger threshold for bigger guard
+    // Move towards target
+    securityPosition.x+=dx/dist*patrolSpeed;
+    securityPosition.z+=dz/dist*patrolSpeed;
+    
+    securityGuard.position.x=securityPosition.x;
+    securityGuard.position.z=securityPosition.z;
+    
+    // Update label (higher for bigger guard)
+    labels[labels.length-1].position.x=securityPosition.x;
+    labels[labels.length-1].position.z=securityPosition.z;
+    labels[labels.length-1].position.y=8;
+    
+    // Rotate to face movement direction
+    securityGuard.rotation.y=Math.atan2(dx,dz);
+  }else{
+    // Reached target, check employee
+    securityTarget=null;
+    checkEmployee();
+  }
+}
+
+/* ================= CAMERA UPDATE ================= */
+function updateCamera(){
+  // Only allow WASD movement when game is running
+  if(isGameRunning){
+    const panSpeed=0.5;
+    
+    const cameraDir=new THREE.Vector3();
+    camera.getWorldDirection(cameraDir);
+    cameraDir.y=0;
+    cameraDir.normalize();
+    
+    const rightDir=new THREE.Vector3(-cameraDir.z,0,cameraDir.x);
+    
+    if(keys['w']||keys['W']){
+      cameraTarget.x+=cameraDir.x*panSpeed;
+      cameraTarget.z+=cameraDir.z*panSpeed;
+    }
+    if(keys['s']||keys['S']){
+      cameraTarget.x-=cameraDir.x*panSpeed;
+      cameraTarget.z-=cameraDir.z*panSpeed;
+    }
+    if(keys['a']||keys['A']){
+      cameraTarget.x-=rightDir.x*panSpeed;
+      cameraTarget.z-=rightDir.z*panSpeed;
+    }
+    if(keys['d']||keys['D']){
+      cameraTarget.x+=rightDir.x*panSpeed;
+      cameraTarget.z+=rightDir.z*panSpeed;
+    }
+  }
+  
+  camera.position.x=cameraTarget.x+cameraDistance*Math.sin(cameraAngleV)*Math.cos(cameraAngleH);
+  camera.position.y=cameraTarget.y+cameraDistance*Math.cos(cameraAngleV);
+  camera.position.z=cameraTarget.z+cameraDistance*Math.sin(cameraAngleV)*Math.sin(cameraAngleH);
+  camera.lookAt(cameraTarget);
+}
+
+/* ================= ANIMATION LOOP ================= */
+function animate(){
+  requestAnimationFrame(animate);
+  updateSecurity();
+  updateCamera();
+  renderer.render(scene,camera);
+}
+animate();
+
+/* ================= EVENT LISTENERS ================= */
+document.getElementById("start").addEventListener("click",startGame);
+
+document.getElementById("popupButton").addEventListener("click",()=>{
+  // This button is only for continuing during game
+  // Reset is handled by resetButton in final report
+  continuePatrol();
+});
+
+// Keyboard
+document.addEventListener("keydown",(e)=>{
+  keys[e.key]=true;
+});
+
+document.addEventListener("keyup",(e)=>{
+  keys[e.key]=false;
+});
+
+// Mouse controls
+renderer.domElement.addEventListener("mousedown",(e)=>{
+  isDragging=true;
+  lastMouseX=e.clientX;
+  lastMouseY=e.clientY;
+});
+
+document.addEventListener("mouseup",()=>{
+  isDragging=false;
+});
+
+document.addEventListener("mousemove",(e)=>{
+  if(!isDragging)return;
+  
+  const deltaX=e.clientX-lastMouseX;
+  const deltaY=e.clientY-lastMouseY;
+  
+  cameraAngleH-=deltaX*0.01;
+  cameraAngleV=Math.max(0.1,Math.min(Math.PI/2-0.1,cameraAngleV+deltaY*0.01));
+  
+  lastMouseX=e.clientX;
+  lastMouseY=e.clientY;
+});
+
+// Zoom
+renderer.domElement.addEventListener("wheel",(e)=>{
+  e.preventDefault();
+  cameraDistance+=e.deltaY*0.02;
+  cameraDistance=Math.max(10,Math.min(80,cameraDistance));
+});
+
+window.addEventListener("resize",()=>{
+  camera.aspect=innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+});
+
+console.log("IT Security Patrol ready! Start game to enable WASD movement. Drag to rotate, scroll to zoom");
+</script>
+</body>
+</html>
