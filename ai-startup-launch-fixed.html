@@ -124,8 +124,8 @@ Player 4</textarea>
 
 <div id="hud">
   <div id="debug">Three.js: loading...</div>
-  <div id="event">Event: —</div>
-  <div id="eventLog" style="font-size:13px;font-weight:600;color:#333;margin-bottom:8px;max-height:80px;overflow-y:auto;line-height:1.5;"></div>
+  <div id="event" style="font-size:16px;font-weight:700;margin-bottom:8px;color:#0a5;">Event: —</div>
+  <div id="eventLog" style="font-size:15px;font-weight:600;color:#333;margin-bottom:10px;max-height:180px;overflow-y:auto;line-height:1.8;padding:8px;background:rgba(0,170,85,0.05);border-radius:8px;"></div>
   <div id="eventProgress"></div>
   <div id="timer">Time: —</div>
   <div id="top">Top: —</div>
@@ -219,26 +219,36 @@ let personTargets=[];
 let personOriginalPos=[];
 
 const EVENTS=[
- {n:"💸 Nhận vốn VC",v:6},
- {n:"⚡ Tăng tốc GPU",v:4},
- {n:"🌐 Viral trên mạng",v:8},
- {n:"🤖 Đột phá công nghệ",v:10},
- {n:"🐛 Lỗi hệ thống",v:-4},
- {n:"💻 Server sập",v:-6},
- {n:"⚖️ Vấn đề pháp lý",v:-3},
- {n:"📈 Thị trường tăng",v:5},
- {n:"🎯 Ra mắt sản phẩm",v:7},
- {n:"🔥 Đối thủ tấn công",v:-5},
- {n:"💡 Sáng kiến mới",v:6},
- {n:"⚠️ Bị tấn công bảo mật",v:-7}
+ {n:"✅ Pass code review",v:6},
+ {n:"🐛 Fix bug critical",v:5},
+ {n:"🧪 Test case pass 100%",v:7},
+ {n:"📝 BA hoàn thành user story",v:5},
+ {n:"🎯 Sprint planning thành công",v:6},
+ {n:"🐞 Phát hiện bug production",v:-6},
+ {n:"💥 Merge conflict nghiêm trọng",v:-5},
+ {n:"⏰ Deadline bị trượt",v:-4},
+ {n:"🔥 Production server down",v:-8},
+ {n:"❌ Test case fail liên tục",v:-5},
+ {n:"📊 Daily standup hiệu quả",v:4},
+ {n:"🚀 Deploy thành công",v:8},
+ {n:"💻 Refactor code thành công",v:6},
+ {n:"📋 QA approve feature",v:5},
+ {n:"⚠️ Hotfix khẩn cấp",v:-7},
+ {n:"✨ Code quality tốt",v:5},
+ {n:"🔄 Regression test fail",v:-6},
+ {n:"📱 UAT thất bại",v:-5},
+ {n:"🎉 Sprint review xuất sắc",v:7},
+ {n:"🤝 PO chấp nhận deliverable",v:6}
 ];
 
 const SPECIAL_EVENTS=[
- {n:"🏆 Đột phá công nghệ lớn",bonus:15,count:1},
- {n:"💎 Đầu tư lớn",bonus:12,count:2},
- {n:"🎁 Gặp nhà đầu tư thiên thần",bonus:10,count:3},
- {n:"⭐ Bằng sáng chế được duyệt",bonus:8,count:2},
- {n:"🚀 Ký hợp đồng hợp tác",bonus:7,count:3}
+ {n:"🏆 Release version thành công",bonus:15,count:1},
+ {n:"💎 Zero bug sprint",bonus:12,count:2},
+ {n:"🎁 Automation test 100%",bonus:10,count:2},
+ {n:"⭐ Performance tăng 200%",bonus:10,count:2},
+ {n:"🚀 CI/CD hoàn hảo",bonus:8,count:3},
+ {n:"🌟 Customer satisfaction cao",bonus:9,count:2},
+ {n:"💪 Team velocity tăng đột biến",bonus:7,count:3}
 ];
 
 /* ================= CREATE TEXT SPRITE ================= */

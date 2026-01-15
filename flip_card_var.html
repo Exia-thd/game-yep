@@ -1,0 +1,1125 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>🃏 Lật Thẻ Var - TMA Party 3D 🎉</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+html,body{
+  margin:0;height:100%;
+  background:linear-gradient(135deg,#667eea 0%,#764ba2 50%,#f093fb 100%);
+  background-size:200% 200%;
+  animation:bgShift 15s ease infinite;
+  font-family:'Comic Sans MS',cursive,system-ui,Arial;
+  color:#0b1020;
+  overflow:hidden;
+}
+@keyframes bgShift{
+  0%, 100%{background-position:0% 50%;}
+  50%{background-position:100% 50%;}
+}
+
+#ui{
+  position:fixed;top:12px;left:12px;width:380px;
+  background:linear-gradient(145deg,rgba(255,255,255,0.96),rgba(248,249,255,0.96));
+  border-radius:20px;padding:20px;
+  box-shadow:0 20px 60px rgba(102,126,234,0.6), 0 0 40px rgba(255,165,0,0.3);
+  z-index:10;
+  border:3px solid #ffa500;
+  backdrop-filter:blur(15px);
+  animation:panelFloat 3s ease-in-out infinite;
+}
+@keyframes panelFloat{
+  0%, 100%{transform:translateY(0px);}
+  50%{transform:translateY(-5px);}
+}
+
+.form-group{
+  margin-bottom:14px;
+}
+.form-group label{
+  display:block;
+  font-weight:700;
+  margin-bottom:6px;
+  color:#764ba2;
+  font-size:15px;
+  text-shadow:0 0 10px rgba(118,75,162,0.2);
+}
+textarea,input{
+  width:100%;padding:10px;
+  border-radius:12px;border:2px solid #667eea;
+  font-family:inherit;
+  transition:all 0.3s;
+  background:rgba(255,255,255,0.9);
+}
+textarea:focus,input:focus{
+  outline:none;
+  border-color:#ffd700;
+  box-shadow:0 0 0 3px rgba(255,215,0,0.3), 0 0 20px rgba(255,215,0,0.2);
+  transform:translateY(-2px);
+}
+button{
+  width:100%;padding:14px;border-radius:12px;
+  border:none;font-weight:700;cursor:pointer;
+  background:linear-gradient(135deg,#ffa500 0%,#ffb84d 50%,#ffa500 100%);
+  background-size:200% 100%;
+  color:#764ba2;
+  font-size:16px;
+  transition:all 0.3s;
+  box-shadow:0 5px 15px rgba(255,165,0,0.4);
+  animation:gradientSlide 3s ease infinite;
+  position:relative;
+  overflow:hidden;
+}
+button::before{
+  content:'';position:absolute;top:50%;left:50%;
+  width:0;height:0;background:rgba(255,255,255,0.3);
+  border-radius:50%;transform:translate(-50%,-50%);
+  transition:width 0.6s, height 0.6s;
+}
+button:hover::before{
+  width:300%;height:300%;
+}
+button:hover{
+  transform:translateY(-3px) scale(1.02);
+  box-shadow:0 10px 30px rgba(255,165,0,0.7), 0 0 20px rgba(255,165,0,0.4);
+}
+@keyframes gradientSlide{
+  0%, 100%{background-position:0% 50%;}
+  50%{background-position:100% 50%;}
+}
+
+#hud{
+  position:fixed;right:12px;top:12px;width:340px;
+  background:linear-gradient(145deg,rgba(255,255,255,0.96),rgba(248,249,255,0.96));
+  border-radius:20px;padding:16px;
+  box-shadow:0 20px 60px rgba(102,126,234,0.5), 0 0 30px rgba(102,126,234,0.3);
+  z-index:10;
+  border:3px solid #667eea;
+  backdrop-filter:blur(15px);
+  animation:infoPulse 2s ease-in-out infinite;
+}
+@keyframes infoPulse{
+  0%, 100%{box-shadow:0 20px 60px rgba(102,126,234,0.5), 0 0 30px rgba(102,126,234,0.3);}
+  50%{box-shadow:0 20px 60px rgba(102,126,234,0.5), 0 0 50px rgba(102,126,234,0.6), 0 0 80px rgba(102,126,234,0.2);}
+}
+#status{
+  font-size:15px;
+  font-weight:600;
+  margin-bottom:10px;
+  color:#764ba2;
+}
+#caughtList{
+  font-size:13px;
+  line-height:1.7;
+  max-height:250px;
+  overflow-y:auto;
+  padding:10px;
+  background:rgba(102,126,234,0.08);
+  border-radius:10px;
+}
+.drunk-item{
+  padding:8px 0;
+  border-bottom:2px solid rgba(255,165,0,0.3);
+  animation:slideIn 0.5s ease-out;
+}
+.drunk-item:last-child{
+  border-bottom:none;
+}
+@keyframes slideIn{
+  from{opacity:0;transform:translateX(20px);}
+  to{opacity:1;transform:translateX(0);}
+}
+
+#instruction{
+  position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+  background:linear-gradient(145deg,rgba(255,255,255,0.95),rgba(240,248,255,0.95));
+  padding:15px 30px;border-radius:15px;
+  box-shadow:0 10px 30px rgba(0,0,0,0.3), 0 0 20px rgba(102,126,234,0.3);
+  font-weight:700;color:#667eea;font-size:16px;
+  border:2px solid rgba(255,255,255,0.8);
+  backdrop-filter:blur(15px);
+  display:none;
+  z-index:9;
+  text-align:center;
+  animation:instructionPulse 2s ease-in-out infinite;
+}
+@keyframes instructionPulse{
+  0%, 100%{transform:translateX(-50%) scale(1);}
+  50%{transform:translateX(-50%) scale(1.05);}
+}
+
+/* Popup overlay */
+#popupOverlay{
+  position:fixed;
+  top:0;left:0;right:0;bottom:0;
+  background:rgba(102,126,234,0.9);
+  display:none;
+  z-index:100;
+  align-items:center;
+  justify-content:center;
+  backdrop-filter:blur(10px);
+}
+#popup{
+  background:linear-gradient(145deg,#ffffff,#f8f9ff);
+  border-radius:24px;
+  padding:32px;
+  max-width:550px;
+  width:92%;
+  box-shadow:0 30px 100px rgba(0,0,0,0.5), 0 0 60px rgba(255,165,0,0.5);
+  border:4px solid #ffa500;
+  animation:popIn 0.4s cubic-bezier(0.68,-0.55,0.265,1.55);
+  box-sizing:border-box;
+  overflow:hidden;
+}
+@keyframes popIn{
+  from{transform:scale(0.5) rotate(-5deg);opacity:0;}
+  to{transform:scale(1) rotate(0deg);opacity:1;}
+}
+#popup.large{
+  max-width:750px;
+  max-height:88vh;
+  overflow-y:auto;
+}
+#popup h2{
+  margin:0 0 18px 0;
+  color:#764ba2;
+  font-size:28px;
+  text-align:center;
+  word-wrap:break-word;
+  overflow-wrap:break-word;
+  text-shadow:0 0 20px rgba(118,75,162,0.3);
+}
+.party-title{
+  color:#ffa500;
+  font-size:36px;
+  font-weight:900;
+  margin:10px 0;
+  text-shadow:2px 2px 0 #764ba2, 0 0 20px rgba(255,165,0,0.5);
+  text-align:center;
+  box-sizing:border-box;
+  animation:titleGlow 2s ease-in-out infinite;
+}
+@keyframes titleGlow{
+  0%, 100%{text-shadow:2px 2px 0 #764ba2, 0 0 20px rgba(255,165,0,0.5);}
+  50%{text-shadow:2px 2px 0 #764ba2, 0 0 30px rgba(255,165,0,0.8), 0 0 50px rgba(255,165,0,0.3);}
+}
+.status-badge{
+  display:inline-block;
+  padding:10px 20px;
+  border-radius:12px;
+  font-weight:700;
+  font-size:18px;
+  margin:15px 0;
+  text-align:center;
+  width:100%;
+  animation:bounce 0.6s ease-in-out;
+  box-sizing:border-box;
+}
+@keyframes bounce{
+  0%,100%{transform:scale(1);}
+  50%{transform:scale(1.08);}
+}
+.status-ok{
+  background:linear-gradient(135deg,#00d2ff,#3a7bd5);
+  color:white;
+  box-shadow:0 5px 20px rgba(0,210,255,0.5);
+}
+.status-drunk{
+  background:linear-gradient(135deg,#ff6b6b,#ee5a6f);
+  color:white;
+  box-shadow:0 5px 20px rgba(255,107,107,0.5);
+}
+.drunk-detail{
+  background:linear-gradient(135deg,#ffe66d,#ffed4e);
+  border-left:5px solid #ffa500;
+  padding:16px;
+  border-radius:10px;
+  margin:15px 0;
+  font-size:15px;
+  color:#764ba2;
+  font-weight:600;
+  text-align:center;
+  word-wrap:break-word;
+  overflow-wrap:break-word;
+  max-width:100%;
+  box-sizing:border-box;
+  box-shadow:0 5px 15px rgba(255,230,109,0.3);
+}
+.gift-box{
+  font-size:60px;
+  text-align:center;
+  margin:15px 0;
+  animation:shake 0.8s infinite, giftGlow 2s ease-in-out infinite;
+}
+@keyframes shake{
+  0%,100%{transform:rotate(0deg) scale(1);}
+  25%{transform:rotate(-5deg) scale(1.05);}
+  75%{transform:rotate(5deg) scale(1.05);}
+}
+@keyframes giftGlow{
+  0%, 100%{filter:drop-shadow(0 0 10px rgba(255,165,0,0.5));}
+  50%{filter:drop-shadow(0 0 20px rgba(255,215,0,0.8));}
+}
+#popupButton{
+  width:100%;
+  margin-top:20px;
+  padding:14px;
+  background:linear-gradient(135deg,#667eea,#764ba2);
+  color:white;
+  border:none;
+  border-radius:12px;
+  font-weight:700;
+  font-size:17px;
+  cursor:pointer;
+  transition:all 0.3s;
+  box-shadow:0 5px 15px rgba(102,126,234,0.4);
+}
+#popupButton:hover{
+  transform:translateY(-2px);
+  box-shadow:0 8px 20px rgba(102,126,234,0.6);
+}
+
+/* Final report popup */
+#finalReport{
+  max-height:420px;
+  overflow-y:auto;
+  margin-bottom:18px;
+}
+.report-item{
+  padding:16px 20px;
+  background:linear-gradient(135deg,#fff,#f8f9ff);
+  border-radius:12px;
+  margin-bottom:15px;
+  border-left:5px solid #ffa500;
+  font-size:16px;
+  box-shadow:0 5px 15px rgba(0,0,0,0.15);
+  transition:all 0.3s;
+}
+.report-item:hover{
+  transform:translateX(5px);
+  box-shadow:0 8px 25px rgba(102,126,234,0.3);
+}
+.report-item strong{
+  font-size:18px;
+  color:#764ba2;
+}
+.report-item .drunk-text{
+  color:#ff6b6b;
+  margin-top:6px;
+  display:block;
+  font-weight:600;
+}
+.report-item .gift-text{
+  color:#ffa500;
+  margin-top:6px;
+  display:block;
+  font-weight:600;
+  font-style:italic;
+}
+#copyButton{
+  width:100%;
+  margin-bottom:10px;
+  padding:14px;
+  background:linear-gradient(135deg,#00d2ff,#3a7bd5);
+  color:white;
+  border:none;
+  border-radius:12px;
+  font-weight:700;
+  font-size:17px;
+  cursor:pointer;
+  transition:all 0.3s;
+  box-shadow:0 5px 15px rgba(0,210,255,0.4);
+}
+#copyButton:hover{
+  transform:translateY(-2px);
+  box-shadow:0 8px 20px rgba(0,210,255,0.6);
+}
+#resetButton{
+  width:100%;
+  padding:14px;
+  background:linear-gradient(135deg,#667eea,#764ba2);
+  color:white;
+  border:none;
+  border-radius:12px;
+  font-weight:700;
+  font-size:17px;
+  cursor:pointer;
+  transition:all 0.3s;
+  box-shadow:0 5px 15px rgba(102,126,234,0.4);
+}
+#resetButton:hover{
+  transform:translateY(-2px);
+  box-shadow:0 8px 20px rgba(102,126,234,0.6);
+}
+canvas{display:block;position:fixed;top:0;left:0;z-index:1;}
+</style>
+</head>
+
+<body>
+
+<div id="ui">
+  <h2 style="margin:0 0 15px 0;color:#764ba2;text-align:center;font-size:24px;text-shadow:0 0 15px rgba(118,75,162,0.3);">� LẬT THẺ GIẬT GIẢI 🎉</h2>
+  
+  <div class="form-group">
+    <label>🎭 Danh sách người tham gia:</label>
+    <textarea id="players" rows="6" placeholder="Mỗi dòng 1 Var...">Var Nguyễn
+Var Trần
+Var Lê
+Var Phạm
+Var Hoàng
+Var Võ</textarea>
+  </div>
+  
+  <div class="form-group">
+    <label>🎯 Số giải thưởng:</label>
+    <input id="targetDrunks" type="number" value="3" min="1">
+  </div>
+  
+  <div class="form-group">
+    <label>⏱️ Thời gian giữa mỗi lần lật (giây):</label>
+    <input id="flipInterval" type="number" value="2" min="1" max="5">
+  </div>
+  
+  <button id="start">🎊 BẮT ĐẦU LẬT THẺ!</button>
+</div>
+
+<div id="hud">
+  <div id="status">🎉 Sẵn sàng lật thẻ!</div>
+  <div id="caughtList"></div>
+</div>
+
+<div id="instruction">
+  ✨ Đang tự động quay số... Chờ đợi phép màu! 🎁
+</div>
+
+<!-- Popup overlay -->
+<div id="popupOverlay">
+  <div id="popup">
+    <div id="popupContent"></div>
+    <button id="popupButton">TIẾP TỤC LẬT THẺ 🃏</button>
+  </div>
+</div>
+
+<!-- THREE.JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<script>
+/* ================= GAME DATA ================= */
+let names=[];
+let targetPrizes=3;
+let flipInterval=2;
+let winners=[];
+let flippedCards=[];
+let isGameRunning=false;
+let isPaused=false;
+let autoFlipTimer=null;
+
+let cards=[];
+let spotlights=[];
+let currentSpotlight=null;
+
+/* ================= SCENE SETUP ================= */
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x87ceeb);
+scene.fog=new THREE.Fog(0x87ceeb,50,200);
+
+const camera=new THREE.PerspectiveCamera(60,innerWidth/innerHeight,0.1,500);
+camera.position.set(0,25,45);
+camera.lookAt(0,0,0);
+
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
+renderer.setSize(innerWidth,innerHeight);
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const raycaster=new THREE.Raycaster();
+const mouse=new THREE.Vector2();
+
+/* ================= LIGHTING ================= */
+scene.add(new THREE.AmbientLight(0xffffff,0.8));
+const sun=new THREE.DirectionalLight(0xfff4e0,1.1);
+sun.position.set(-30,50,20);
+sun.castShadow=true;
+sun.shadow.mapSize.width=2048;
+sun.shadow.mapSize.height=2048;
+sun.shadow.camera.left=-60;
+sun.shadow.camera.right=60;
+sun.shadow.camera.top=60;
+sun.shadow.camera.bottom=-60;
+scene.add(sun);
+
+const hemiLight=new THREE.HemisphereLight(0x87CEEB,0x228b22,0.6);
+scene.add(hemiLight);
+
+// Party lights with animation
+const partyLights=[];
+const partyLightColors=[0xff6b6b,0x4ecdc4,0xffe66d,0xaa96da];
+const partyLightPositions=[[-25,20,25],[25,20,25],[25,20,-25],[-25,20,-25]];
+partyLightPositions.forEach((pos,i)=>{
+  const light=new THREE.PointLight(partyLightColors[i],0.9,50);
+  light.position.set(...pos);
+  partyLights.push(light);
+  scene.add(light);
+});
+
+// Create spotlight pool for dramatic effect
+for(let i=0;i<5;i++){
+  const spotlight=new THREE.SpotLight(0xffd700,0,50,Math.PI/6,0.3,2);
+  spotlight.position.set(0,30,0);
+  spotlight.castShadow=true;
+  spotlight.shadow.mapSize.width=1024;
+  spotlight.shadow.mapSize.height=1024;
+  spotlight.visible=false;
+  spotlights.push(spotlight);
+  scene.add(spotlight);
+}
+
+/* ================= FLOOR ================= */
+const floor=new THREE.Mesh(
+  new THREE.PlaneGeometry(200,200),
+  new THREE.MeshStandardMaterial({
+    color:0x2ecc71,
+    roughness:0.8,
+    metalness:0.2
+  })
+);
+floor.rotation.x=-Math.PI/2;
+floor.receiveShadow=true;
+scene.add(floor);
+
+// Table surface for cards
+const table=new THREE.Mesh(
+  new THREE.PlaneGeometry(80,60),
+  new THREE.MeshStandardMaterial({
+    color:0x8b4513,
+    roughness:0.6,
+    metalness:0.1
+  })
+);
+table.rotation.x=-Math.PI/2;
+table.position.y=0.1;
+table.receiveShadow=true;
+scene.add(table);
+
+// Party decorations
+const balloonColors=[0xdc2626,0x0891b2,0xca8a04,0x7c3aed,0xdb2777];
+for(let i=0;i<30;i++){
+  const balloon=new THREE.Mesh(
+    new THREE.SphereGeometry(0.6,10,10),
+    new THREE.MeshStandardMaterial({
+      color:balloonColors[i%balloonColors.length],
+      roughness:0.2,
+      metalness:0.3,
+      emissive:balloonColors[i%balloonColors.length],
+      emissiveIntensity:0.2
+    })
+  );
+  const angle=Math.random()*Math.PI*2;
+  const radius=50+Math.random()*30;
+  balloon.position.set(
+    Math.cos(angle)*radius,
+    10+Math.random()*5,
+    Math.sin(angle)*radius
+  );
+  scene.add(balloon);
+}
+
+// Confetti particles
+const confettiParticles=[];
+function createConfetti(){
+  const confettiColors=[0xff6b81,0x70a1ff,0xfeca57,0x48dbfb,0xff6348];
+  for(let i=0;i<50;i++){
+    const geo=new THREE.BoxGeometry(0.2,0.2,0.05);
+    const mat=new THREE.MeshStandardMaterial({
+      color:confettiColors[Math.floor(Math.random()*confettiColors.length)],
+      emissive:confettiColors[Math.floor(Math.random()*confettiColors.length)],
+      emissiveIntensity:0.3
+    });
+    const c=new THREE.Mesh(geo,mat);
+    c.position.set(
+      (Math.random()-0.5)*60,
+      -5,
+      (Math.random()-0.5)*40
+    );
+    c.rotation.set(
+      Math.random()*Math.PI,
+      Math.random()*Math.PI,
+      Math.random()*Math.PI
+    );
+    c.velocity={
+      x:(Math.random()-0.5)*0.1,
+      y:0.3+Math.random()*0.2,
+      z:(Math.random()-0.5)*0.1,
+      rotX:(Math.random()-0.5)*0.1,
+      rotY:(Math.random()-0.5)*0.1,
+      rotZ:(Math.random()-0.5)*0.1
+    };
+    confettiParticles.push(c);
+    scene.add(c);
+  }
+}
+
+/* ================= HELPER FUNCTIONS ================= */
+function activateSpotlight(targetPos){
+  if(currentSpotlight){
+    currentSpotlight.visible=false;
+  }
+  
+  const availableSpotlight=spotlights.find(s=>!s.visible)||spotlights[0];
+  availableSpotlight.position.set(targetPos.x,30,targetPos.z);
+  availableSpotlight.target.position.copy(targetPos);
+  availableSpotlight.intensity=3;
+  availableSpotlight.visible=true;
+  
+  currentSpotlight=availableSpotlight;
+  scene.add(availableSpotlight.target);
+}
+
+function deactivateAllSpotlights(){
+  spotlights.forEach(s=>{
+    s.visible=false;
+    s.intensity=0;
+  });
+  currentSpotlight=null;
+}
+
+function createTextTexture(text,bgColor='#ffffff',textColor='#764ba2',fontSize=120){
+  const canvas=document.createElement('canvas');
+  const context=canvas.getContext('2d');
+  canvas.width=512;
+  canvas.height=512;
+  
+  context.fillStyle=bgColor;
+  context.fillRect(0,0,canvas.width,canvas.height);
+  
+  context.font=`bold ${fontSize}px Arial`;
+  context.fillStyle=textColor;
+  context.textAlign='center';
+  context.textBaseline='middle';
+  
+  const words=text.split(' ');
+  const lineHeight=fontSize*1.2;
+  let lines=[];
+  let currentLine=words[0];
+  
+  for(let i=1;i<words.length;i++){
+    const testLine=currentLine+' '+words[i];
+    const metrics=context.measureText(testLine);
+    if(metrics.width>canvas.width-40){
+      lines.push(currentLine);
+      currentLine=words[i];
+    }else{
+      currentLine=testLine;
+    }
+  }
+  lines.push(currentLine);
+  
+  const totalHeight=lines.length*lineHeight;
+  const startY=(canvas.height-totalHeight)/2+lineHeight/2;
+  
+  lines.forEach((line,i)=>{
+    context.fillText(line,canvas.width/2,startY+i*lineHeight);
+  });
+  
+  const texture=new THREE.Texture(canvas);
+  texture.needsUpdate=true;
+  return texture;
+}
+
+function createCard(name,index){
+  const cardGroup=new THREE.Group();
+  
+  // Card back (blue pattern)
+  const backGeo=new THREE.PlaneGeometry(5,7);
+  const backMat=new THREE.MeshStandardMaterial({
+    color:0x667eea,
+    emissive:0x667eea,
+    emissiveIntensity:0.3,
+    roughness:0.3,
+    metalness:0.5
+  });
+  const backMesh=new THREE.Mesh(backGeo,backMat);
+  backMesh.position.z=0.01;
+  cardGroup.add(backMesh);
+  
+  // Card front (white with name)
+  const frontTexture=createTextTexture(name,'#ffffff','#764ba2',80);
+  const frontMat=new THREE.MeshStandardMaterial({
+    map:frontTexture,
+    emissive:0xffffff,
+    emissiveIntensity:0.1,
+    roughness:0.4,
+    metalness:0.2
+  });
+  const frontMesh=new THREE.Mesh(backGeo,frontMat);
+  frontMesh.position.z=-0.01;
+  frontMesh.rotation.y=Math.PI;
+  cardGroup.add(frontMesh);
+  
+  // Card border/edge
+  const edgeGeo=new THREE.BoxGeometry(5,7,0.1);
+  const edgeMat=new THREE.MeshStandardMaterial({
+    color:0xffa500,
+    emissive:0xffa500,
+    emissiveIntensity:0.2,
+    roughness:0.3,
+    metalness:0.7
+  });
+  const edgeMesh=new THREE.Mesh(edgeGeo,edgeMat);
+  edgeMesh.castShadow=true;
+  edgeMesh.receiveShadow=true;
+  cardGroup.add(edgeMesh);
+  
+  cardGroup.userData={
+    name:name,
+    index:index,
+    isFlipped:false,
+    isFlipping:false,
+    targetRotation:0,
+    backMesh:backMesh,
+    frontMesh:frontMesh,
+    edgeMesh:edgeMesh,
+    clickable:edgeMesh
+  };
+  
+  return cardGroup;
+}
+
+function arrangeCards(count){
+  const cols=Math.min(6,Math.ceil(Math.sqrt(count*1.2)));
+  const rows=Math.ceil(count/cols);
+  const spacingX=6.5;
+  const spacingZ=8.5;
+  const offsetX=(cols-1)*spacingX/2;
+  const offsetZ=(rows-1)*spacingZ/2;
+  
+  for(let i=0;i<count;i++){
+    const col=i%cols;
+    const row=Math.floor(i/cols);
+    const x=col*spacingX-offsetX;
+    const z=row*spacingZ-offsetZ;
+    
+    cards[i].position.set(x,3.5,z);
+    cards[i].rotation.set(0,0,0);
+    cards[i].userData.targetRotation=0;
+  }
+}
+
+function buildCardGame(playerNames){
+  cards.forEach(c=>scene.remove(c));
+  cards=[];
+  
+  playerNames.forEach((name,i)=>{
+    const card=createCard(name,i);
+    scene.add(card);
+    cards.push(card);
+  });
+  
+  arrangeCards(playerNames.length);
+  deactivateAllSpotlights();
+}
+
+/* ================= GAME LOGIC ================= */
+function startGame(){
+  if(isGameRunning){
+    alert("🎉 Game đang chạy rồi!");
+    return;
+  }
+  
+  names=document.getElementById("players").value
+    .split("\n").map(s=>s.trim()).filter(Boolean);
+  
+  if(names.length<2){
+    alert("🎭 Cần ít nhất 2 người để chơi!");
+    return;
+  }
+  
+  targetPrizes=parseInt(document.getElementById("targetDrunks").value)||3;
+  flipInterval=parseInt(document.getElementById("flipInterval").value)||2;
+  
+  if(targetPrizes>names.length){
+    alert("🎯 Số giải không thể nhiều hơn số người tham gia!");
+    return;
+  }
+  
+  winners=[];
+  flippedCards=[];
+  isGameRunning=true;
+  isPaused=false;
+  
+  document.getElementById("ui").style.display="none";
+  document.getElementById("instruction").style.display="block";
+  
+  buildCardGame(names);
+  updateHUD();
+  
+  // Start auto-flipping
+  setTimeout(autoFlipNext,1000);
+}
+
+function autoFlipNext(){
+  if(!isGameRunning) return;
+  
+  // Get unflipped cards
+  let availableIndices=[];
+  for(let i=0;i<cards.length;i++){
+    if(!flippedCards.includes(i)){
+      availableIndices.push(i);
+    }
+  }
+  
+  if(availableIndices.length===0 || winners.length>=targetPrizes){
+    showFinalReport();
+    return;
+  }
+  
+  // Random pick
+  const randomIndex=availableIndices[Math.floor(Math.random()*availableIndices.length)];
+  flipCard(randomIndex);
+}
+
+function flipCard(cardIndex){
+  if(!isGameRunning) return;
+  
+  const card=cards[cardIndex];
+  if(card.userData.isFlipped || card.userData.isFlipping) return;
+  if(flippedCards.includes(cardIndex)) return;
+  
+  card.userData.isFlipping=true;
+  isPaused=true;
+  
+  // Activate spotlight on this card
+  activateSpotlight(card.position);
+  
+  // Start flip animation
+  card.userData.targetRotation=Math.PI;
+  
+  setTimeout(()=>{
+    card.userData.isFlipped=true;
+    card.userData.isFlipping=false;
+    flippedCards.push(cardIndex);
+    
+    announceWinner(cardIndex);
+  },800);
+}
+
+function announceWinner(cardIndex){
+  const winnerName=names[cardIndex];
+  
+  const popup=document.getElementById("popupOverlay");
+  const popupDiv=document.getElementById("popup");
+  const content=document.getElementById("popupContent");
+  
+  popupDiv.classList.remove('large');
+  
+  content.innerHTML=`
+    <div class="party-title">🎁 GIẬT GIẢI THÀNH CÔNG!</div>
+    <h2 style="text-align:center;font-size:32px;">🎭 ${winnerName}</h2>
+    <div class="status-badge status-drunk" style="background:linear-gradient(135deg,#ffd700,#ffed4e);color:#764ba2;">
+      🏆 ĐẠT GIẢI!
+    </div>
+    <div class="gift-box">🎁</div>
+    <div class="drunk-detail" style="background:linear-gradient(135deg,#ffd700,#ffed4e);border-color:#ff6b6b;">
+      <div style="font-size:40px;margin-top:10px;">🎊✨🎉</div>
+    </div>
+    <p style="text-align:center;color:#764ba2;font-weight:700;margin-top:20px;font-size:18px;animation:pulse 1s infinite;">
+      🌟 Chúc mừng bạn đã giật được giải! 🌟
+    </p>
+  `;
+  
+  // Change card to gold color
+  cards[cardIndex].userData.edgeMesh.material.color.setHex(0xffd700);
+  cards[cardIndex].userData.edgeMesh.material.emissive.setHex(0xffaa00);
+  cards[cardIndex].userData.edgeMesh.material.emissiveIntensity=0.8;
+  
+  winners.push({name:winnerName});
+  updateHUD();
+  
+  document.getElementById("popupButton").style.display="block";
+  popup.style.display="flex";
+}
+
+function continueGame(){
+  const popup=document.getElementById("popupOverlay");
+  popup.style.display="none";
+  
+  deactivateAllSpotlights();
+  
+  if(winners.length>=targetPrizes){
+    showFinalReport();
+  }else if(flippedCards.length>=names.length){
+    showFinalReport();
+  }else{
+    isPaused=false;
+    setTimeout(autoFlipNext,flipInterval*1000);
+  }
+}
+
+function showFinalReport(){
+  isGameRunning=false;
+  document.getElementById("instruction").style.display="none";
+  deactivateAllSpotlights();
+  
+  if(autoFlipTimer){
+    clearTimeout(autoFlipTimer);
+    autoFlipTimer=null;
+  }
+  
+  const popup=document.getElementById("popupOverlay");
+  const popupDiv=document.getElementById("popup");
+  const content=document.getElementById("popupContent");
+  
+  popupDiv.classList.add('large');
+  
+  createConfetti();
+  
+  let reportHTML=`
+    <div class="party-title">🎉 CÔNG BỐ KẾT QUẢ!</div>
+    <h2 style="color:#ffd700;">🏆 ${winners.length} người may mắn trúng giải!</h2>
+  `;
+  
+  if(winners.length>0){
+    reportHTML+=`
+      <p style="font-weight:700;margin-bottom:20px;font-size:18px;text-align:center;color:#764ba2;">
+        🎁 Danh sách người trúng giải:
+      </p>
+      <div id="finalReport">
+    `;
+    
+    winners.forEach((item,idx)=>{
+      reportHTML+=`
+        <div class="report-item">
+          <strong>🎭 ${idx+1}. ${item.name}</strong>
+          <span class="gift-text">🏆 Đạt giải</span>
+        </div>
+      `;
+    });
+    
+    reportHTML+=`</div>`;
+  }else{
+    reportHTML+=`
+      <p style="text-align:center;font-size:18px;color:#667eea;margin:20px 0;">
+        😮 Chưa có ai trúng giải!
+      </p>
+    `;
+  }
+  
+  reportHTML+=`
+    <p style="text-align:center;font-weight:700;color:#667eea;margin:20px 0;font-size:16px;">
+      🎊 Cảm ơn đã tham gia! Hẹn gặp lại! 🎁
+    </p>
+    <button id="copyButton">📋 COPY DANH SÁCH</button>
+    <button id="resetButton">🔄 QUAY SỐ LẠI</button>
+  `;
+  
+  content.innerHTML=reportHTML;
+  popup.style.display="flex";
+  
+  document.getElementById("copyButton").addEventListener("click",copyWinnerList);
+  document.getElementById("resetButton").addEventListener("click",resetGame);
+}
+
+function copyWinnerList(){
+  let text="🎁 DANH SÁCH NGƯỜI TRÚNG GIẢI 🏆\n";
+  text+="=".repeat(50)+"\n\n";
+  
+  if(winners.length>0){
+    winners.forEach((item,idx)=>{
+      text+=`${idx+1}. 🎭 ${item.name}\n`;
+      text+=`   🏆 Đạt giải\n\n`;
+    });
+    
+    text+="=".repeat(50)+"\n";
+    text+=`🎊 Tổng số người trúng giải: ${winners.length}\n`;
+  }else{
+    text+="Chưa có ai trúng giải!\n";
+  }
+  
+  text+="🎉 Cảm ơn đã tham gia!";
+  
+  navigator.clipboard.writeText(text).then(()=>{
+    const btn=document.getElementById("copyButton");
+    const originalText=btn.innerText;
+    btn.innerText="✓ ĐÃ COPY!";
+    
+    setTimeout(()=>{
+      btn.innerText=originalText;
+    },2000);
+  }).catch(err=>{
+    alert("Không thể copy: "+err);
+  });
+}
+
+function resetGame(){
+  const popup=document.getElementById("popupOverlay");
+  const popupDiv=document.getElementById("popup");
+  popup.style.display="none";
+  popupDiv.classList.remove('large');
+  document.getElementById("ui").style.display="block";
+  document.getElementById("instruction").style.display="none";
+  
+  confettiParticles.forEach(c=>scene.remove(c));
+  confettiParticles.length=0;
+  
+  deactivateAllSpotlights();
+  
+  if(autoFlipTimer){
+    clearTimeout(autoFlipTimer);
+    autoFlipTimer=null;
+  }
+  
+  isGameRunning=false;
+  isPaused=false;
+  winners=[];
+  flippedCards=[];
+  updateHUD();
+}
+
+function updateHUD(){
+  const status=document.getElementById("status");
+  const list=document.getElementById("caughtList");
+  
+  if(!isGameRunning){
+    status.innerText="� Sẵn sàng quay số!";
+    list.innerHTML='';
+    return;
+  }
+  
+  status.innerHTML=`
+    <strong>🎯 Đã trúng:</strong> ${winners.length}/${targetPrizes}<br>
+    <strong>🃏 Đã lật:</strong> ${flippedCards.length}/${names.length}<br>
+    <span style="color:#667eea;font-size:13px;font-weight:600;">
+      ${isPaused?'⏸️ Đang quay số...':'✨ Tự động quay số...'}
+    </span>
+  `;
+  
+  if(winners.length>0){
+    let listHTML='<strong style="color:#ffd700;">🏆 Người trúng giải:</strong><br>';
+    winners.forEach((item,idx)=>{
+      listHTML+=`
+        <div class="drunk-item">
+          ${idx+1}. <strong style="color:#ffd700;">${item.name}</strong><br>
+          <span style="color:#764ba2;font-size:12px;">🎁 Đạt giải</span>
+        </div>
+      `;
+    });
+    list.innerHTML=listHTML;
+  }else{
+    list.innerHTML='<em style="color:#9ca3af;">Chưa có ai trúng giải...</em>';
+  }
+}
+
+/* ================= ANIMATION ================= */
+function animate(){
+  requestAnimationFrame(animate);
+  
+  const time=Date.now()*0.001;
+  
+  // Animate party lights
+  partyLights.forEach((light,i)=>{
+    light.intensity=0.7+Math.sin(time*2+i)*0.3;
+  });
+  
+  // Animate spotlights
+  spotlights.forEach((light,i)=>{
+    if(light.visible){
+      light.intensity=2.5+Math.sin(time*5+i)*0.8;
+      light.angle=Math.PI/6+Math.sin(time*3)*0.05;
+    }
+  });
+  
+  // Animate cards floating
+  cards.forEach((card,i)=>{
+    if(!card.userData.isFlipping && !card.userData.isFlipped){
+      card.position.y=3.5+Math.sin(time*2+i*0.5)*0.15;
+      card.rotation.z=Math.sin(time+i)*0.02;
+    }
+    
+    // Flip animation
+    if(card.userData.isFlipping){
+      const targetY=card.userData.targetRotation;
+      const currentY=card.rotation.y;
+      const diff=targetY-currentY;
+      card.rotation.y+=diff*0.15;
+      
+      if(Math.abs(diff)<0.01){
+        card.rotation.y=targetY;
+      }
+    }
+  });
+  
+  // Animate confetti
+  confettiParticles.forEach(c=>{
+    c.position.x+=c.velocity.x;
+    c.position.y+=c.velocity.y;
+    c.position.z+=c.velocity.z;
+    
+    c.rotation.x+=c.velocity.rotX;
+    c.rotation.y+=c.velocity.rotY;
+    c.rotation.z+=c.velocity.rotZ;
+    
+    c.velocity.y-=0.01;
+    
+    if(c.position.y<-5){
+      c.position.y=25;
+      c.velocity.y=0.3+Math.random()*0.2;
+    }
+  });
+  
+  // Camera gentle movement
+  if(isGameRunning && !isPaused){
+    camera.position.x=Math.sin(time*0.2)*3;
+    camera.lookAt(0,0,0);
+  }
+  
+  renderer.render(scene,camera);
+}
+animate();
+
+/* ================= EVENT LISTENERS ================= */
+document.getElementById("start").addEventListener("click",startGame);
+document.getElementById("popupButton").addEventListener("click",continueGame);
+
+// Hover effect for visual feedback
+renderer.domElement.addEventListener("mousemove",(event)=>{
+  if(!isGameRunning || isPaused) return;
+  
+  mouse.x=(event.clientX/window.innerWidth)*2-1;
+  mouse.y=-(event.clientY/window.innerHeight)*2+1;
+  
+  raycaster.setFromCamera(mouse,camera);
+  
+  const clickableObjects=cards.map(c=>c.userData.clickable);
+  const intersects=raycaster.intersectObjects(clickableObjects);
+  
+  cards.forEach(card=>{
+    if(!card.userData.isFlipped && !card.userData.isFlipping){
+      card.userData.edgeMesh.material.emissiveIntensity=0.2;
+    }
+  });
+  
+  if(intersects.length>0){
+    const hoveredCard=cards.find(c=>c.userData.clickable===intersects[0].object);
+    if(hoveredCard && !hoveredCard.userData.isFlipped && !hoveredCard.userData.isFlipping){
+      hoveredCard.userData.edgeMesh.material.emissiveIntensity=0.5;
+      renderer.domElement.style.cursor='pointer';
+      return;
+    }
+  }
+  
+  renderer.domElement.style.cursor='default';
+});
+
+window.addEventListener("resize",()=>{
+  camera.aspect=innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+});
+
+console.log("� Lật Thẻ Giật Giải ready! Good luck! 🏆");
+</script>
+</body>
+</html>
