@@ -377,11 +377,6 @@ Var Võ</textarea>
     <input id="targetDrunks" type="number" value="3" min="1">
   </div>
   
-  <div class="form-group">
-    <label>⏱️ Thời gian giữa mỗi lần lật (giây):</label>
-    <input id="flipInterval" type="number" value="2" min="1" max="5">
-  </div>
-  
   <button id="start">🎊 BẮT ĐẦU LẬT THẺ!</button>
 </div>
 
@@ -391,7 +386,8 @@ Var Võ</textarea>
 </div>
 
 <div id="instruction">
-  ✨ Đang tự động quay số... Chờ đợi phép màu! 🎁
+  🖱️ BẤM VÀO THẺ ĐỂ LẬT! 🎁<br>
+  <span style="font-size:14px;">🔍 Scroll chuột: Zoom | ⌨️ WASD: Di chuyển | QE: Lên/Xuống</span>
 </div>
 
 <!-- Popup overlay -->
@@ -409,24 +405,35 @@ Var Võ</textarea>
 /* ================= GAME DATA ================= */
 let names=[];
 let targetPrizes=3;
-let flipInterval=2;
 let winners=[];
 let flippedCards=[];
 let isGameRunning=false;
 let isPaused=false;
-let autoFlipTimer=null;
+
+// Camera zoom control
+let cameraZoom=1;
+let minZoom=0.3;
+let maxZoom=2.5;
+let baseCameraY=35;
+let baseCameraZ=25;
+
+// Camera movement control
+const keys={};
+const cameraMoveSpeed=1.5;
 
 let cards=[];
 let spotlights=[];
 let currentSpotlight=null;
+let hoveredCard=null;
+let lightnings=[];
 
 /* ================= SCENE SETUP ================= */
 const scene=new THREE.Scene();
 scene.background=new THREE.Color(0x87ceeb);
-scene.fog=new THREE.Fog(0x87ceeb,50,200);
+scene.fog=new THREE.Fog(0x87ceeb,100,400);
 
-const camera=new THREE.PerspectiveCamera(60,innerWidth/innerHeight,0.1,500);
-camera.position.set(0,25,45);
+const camera=new THREE.PerspectiveCamera(80,innerWidth/innerHeight,0.1,1000);
+camera.position.set(0,35,25);
 camera.lookAt(0,0,0);
 
 const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
@@ -479,11 +486,11 @@ for(let i=0;i<5;i++){
 
 /* ================= FLOOR ================= */
 const floor=new THREE.Mesh(
-  new THREE.PlaneGeometry(200,200),
+  new THREE.PlaneGeometry(400,400),
   new THREE.MeshStandardMaterial({
-    color:0x2ecc71,
-    roughness:0.8,
-    metalness:0.2
+    color:0x808080,
+    roughness:0.6,
+    metalness:0.3
   })
 );
 floor.rotation.x=-Math.PI/2;
@@ -492,11 +499,11 @@ scene.add(floor);
 
 // Table surface for cards
 const table=new THREE.Mesh(
-  new THREE.PlaneGeometry(80,60),
+  new THREE.PlaneGeometry(300,300),
   new THREE.MeshStandardMaterial({
-    color:0x8b4513,
-    roughness:0.6,
-    metalness:0.1
+    color:0x9a9a9a,
+    roughness:0.4,
+    metalness:0.2
   })
 );
 table.rotation.x=-Math.PI/2;
@@ -586,7 +593,63 @@ function deactivateAllSpotlights(){
   currentSpotlight=null;
 }
 
-function createTextTexture(text,bgColor='#ffffff',textColor='#764ba2',fontSize=120){
+function createLightning(targetPos){
+  const geometry=new THREE.BufferGeometry();
+  const vertices=[];
+  const startY=40;
+  const endY=targetPos.y+3;
+  const segments=20;
+  
+  // Tạo đường tia sét zigzag
+  for(let i=0;i<=segments;i++){
+    const t=i/segments;
+    const y=startY-(startY-endY)*t;
+    const offsetX=(Math.random()-0.5)*2*(1-t);
+    const offsetZ=(Math.random()-0.5)*2*(1-t);
+    vertices.push(targetPos.x+offsetX,y,targetPos.z+offsetZ);
+  }
+  
+  geometry.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));
+  
+  const material=new THREE.LineBasicMaterial({
+    color:0xffff00,
+    linewidth:3,
+    opacity:1,
+    transparent:true
+  });
+  
+  const lightning=new THREE.Line(geometry,material);
+  lightning.userData={createdAt:Date.now(),duration:200};
+  
+  return lightning;
+}
+
+function updateLightnings(){
+  const now=Date.now();
+  
+  // Xóa tia sét cũ
+  for(let i=lightnings.length-1;i>=0;i--){
+    const l=lightnings[i];
+    const age=now-l.userData.createdAt;
+    
+    if(age>l.userData.duration){
+      scene.remove(l);
+      lightnings.splice(i,1);
+    }else{
+      // Fade out
+      l.material.opacity=1-(age/l.userData.duration);
+    }
+  }
+  
+  // Tạo tia sét mới cho thẻ đang hover
+  if(hoveredCard && Math.random()<0.3){
+    const lightning=createLightning(hoveredCard.position);
+    scene.add(lightning);
+    lightnings.push(lightning);
+  }
+}
+
+function createTextTexture(text,bgColor='#ffffff',textColor='#764ba2',fontSize=100){
   const canvas=document.createElement('canvas');
   const context=canvas.getContext('2d');
   canvas.width=512;
@@ -608,7 +671,7 @@ function createTextTexture(text,bgColor='#ffffff',textColor='#764ba2',fontSize=1
   for(let i=1;i<words.length;i++){
     const testLine=currentLine+' '+words[i];
     const metrics=context.measureText(testLine);
-    if(metrics.width>canvas.width-40){
+    if(metrics.width>canvas.width-60){
       lines.push(currentLine);
       currentLine=words[i];
     }else{
@@ -620,8 +683,15 @@ function createTextTexture(text,bgColor='#ffffff',textColor='#764ba2',fontSize=1
   const totalHeight=lines.length*lineHeight;
   const startY=(canvas.height-totalHeight)/2+lineHeight/2;
   
+  // Draw text with shadow for better readability - chữ đen đậm
   lines.forEach((line,i)=>{
-    context.fillText(line,canvas.width/2,startY+i*lineHeight);
+    const y=startY+i*lineHeight;
+    // Shadow đen đậm
+    context.fillStyle='rgba(0,0,0,0.5)';
+    context.fillText(line,canvas.width/2+2,y+2);
+    // Text đen đậm
+    context.fillStyle=textColor;
+    context.fillText(line,canvas.width/2,y);
   });
   
   const texture=new THREE.Texture(canvas);
@@ -632,35 +702,8 @@ function createTextTexture(text,bgColor='#ffffff',textColor='#764ba2',fontSize=1
 function createCard(name,index){
   const cardGroup=new THREE.Group();
   
-  // Card back (blue pattern)
-  const backGeo=new THREE.PlaneGeometry(5,7);
-  const backMat=new THREE.MeshStandardMaterial({
-    color:0x667eea,
-    emissive:0x667eea,
-    emissiveIntensity:0.3,
-    roughness:0.3,
-    metalness:0.5
-  });
-  const backMesh=new THREE.Mesh(backGeo,backMat);
-  backMesh.position.z=0.01;
-  cardGroup.add(backMesh);
-  
-  // Card front (white with name)
-  const frontTexture=createTextTexture(name,'#ffffff','#764ba2',80);
-  const frontMat=new THREE.MeshStandardMaterial({
-    map:frontTexture,
-    emissive:0xffffff,
-    emissiveIntensity:0.1,
-    roughness:0.4,
-    metalness:0.2
-  });
-  const frontMesh=new THREE.Mesh(backGeo,frontMat);
-  frontMesh.position.z=-0.01;
-  frontMesh.rotation.y=Math.PI;
-  cardGroup.add(frontMesh);
-  
-  // Card border/edge
-  const edgeGeo=new THREE.BoxGeometry(5,7,0.1);
+  // Card border/edge - kích thước vừa phải
+  const edgeGeo=new THREE.BoxGeometry(4,5.5,0.15);
   const edgeMat=new THREE.MeshStandardMaterial({
     color:0xffa500,
     emissive:0xffa500,
@@ -672,6 +715,36 @@ function createCard(name,index){
   edgeMesh.castShadow=true;
   edgeMesh.receiveShadow=true;
   cardGroup.add(edgeMesh);
+  
+  // Card back (blue pattern - facing front initially)
+  const backGeo=new THREE.PlaneGeometry(3.9,5.4);
+  const backMat=new THREE.MeshStandardMaterial({
+    color:0x667eea,
+    emissive:0x667eea,
+    emissiveIntensity:0.3,
+    roughness:0.3,
+    metalness:0.5,
+    side:THREE.DoubleSide
+  });
+  const backMesh=new THREE.Mesh(backGeo,backMat);
+  backMesh.position.z=0.08;
+  cardGroup.add(backMesh);
+  
+  // Card front (white with name - facing back initially, will show when flipped)
+  const frontTexture=createTextTexture(name,'#ffff99','#000000',90);
+  const frontGeo=new THREE.PlaneGeometry(3.9,5.4);
+  const frontMat=new THREE.MeshStandardMaterial({
+    map:frontTexture,
+    emissive:0xffffcc,
+    emissiveIntensity:0.4,
+    roughness:0.1,
+    metalness:0.05,
+    side:THREE.DoubleSide
+  });
+  const frontMesh=new THREE.Mesh(frontGeo,frontMat);
+  frontMesh.position.z=-0.08;
+  frontMesh.rotation.y=Math.PI; // Rotate để chữ đúng hướng khi lật
+  cardGroup.add(frontMesh);
   
   cardGroup.userData={
     name:name,
@@ -689,10 +762,11 @@ function createCard(name,index){
 }
 
 function arrangeCards(count){
-  const cols=Math.min(6,Math.ceil(Math.sqrt(count*1.2)));
+  // Tính toán để thẻ vừa với màn hình
+  const cols=Math.min(20,Math.ceil(Math.sqrt(count*1.4)));
   const rows=Math.ceil(count/cols);
-  const spacingX=6.5;
-  const spacingZ=8.5;
+  const spacingX=5;
+  const spacingZ=6.5;
   const offsetX=(cols-1)*spacingX/2;
   const offsetZ=(rows-1)*spacingZ/2;
   
@@ -706,6 +780,21 @@ function arrangeCards(count){
     cards[i].rotation.set(0,0,0);
     cards[i].userData.targetRotation=0;
   }
+  
+  // Tự động điều chỉnh camera để thấy tất cả
+  const totalWidth=cols*spacingX;
+  const totalHeight=rows*spacingZ;
+  const maxDim=Math.max(totalWidth,totalHeight);
+  const optimalDistance=maxDim*0.85;
+  const optimalHeight=maxDim*0.75;
+  
+  baseCameraY=optimalHeight;
+  baseCameraZ=optimalDistance;
+  cameraZoom=1;
+  
+  camera.position.y=baseCameraY;
+  camera.position.z=baseCameraZ;
+  camera.lookAt(0,0,0);
 }
 
 function buildCardGame(playerNames){
@@ -738,7 +827,6 @@ function startGame(){
   }
   
   targetPrizes=parseInt(document.getElementById("targetDrunks").value)||3;
-  flipInterval=parseInt(document.getElementById("flipInterval").value)||2;
   
   if(targetPrizes>names.length){
     alert("🎯 Số giải không thể nhiều hơn số người tham gia!");
@@ -755,30 +843,6 @@ function startGame(){
   
   buildCardGame(names);
   updateHUD();
-  
-  // Start auto-flipping
-  setTimeout(autoFlipNext,1000);
-}
-
-function autoFlipNext(){
-  if(!isGameRunning) return;
-  
-  // Get unflipped cards
-  let availableIndices=[];
-  for(let i=0;i<cards.length;i++){
-    if(!flippedCards.includes(i)){
-      availableIndices.push(i);
-    }
-  }
-  
-  if(availableIndices.length===0 || winners.length>=targetPrizes){
-    showFinalReport();
-    return;
-  }
-  
-  // Random pick
-  const randomIndex=availableIndices[Math.floor(Math.random()*availableIndices.length)];
-  flipCard(randomIndex);
 }
 
 function flipCard(cardIndex){
@@ -847,14 +911,12 @@ function continueGame(){
   popup.style.display="none";
   
   deactivateAllSpotlights();
+  isPaused=false;
   
   if(winners.length>=targetPrizes){
     showFinalReport();
   }else if(flippedCards.length>=names.length){
     showFinalReport();
-  }else{
-    isPaused=false;
-    setTimeout(autoFlipNext,flipInterval*1000);
   }
 }
 
@@ -862,11 +924,6 @@ function showFinalReport(){
   isGameRunning=false;
   document.getElementById("instruction").style.display="none";
   deactivateAllSpotlights();
-  
-  if(autoFlipTimer){
-    clearTimeout(autoFlipTimer);
-    autoFlipTimer=null;
-  }
   
   const popup=document.getElementById("popupOverlay");
   const popupDiv=document.getElementById("popup");
@@ -966,11 +1023,6 @@ function resetGame(){
   
   deactivateAllSpotlights();
   
-  if(autoFlipTimer){
-    clearTimeout(autoFlipTimer);
-    autoFlipTimer=null;
-  }
-  
   isGameRunning=false;
   isPaused=false;
   winners=[];
@@ -992,7 +1044,7 @@ function updateHUD(){
     <strong>🎯 Đã trúng:</strong> ${winners.length}/${targetPrizes}<br>
     <strong>🃏 Đã lật:</strong> ${flippedCards.length}/${names.length}<br>
     <span style="color:#667eea;font-size:13px;font-weight:600;">
-      ${isPaused?'⏸️ Đang quay số...':'✨ Tự động quay số...'}
+      ${isPaused?'⏸️ Đang xử lý...':'🖱️ Bấm thẻ để lật!'}
     </span>
   `;
   
@@ -1017,6 +1069,30 @@ function animate(){
   requestAnimationFrame(animate);
   
   const time=Date.now()*0.001;
+  
+  // Camera movement with WASD
+  if(keys['w'] || keys['W']){
+    camera.position.z-=cameraMoveSpeed;
+  }
+  if(keys['s'] || keys['S']){
+    camera.position.z+=cameraMoveSpeed;
+  }
+  if(keys['a'] || keys['A']){
+    camera.position.x-=cameraMoveSpeed;
+  }
+  if(keys['d'] || keys['D']){
+    camera.position.x+=cameraMoveSpeed;
+  }
+  if(keys['q'] || keys['Q']){
+    camera.position.y+=cameraMoveSpeed;
+  }
+  if(keys['e'] || keys['E']){
+    camera.position.y-=cameraMoveSpeed;
+  }
+  camera.lookAt(0,0,0);
+  
+  // Update lightnings
+  updateLightnings();
   
   // Animate party lights
   partyLights.forEach((light,i)=>{
@@ -1083,6 +1159,52 @@ animate();
 document.getElementById("start").addEventListener("click",startGame);
 document.getElementById("popupButton").addEventListener("click",continueGame);
 
+// Mouse wheel zoom
+renderer.domElement.addEventListener("wheel",(event)=>{
+  event.preventDefault();
+  
+  const delta=event.deltaY>0?0.9:1.1;
+  cameraZoom*=delta;
+  cameraZoom=Math.max(minZoom,Math.min(maxZoom,cameraZoom));
+  
+  // Cập nhật camera position dựa trên zoom (zoom out = tăng khoảng cách)
+  camera.position.y=baseCameraY/cameraZoom;
+  camera.position.z=baseCameraZ/cameraZoom;
+  camera.lookAt(0,0,0);
+},{passive:false});
+
+// Click to flip card
+renderer.domElement.addEventListener("click",(event)=>{
+  if(!isGameRunning || isPaused) return;
+  
+  mouse.x=(event.clientX/window.innerWidth)*2-1;
+  mouse.y=-(event.clientY/window.innerHeight)*2+1;
+  
+  raycaster.setFromCamera(mouse,camera);
+  
+  const clickableObjects=cards.map(c=>c.userData.clickable);
+  const intersects=raycaster.intersectObjects(clickableObjects);
+  
+  if(intersects.length>0){
+    const clickedCard=cards.find(c=>c.userData.clickable===intersects[0].object);
+    if(clickedCard){
+      const cardIndex=clickedCard.userData.index;
+      if(!flippedCards.includes(cardIndex) && !clickedCard.userData.isFlipped && !clickedCard.userData.isFlipping){
+        flipCard(cardIndex);
+      }
+    }
+  }
+});
+
+// Keyboard controls
+document.addEventListener('keydown',(e)=>{
+  keys[e.key]=true;
+});
+
+document.addEventListener('keyup',(e)=>{
+  keys[e.key]=false;
+});
+
 // Hover effect for visual feedback
 renderer.domElement.addEventListener("mousemove",(event)=>{
   if(!isGameRunning || isPaused) return;
@@ -1095,16 +1217,24 @@ renderer.domElement.addEventListener("mousemove",(event)=>{
   const clickableObjects=cards.map(c=>c.userData.clickable);
   const intersects=raycaster.intersectObjects(clickableObjects);
   
+  // Reset tất cả thẻ về trạng thái bình thường
+  hoveredCard=null;
   cards.forEach(card=>{
     if(!card.userData.isFlipped && !card.userData.isFlipping){
       card.userData.edgeMesh.material.emissiveIntensity=0.2;
+      card.scale.set(1,1,1);
+      card.userData.backMesh.material.emissiveIntensity=0.3;
     }
   });
   
   if(intersects.length>0){
-    const hoveredCard=cards.find(c=>c.userData.clickable===intersects[0].object);
-    if(hoveredCard && !hoveredCard.userData.isFlipped && !hoveredCard.userData.isFlipping){
-      hoveredCard.userData.edgeMesh.material.emissiveIntensity=0.5;
+    const hCard=cards.find(c=>c.userData.clickable===intersects[0].object);
+    if(hCard && !hCard.userData.isFlipped && !hCard.userData.isFlipping){
+      hoveredCard=hCard;
+      // Chiếu sáng mạnh thẻ được hover
+      hCard.userData.edgeMesh.material.emissiveIntensity=1.2;
+      hCard.userData.backMesh.material.emissiveIntensity=0.8;
+      hCard.scale.set(1.15,1.15,1.15);
       renderer.domElement.style.cursor='pointer';
       return;
     }
