@@ -1908,8 +1908,8 @@ Ngô Thị Kim</textarea>
         function animate() {
             requestAnimationFrame(animate);
 
-            // Camera close-up effect when chasing
-            if (isChasing && currentTargets.length > 0 && currentTargets[0] && !currentTargets[0].userData.captured) {
+            // Camera close-up effect when chasing (only before time runs out)
+            if (isChasing && gameTime < totalGameTimeSeconds && currentTargets.length > 0 && currentTargets[0] && !currentTargets[0].userData.captured) {
                 // Camera follows the chase - close-up on target
                 const target = currentTargets[0];
                 const targetX = target.position.x;
@@ -1927,7 +1927,7 @@ Ngô Thị Kim</textarea>
                 // Look at the target
                 camera.lookAt(targetX, 0, targetZ);
             } else {
-                // Revert to normal view
+                // Revert to normal view (or keep locked when time is up)
                 const desiredCamX = 0;
                 const desiredCamY = 30;
                 const desiredCamZ = 50;
