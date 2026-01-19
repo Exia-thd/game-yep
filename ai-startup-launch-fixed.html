@@ -687,8 +687,16 @@ function tick(){
   // Regular events
   const ev=EVENTS[Math.floor(Math.random()*EVENTS.length)];
   
-  document.getElementById("event").innerText=
+  const eventElement=document.getElementById("event");
+  eventElement.innerText=
     "Event: "+ev.n+" ("+(ev.v>0?"+":"")+ev.v+"%)";
+  
+  // Change color based on event value
+  if(ev.v<0){
+    eventElement.style.color="#f44"; // Red for negative events
+  }else{
+    eventElement.style.color="#0a5"; // Green for positive events
+  }
 
   // Random special event (20% chance)
   let specialEvent=null;
