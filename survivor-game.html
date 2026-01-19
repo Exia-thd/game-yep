@@ -866,8 +866,8 @@ Ngô Thị Kim</textarea>
             // Fog disabled for performance
             // scene.fog = new THREE.Fog(0x6b8e23, 25, 60); // Olive fog for depth
 
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.position.set(0, 15, 25);
+            camera = new THREE.PerspectiveCamera(78, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 30, 50);
             camera.lookAt(0, 0, 0);
 
             renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('canvas3d'), antialias: true, powerPreference: "high-performance" });
