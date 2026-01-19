@@ -1908,6 +1908,37 @@ Ngô Thị Kim</textarea>
         function animate() {
             requestAnimationFrame(animate);
 
+            // Camera close-up effect when chasing
+            if (isChasing && currentTargets.length > 0 && currentTargets[0] && !currentTargets[0].userData.captured) {
+                // Camera follows the chase - close-up on target
+                const target = currentTargets[0];
+                const targetX = target.position.x;
+                const targetZ = target.position.z;
+                
+                // Smooth camera movement towards chase scene
+                const desiredCamX = targetX;
+                const desiredCamY = 20;
+                const desiredCamZ = targetZ + 25;
+                
+                camera.position.x += (desiredCamX - camera.position.x) * 0.05;
+                camera.position.y += (desiredCamY - camera.position.y) * 0.05;
+                camera.position.z += (desiredCamZ - camera.position.z) * 0.05;
+                
+                // Look at the target
+                camera.lookAt(targetX, 0, targetZ);
+            } else {
+                // Revert to normal view
+                const desiredCamX = 0;
+                const desiredCamY = 30;
+                const desiredCamZ = 50;
+                
+                camera.position.x += (desiredCamX - camera.position.x) * 0.03;
+                camera.position.y += (desiredCamY - camera.position.y) * 0.03;
+                camera.position.z += (desiredCamZ - camera.position.z) * 0.03;
+                
+                camera.lookAt(0, 0, 0);
+            }
+
             // Robot chase behavior - main robot chases first target
             if (robot && isChasing && currentTargets.length > 0) {
                 const target = currentTargets[0];
@@ -2025,15 +2056,65 @@ Ngô Thị Kim</textarea>
                             if (person.children[5]) person.children[5].rotation.x = -Math.sin(Date.now() * 0.02) * 0.8;
                         }
                     } else {
-                        // Not being chased - WANDER AROUND randomly
-                        // Random wandering behavior
-                        person.userData.wanderAngle += (Math.random() - 0.5) * 0.1;
-                        
-                        const moveX = Math.cos(person.userData.wanderAngle) * person.userData.wanderSpeed;
-                        const moveZ = Math.sin(person.userData.wanderAngle) * person.userData.wanderSpeed;
-                        
-                        person.position.x += moveX;
-                        person.position.z += moveZ;
+                        // Not being chased - SCATTER AWAY if someone else is being chased (before time runs out)
+                        if (isChasing && currentTargets.length > 0 && gameTime < totalGameTimeSeconds) {
+                            // Run away from robot
+                            const robotPos = robot.position;
+                            const dx = person.position.x - robotPos.x;
+                            const dz = person.position.z - robotPos.z;
+                            const distToRobot = Math.sqrt(dx * dx + dz * dz);
+                            
+                            if (distToRobot < 25) { // If within 25 units of robot, run away
+                                const fleeSpeed = 0.15;
+                                const normalX = dx / distToRobot;
+                                const normalZ = dz / distToRobot;
+                                
+                                person.position.x += normalX * fleeSpeed;
+                                person.position.z += normalZ * fleeSpeed;
+                                
+                                // Look away from robot
+                                person.rotation.y = Math.atan2(normalX, normalZ);
+                                
+                                // Running animation
+                                person.position.y = Math.abs(Math.sin(Date.now() * 0.012 + index)) * 0.25;
+                                if (person.children[4]) person.children[4].rotation.x = Math.sin(Date.now() * 0.015) * 0.7;
+                                if (person.children[5]) person.children[5].rotation.x = -Math.sin(Date.now() * 0.015) * 0.7;
+                            } else {
+                                // Normal wandering when far from robot
+                                person.userData.wanderAngle += (Math.random() - 0.5) * 0.1;
+                                
+                                const moveX = Math.cos(person.userData.wanderAngle) * person.userData.wanderSpeed;
+                                const moveZ = Math.sin(person.userData.wanderAngle) * person.userData.wanderSpeed;
+                                
+                                person.position.x += moveX;
+                                person.position.z += moveZ;
+                                
+                                person.rotation.y = person.userData.wanderAngle;
+                                person.rotation.z = 0;
+                                
+                                // Walking animation
+                                person.position.y = Math.abs(Math.sin(Date.now() * 0.005 + index)) * 0.15;
+                                if (person.children[4]) person.children[4].rotation.x = Math.sin(Date.now() * 0.005 + index) * 0.3;
+                                if (person.children[5]) person.children[5].rotation.x = -Math.sin(Date.now() * 0.005 + index) * 0.3;
+                            }
+                        } else {
+                            // Normal wandering when no one is being chased or time is up
+                            person.userData.wanderAngle += (Math.random() - 0.5) * 0.1;
+                            
+                            const moveX = Math.cos(person.userData.wanderAngle) * person.userData.wanderSpeed;
+                            const moveZ = Math.sin(person.userData.wanderAngle) * person.userData.wanderSpeed;
+                            
+                            person.position.x += moveX;
+                            person.position.z += moveZ;
+                            
+                            person.rotation.y = person.userData.wanderAngle;
+                            person.rotation.z = 0;
+                            
+                            // Walking animation
+                            person.position.y = Math.abs(Math.sin(Date.now() * 0.005 + index)) * 0.15;
+                            if (person.children[4]) person.children[4].rotation.x = Math.sin(Date.now() * 0.005 + index) * 0.3;
+                            if (person.children[5]) person.children[5].rotation.x = -Math.sin(Date.now() * 0.005 + index) * 0.3;
+                        }
                         
                         // Keep within arena - EXPANDED
                         const distFromCenter = Math.sqrt(person.position.x ** 2 + person.position.z ** 2);
@@ -2041,17 +2122,6 @@ Ngô Thị Kim</textarea>
                             // Bounce back towards center
                             person.userData.wanderAngle = Math.atan2(-person.position.z, -person.position.x) + (Math.random() - 0.5) * 0.5;
                         }
-                        
-                        // Look in movement direction
-                        person.rotation.y = person.userData.wanderAngle;
-                        person.rotation.z = 0;
-                        
-                        // Walking animation - gentle bobbing
-                        person.position.y = Math.abs(Math.sin(Date.now() * 0.005 + index)) * 0.15;
-                        
-                        // Gentle arm swing
-                        if (person.children[4]) person.children[4].rotation.x = Math.sin(Date.now() * 0.005 + index) * 0.3;
-                        if (person.children[5]) person.children[5].rotation.x = -Math.sin(Date.now() * 0.005 + index) * 0.3;
                     }
                 } else {
                     // Hide label when captured
