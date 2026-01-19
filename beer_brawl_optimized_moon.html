@@ -226,6 +226,16 @@ Ngô Thị Kim</textarea>
     // Audio
     let battleSound, eliminationSound, winSound;
     let clinkSound, sipSound;
+    
+    // Background Music
+    let backgroundMusic = null;
+    let musicTracks = [
+      'Music/edm-gaming-music-335408.mp3',
+      'Music/level-up-energetic-gaming-rock-music-251284.mp3',
+      'Music/victory-awaits-in-the-gaming-universe-astronaut-265184.mp3'
+    ];
+    let currentTrackIndex = -1;
+    let musicLoaded = false;
 
     // Camera
     let defaultCameraDistance = 35;
@@ -379,6 +389,85 @@ Ngô Thị Kim</textarea>
           osc.stop(audioCtx.currentTime + 0.12);
         },
       };
+    }
+
+    // -------------------- BACKGROUND MUSIC --------------------
+    async function scanMusicFolder() {
+      if (musicLoaded) return;
+      
+      const commonExtensions = ['mp3', 'wav', 'ogg', 'm4a'];
+      const commonNames = [
+        'song', 'music', 'track', 'bgm', 'background',
+        '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'
+      ];
+      
+      // Thử các tên file phổ biến
+      const possibleFiles = [];
+      
+      // Thử song1.mp3, song2.mp3, etc
+      for (let i = 1; i <= 20; i++) {
+        commonExtensions.forEach(ext => {
+          possibleFiles.push(`Music/song${i}.${ext}`);
+          possibleFiles.push(`Music/music${i}.${ext}`);
+          possibleFiles.push(`Music/track${i}.${ext}`);
+          possibleFiles.push(`Music/${i}.${ext}`);
+        });
+      }
+      
+      // Kiểm tra file nào tồn tại
+      for (const file of possibleFiles) {
+        try {
+          const response = await fetch(file, { method: 'HEAD' });
+          if (response.ok) {
+            musicTracks.push(file);
+            console.log('Tìm thấy nhạc:', file);
+          }
+        } catch (e) {
+          // File không tồn tại, bỏ qua
+        }
+      }
+      
+      musicLoaded = true;
+      
+      if (musicTracks.length === 0) {
+        console.log('Không tìm thấy file nhạc trong thư mục Music/');
+      } else {
+        console.log(`Đã tìm thấy ${musicTracks.length} bài nhạc`);
+      }
+    }
+    
+    function playRandomMusic() {
+      if (musicTracks.length === 0) {
+        console.log('Không có nhạc để phát');
+        return;
+      }
+      
+      if (!backgroundMusic) {
+        backgroundMusic = new Audio();
+        backgroundMusic.volume = 1; // Âm lượng 100%
+        
+        // Khi hết bài, tự động phát bài tiếp theo
+        backgroundMusic.addEventListener('ended', function() {
+          playRandomMusic();
+        });
+      }
+      
+      // Chọn ngẫu nhiên bài khác với bài hiện tại
+      let newIndex;
+      do {
+        newIndex = Math.floor(Math.random() * musicTracks.length);
+      } while (newIndex === currentTrackIndex && musicTracks.length > 1);
+      
+      currentTrackIndex = newIndex;
+      backgroundMusic.src = musicTracks[currentTrackIndex];
+      backgroundMusic.play().catch(e => console.log('Không thể phát nhạc:', e));
+    }
+    
+    function stopMusic() {
+      if (backgroundMusic) {
+        backgroundMusic.pause();
+        backgroundMusic.currentTime = 0;
+      }
     }
 
     // -------------------- LOG --------------------
@@ -1139,6 +1228,12 @@ Ngô Thị Kim</textarea>
 
       initAudio();
       init3DScene();
+      
+      // Bắt đầu phát nhạc nền
+      playRandomMusic();
+      
+      // Bắt đầu phát nhạc nền
+      playRandomMusic();
 
       names.forEach((name, index) => {
         const person = createPerson(name.trim(), index, names.length);
@@ -1421,6 +1516,9 @@ Ngô Thị Kim</textarea>
       clearInterval(battleInterval);
       clearInterval(timerInterval);
       activeBattle = null;
+      
+      // Dừng nhạc nền khi game kết thúc
+      stopMusic();
 
       const survivors = people.filter(p => !p.userData.eliminated);
       if (survivors.length === 1 && winSound) winSound.play();

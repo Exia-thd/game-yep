@@ -359,6 +359,41 @@ Var Võ</textarea>
 let names=[];
 let targetDrunks=3;
 let checkInterval=2;
+
+/* ================= BACKGROUND MUSIC ================= */
+let backgroundMusic=new Audio();
+backgroundMusic.volume=1.0;
+
+const musicTracks=[
+  'Music/edm-gaming-music-335408.mp3',
+  'Music/level-up-energetic-gaming-rock-music-251284.mp3',
+  'Music/victory-awaits-in-the-gaming-universe-astronaut-265184.mp3'
+];
+
+let currentTrackIndex=-1;
+
+function playRandomMusic(){
+  if(musicTracks.length===0) return;
+  
+  let newIndex;
+  do{
+    newIndex=Math.floor(Math.random()*musicTracks.length);
+  }while(newIndex===currentTrackIndex && musicTracks.length>1);
+  
+  currentTrackIndex=newIndex;
+  backgroundMusic.src=musicTracks[currentTrackIndex];
+  backgroundMusic.play().catch(err=>console.log('Music play failed:',err));
+}
+
+function stopMusic(){
+  backgroundMusic.pause();
+  backgroundMusic.currentTime=0;
+}
+
+// Auto-play next random track when current one ends
+backgroundMusic.addEventListener('ended',()=>{
+  playRandomMusic();
+});
 let soberRate=70;
 let caughtDrunks=[];
 let checkedDrunks=[];
@@ -885,6 +920,9 @@ function continueCheck(){
 
 function showFinalReport(){
   isGameRunning=false;
+  
+  // Stop music when game ends
+  stopMusic();
   
   const popup=document.getElementById("popupOverlay");
   const popupDiv=document.getElementById("popup");

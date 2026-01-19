@@ -392,6 +392,41 @@ Ngô Thị Kim</textarea>
         const ESCAPE_CHANCE = 0.3; // 30% chance to escape each chase
         let isFinalCapture = false; // Flag for final capture - no escape allowed
         
+        // Background Music System
+        let backgroundMusic = new Audio();
+        backgroundMusic.volume = 1.0;
+
+        const musicTracks = [
+            'Music/edm-gaming-music-335408.mp3',
+            'Music/level-up-energetic-gaming-rock-music-251284.mp3',
+            'Music/victory-awaits-in-the-gaming-universe-astronaut-265184.mp3'
+        ];
+
+        let currentTrackIndex = -1;
+
+        function playRandomMusic() {
+            if (musicTracks.length === 0) return;
+            
+            let newIndex;
+            do {
+                newIndex = Math.floor(Math.random() * musicTracks.length);
+            } while (newIndex === currentTrackIndex && musicTracks.length > 1);
+            
+            currentTrackIndex = newIndex;
+            backgroundMusic.src = musicTracks[currentTrackIndex];
+            backgroundMusic.play().catch(err => console.log('Music play failed:', err));
+        }
+
+        function stopMusic() {
+            backgroundMusic.pause();
+            backgroundMusic.currentTime = 0;
+        }
+
+        // Auto-play next random track when current one ends
+        backgroundMusic.addEventListener('ended', () => {
+            playRandomMusic();
+        });
+        
         // Audio elements
         let bgMusic;
         let chaseSound;
@@ -1476,6 +1511,9 @@ Ngô Thị Kim</textarea>
             // Add start action
             addAction('start', `Game bắt đầu với ${names.length} người chơi!`);
 
+            // Start background music
+            playRandomMusic();
+
             updateStats();
             startCapturing();
             startTimer();
@@ -1786,6 +1824,9 @@ Ngô Thị Kim</textarea>
             clearInterval(timerInterval);
             isChasing = false;
             currentTargets = [];
+            
+            // Stop music when game ends
+            stopMusic();
             
             // Clean up robot clones
             robotClones.forEach(clone => scene.remove(clone));

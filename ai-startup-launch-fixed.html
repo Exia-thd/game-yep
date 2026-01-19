@@ -144,6 +144,41 @@ if(typeof THREE==="undefined"){
   document.getElementById("debug").innerText="Three.js loaded ✓";
 }
 
+/* ================= BACKGROUND MUSIC ================= */
+let backgroundMusic=new Audio();
+backgroundMusic.volume=100;
+
+const musicTracks=[
+  'Music/edm-gaming-music-335408.mp3',
+  'Music/level-up-energetic-gaming-rock-music-251284.mp3',
+  'Music/victory-awaits-in-the-gaming-universe-astronaut-265184.mp3'
+];
+
+let currentTrackIndex=-1;
+
+function playRandomMusic(){
+  if(musicTracks.length===0) return;
+  
+  let newIndex;
+  do{
+    newIndex=Math.floor(Math.random()*musicTracks.length);
+  }while(newIndex===currentTrackIndex && musicTracks.length>1);
+  
+  currentTrackIndex=newIndex;
+  backgroundMusic.src=musicTracks[currentTrackIndex];
+  backgroundMusic.play().catch(err=>console.log('Music play failed:',err));
+}
+
+function stopMusic(){
+  backgroundMusic.pause();
+  backgroundMusic.currentTime=0;
+}
+
+// Auto-play next random track when current one ends
+backgroundMusic.addEventListener('ended',()=>{
+  playRandomMusic();
+});
+
 /* ================= SCENE ================= */
 const scene=new THREE.Scene();
 scene.background=new THREE.Color(0x87ceeb); // Blue sky
@@ -636,6 +671,9 @@ function startGame(){
   if(timer)clearInterval(timer);
   timer=setInterval(tick,eventInterval*1000);
   
+  // Start background music
+  playRandomMusic();
+  
   // Initial UI update
   document.getElementById("event").innerText="Event: Game Started!";
   document.getElementById("timer").innerText=`Time: 0s / ${duration}s`;
@@ -831,6 +869,9 @@ function addEventLog(message){
 }
 
 function showWinner(){
+  // Stop music when game ends
+  stopMusic();
+  
   // Find first person who reached 100%
   let winnerIndex=-1;
   for(let i=0;i<progress.length;i++){
