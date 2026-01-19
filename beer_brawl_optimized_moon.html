@@ -235,31 +235,33 @@ Ngô Thị Kim</textarea>
     // Battle state
     let activeBattle = null;
 
-    // ✅ Optimizations
+    // ✅ Optimizations - PERFORMANCE TUNED FOR 200 PLAYERS
     let balloons = [];
     let stars = [];
     let labelFrame = 0;
-    const LABEL_UPDATE_EVERY = 3;
+    const LABEL_UPDATE_EVERY = 2; // Update labels for smooth tracking
+    let decorFrame = 0;
+    const DECOR_UPDATE_EVERY = 3; // Update decorations less frequently
 
     // Moon & celestial
     let moon, moonLight;
 
-    // ✅ Shared geometries/materials
+    // ✅ Shared geometries/materials - MAX PERFORMANCE for 200 players
     const shared = {
-      handBeerGlassGeo: new THREE.CylinderGeometry(0.22, 0.25, 0.8, 8),
-      handBeerFoamGeo: new THREE.SphereGeometry(0.24, 6, 6),
+      handBeerGlassGeo: new THREE.CylinderGeometry(0.22, 0.25, 0.8, 5),
+      handBeerFoamGeo: new THREE.SphereGeometry(0.24, 3, 3),
       handBeerGlassMat: new THREE.MeshStandardMaterial({ color: 0xffd966, transparent: true, opacity: 0.85, roughness: 0.3 }),
       handBeerFoamMat: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 }),
 
       footGeo: new THREE.BoxGeometry(0.3, 0.15, 0.4),
       footMat: new THREE.MeshStandardMaterial({ color: 0x333333 }),
-      legGeo: new THREE.CylinderGeometry(0.18, 0.15, 0.9, 6),
-      bodyGeo: new THREE.CylinderGeometry(0.5, 0.4, 1.1, 10),
-      armGeo: new THREE.CylinderGeometry(0.13, 0.11, 0.9, 6),
-      handGeo: new THREE.SphereGeometry(0.15, 6, 6),
-      neckGeo: new THREE.CylinderGeometry(0.18, 0.18, 0.25, 6),
-      headGeo: new THREE.SphereGeometry(0.4, 10, 10),
-      eyeGeo: new THREE.SphereGeometry(0.08, 6, 6),
+      legGeo: new THREE.CylinderGeometry(0.18, 0.15, 0.9, 4),
+      bodyGeo: new THREE.CylinderGeometry(0.5, 0.4, 1.1, 5),
+      armGeo: new THREE.CylinderGeometry(0.13, 0.11, 0.9, 4),
+      handGeo: new THREE.SphereGeometry(0.15, 4, 4),
+      neckGeo: new THREE.CylinderGeometry(0.18, 0.18, 0.25, 4),
+      headGeo: new THREE.SphereGeometry(0.4, 5, 5),
+      eyeGeo: new THREE.SphereGeometry(0.08, 3, 3),
     };
 
     // -------------------- AUDIO --------------------
@@ -419,16 +421,17 @@ Ngô Thị Kim</textarea>
     function init3DScene() {
       scene = new THREE.Scene();
       scene.background = new THREE.Color(0x1a1a3e);
-      scene.fog = new THREE.Fog(0x1a1a3e, 60, 130);
+      // Fog disabled for performance
+      // scene.fog = new THREE.Fog(0x1a1a3e, 60, 130);
 
       camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
       updateCameraPosition();
 
-      renderer = new THREE.WebGLRenderer({ canvas: document.getElementById("canvas3d"), antialias: true });
+      renderer = new THREE.WebGLRenderer({ canvas: document.getElementById("canvas3d"), antialias: true, powerPreference: "high-performance" });
       renderer.setSize(window.innerWidth, window.innerHeight);
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.2)); // Moderate quality for balance
       renderer.shadowMap.enabled = true;
-      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.shadowMap.type = THREE.BasicShadowMap; // Faster than PCFSoftShadowMap
 
       // ✅ Lighting optimized - brighter for visibility
       const ambientLight = new THREE.AmbientLight(0x6688cc, 0.65);
@@ -441,8 +444,8 @@ Ngô Thị Kim</textarea>
       keyLight.shadow.camera.right = 60;
       keyLight.shadow.camera.top = 60;
       keyLight.shadow.camera.bottom = -60;
-      keyLight.shadow.mapSize.width = 1024;
-      keyLight.shadow.mapSize.height = 1024;
+      keyLight.shadow.mapSize.width = 256;
+      keyLight.shadow.mapSize.height = 256;
       scene.add(keyLight);
 
       // 🌙 MOON
@@ -452,7 +455,7 @@ Ngô Thị Kim</textarea>
       createStars();
 
       // Party floor - lighter brown
-      const groundGeometry = new THREE.CircleGeometry(60, 32);
+      const groundGeometry = new THREE.CircleGeometry(60, 16);
       const groundMaterial = new THREE.MeshStandardMaterial({ 
         color: 0x4a3a2f, 
         roughness: 0.85, 
@@ -464,7 +467,7 @@ Ngô Thị Kim</textarea>
       scene.add(ground);
 
       // Center carpet - more vibrant
-      const carpetGeometry = new THREE.CircleGeometry(22, 32);
+      const carpetGeometry = new THREE.CircleGeometry(22, 16);
       const carpetMaterial = new THREE.MeshStandardMaterial({ 
         color: 0x7a2f4d, 
         roughness: 0.9, 
@@ -483,7 +486,7 @@ Ngô Thị Kim</textarea>
 
     function createMoon() {
       // Main moon body
-      const moonGeometry = new THREE.SphereGeometry(8, 32, 32);
+      const moonGeometry = new THREE.SphereGeometry(8, 16, 16);
       const moonMaterial = new THREE.MeshStandardMaterial({
         color: 0xffffdd,
         emissive: 0xffffcc,
@@ -513,7 +516,7 @@ Ngô Thị Kim</textarea>
 
       craterPositions.forEach(crater => {
         const c = new THREE.Mesh(
-          new THREE.SphereGeometry(crater.size, 12, 12),
+          new THREE.SphereGeometry(crater.size, 6, 6),
           craterMat
         );
         c.position.set(
@@ -533,13 +536,13 @@ Ngô Thị Kim</textarea>
       moonLight.shadow.camera.right = 60;
       moonLight.shadow.camera.top = 60;
       moonLight.shadow.camera.bottom = -60;
-      moonLight.shadow.mapSize.width = 512;
-      moonLight.shadow.mapSize.height = 512;
+      moonLight.shadow.mapSize.width = 256;
+      moonLight.shadow.mapSize.height = 256;
       scene.add(moonLight);
       scene.add(moonLight.target);
 
       // Moon glow effect - brighter
-      const glowGeometry = new THREE.SphereGeometry(9.5, 32, 32);
+      const glowGeometry = new THREE.SphereGeometry(9.5, 12, 12);
       const glowMaterial = new THREE.MeshBasicMaterial({
         color: 0xffffdd,
         transparent: true,
@@ -558,7 +561,7 @@ Ngô Thị Kim</textarea>
 
     function createStars() {
       const starGeometry = new THREE.BufferGeometry();
-      const starCount = 300;
+      const starCount = 200;
       const positions = new Float32Array(starCount * 3);
 
       for (let i = 0; i < starCount; i++) {
@@ -584,8 +587,8 @@ Ngô Thị Kim</textarea>
       scene.add(starField);
       stars.push(starField);
 
-      // Add some brighter stars
-      for (let i = 0; i < 20; i++) {
+      // Add some brighter stars - REDUCED from 20 to 8
+      for (let i = 0; i < 8; i++) {
         const starLight = new THREE.PointLight(0xffffee, 0.6, 35);
         const angle = Math.random() * Math.PI * 2;
         const radius = 70 + Math.random() * 60;
@@ -615,9 +618,9 @@ Ngô Thị Kim</textarea>
     }
 
     function addPartyDecor() {
-      // ✅ Fewer tables and beer towers
+      // ✅ Fewer tables and beer towers - OPTIMIZED
       const radius = 50;
-      for (let angle = 0; angle < Math.PI * 2; angle += 0.5) {
+      for (let angle = 0; angle < Math.PI * 2; angle += 0.8) {
         const r = radius + (Math.random() * 4 - 2);
         const isBeerTower = Math.random() > 0.6;
         const obj = isBeerTower ? createBeerTower() : createFoodTable();
@@ -628,9 +631,9 @@ Ngô Thị Kim</textarea>
         scene.add(obj);
       }
 
-      // ✅ Fewer balloons
+      // ✅ Fewer balloons - OPTIMIZED
       balloons = [];
-      for (let i = 0; i < 10; i++) {
+      for (let i = 0; i < 6; i++) {
         const balloon = createBalloonCluster();
         const a = Math.random() * Math.PI * 2;
         const rr = 18 + Math.random() * 32;
@@ -640,8 +643,8 @@ Ngô Thị Kim</textarea>
         scene.add(balloon);
       }
 
-      // ✅ String lights
-      const ringCount = 28;
+      // ✅ String lights - OPTIMIZED
+      const ringCount = 16;
       for (let i = 0; i < ringCount; i++) {
         const a = (i / ringCount) * Math.PI * 2;
         const x = Math.cos(a) * 42;
@@ -651,9 +654,9 @@ Ngô Thị Kim</textarea>
         scene.add(bulb);
       }
 
-      // Point lights for ambiance - brighter
-      for (let i = 0; i < 5; i++) {
-        const a = (i / 5) * Math.PI * 2;
+      // Point lights for ambiance - OPTIMIZED count
+      for (let i = 0; i < 3; i++) {
+        const a = (i / 3) * Math.PI * 2;
         const x = Math.cos(a) * 30;
         const z = Math.sin(a) * 30;
         const p = new THREE.PointLight(0xffeebb, 1.4, 40);
@@ -727,12 +730,12 @@ Ngô Thị Kim</textarea>
       crate.receiveShadow = true;
       g.add(crate);
 
-      // ✅ Fewer beer cups
-      const levels = 3;
+      // ✅ Fewer beer cups - OPTIMIZED
+      const levels = 2;
       for (let y = 0; y < levels; y++) {
         const ring = Math.max(3 - y, 1);
-        for (let i = 0; i < ring * 3; i++) {
-          const a = (i / (ring * 3)) * Math.PI * 2;
+        for (let i = 0; i < ring * 2; i++) {
+          const a = (i / (ring * 2)) * Math.PI * 2;
           const rr = 1.25 - y * 0.18;
           const cup = createBeerCup();
           cup.position.set(Math.cos(a) * rr, 1.0 + y * 0.68, Math.sin(a) * rr);
@@ -787,13 +790,13 @@ Ngô Thị Kim</textarea>
       const g = new THREE.Group();
       const colors = [0xff6b6b, 0x4ecdc4, 0xffe66d, 0xaa96da, 0xfcbad3, 0x00c8ff];
 
-      for (let i = 0; i < 3; i++) {
+      for (let i = 0; i < 2; i++) {
         const b = new THREE.Mesh(
-          new THREE.SphereGeometry(0.5 + Math.random() * 0.2, 8, 8),
+          new THREE.SphereGeometry(0.5 + Math.random() * 0.2, 6, 6),
           new THREE.MeshStandardMaterial({ color: colors[(Math.random() * colors.length) | 0], roughness: 0.6 })
         );
         b.position.set((Math.random() - 0.5) * 1.2, (Math.random() - 0.5) * 1.0, (Math.random() - 0.5) * 1.2);
-        b.castShadow = true;
+        b.castShadow = false;
         g.add(b);
 
         const s = new THREE.Mesh(
@@ -825,12 +828,12 @@ Ngô Thị Kim</textarea>
       const beerGroup = new THREE.Group();
 
       const glass = new THREE.Mesh(shared.handBeerGlassGeo, shared.handBeerGlassMat);
-      glass.castShadow = true;
+      glass.castShadow = false;
       beerGroup.add(glass);
 
       const foam = new THREE.Mesh(shared.handBeerFoamGeo, shared.handBeerFoamMat);
       foam.position.y = 0.45;
-      foam.castShadow = true;
+      foam.castShadow = false;
       beerGroup.add(foam);
 
       return beerGroup;
@@ -850,7 +853,7 @@ Ngô Thị Kim</textarea>
       [-0.2, 0.2].forEach(x => {
         const foot = new THREE.Mesh(shared.footGeo, shared.footMat);
         foot.position.set(x, 0.08, 0.1);
-        foot.castShadow = true;
+        foot.castShadow = false;
         personGroup.add(foot);
       });
 
@@ -891,7 +894,7 @@ Ngô Thị Kim</textarea>
       [-0.85, 0.85].forEach(x => {
         const hand = new THREE.Mesh(shared.handGeo, skinMaterial);
         hand.position.set(x, 1.1, 0);
-        hand.castShadow = true;
+        hand.castShadow = false;
         personGroup.add(hand);
       });
 
@@ -908,7 +911,7 @@ Ngô Thị Kim</textarea>
       personGroup.add(head);
 
       // hair
-      const hairGeometry = new THREE.SphereGeometry(0.42, 10, 10, 0, Math.PI * 2, 0, Math.PI / 1.5);
+      const hairGeometry = new THREE.SphereGeometry(0.42, 5, 5, 0, Math.PI * 2, 0, Math.PI / 1.5);
       const hairColors = [0x2c1810, 0x6b4423, 0x3d2314, 0x1a0f0a, 0x8b6f47];
       const hairMaterial = new THREE.MeshStandardMaterial({ color: hairColors[index % hairColors.length] });
       const hair = new THREE.Mesh(hairGeometry, hairMaterial);
@@ -921,6 +924,7 @@ Ngô Thị Kim</textarea>
       [-0.15, 0.15].forEach(x => {
         const eye = new THREE.Mesh(shared.eyeGeo, eyeMaterial);
         eye.position.set(x, 2.7, 0.35);
+        eye.castShadow = false;
         personGroup.add(eye);
       });
 
@@ -963,9 +967,9 @@ Ngô Thị Kim</textarea>
       const arm = person.userData.rightArm;
 
       const foamGroup = new THREE.Group();
-      for (let i = 0; i < 3; i++) {
+      for (let i = 0; i < 2; i++) {
         const bubble = new THREE.Mesh(
-          new THREE.SphereGeometry(0.08 + Math.random() * 0.06, 6, 6),
+          new THREE.SphereGeometry(0.08 + Math.random() * 0.06, 4, 4),
           new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 })
         );
         bubble.position.set((Math.random() - 0.5) * 0.3, 0.2 + Math.random() * 0.2, (Math.random() - 0.5) * 0.3);
@@ -1056,18 +1060,18 @@ Ngô Thị Kim</textarea>
     function startSleepingSmoke(person) {
       if (!person || !person.userData.eliminated) return;
 
-      // Create continuous smoke puffs
+      // Create continuous smoke puffs - OPTIMIZED
       const smokeInterval = setInterval(() => {
         if (!person.parent) {
           clearInterval(smokeInterval);
           return;
         }
 
-        // Create smoke puff
+        // Create smoke puff - REDUCED particle count
         const smokeGroup = new THREE.Group();
-        for (let i = 0; i < 3; i++) {
+        for (let i = 0; i < 2; i++) {
           const puff = new THREE.Mesh(
-            new THREE.SphereGeometry(0.15 + Math.random() * 0.1, 8, 8),
+            new THREE.SphereGeometry(0.15 + Math.random() * 0.1, 4, 4),
             new THREE.MeshStandardMaterial({ 
               color: 0xcccccc, 
               transparent: true, 
@@ -1109,7 +1113,7 @@ Ngô Thị Kim</textarea>
           }
         }, 40);
 
-      }, 1500); // New smoke puff every 1.5 seconds
+      }, 2500); // New smoke puff every 2.5 seconds - INCREASED interval
 
       // Store interval reference to clear later if needed
       person.userData.smokeInterval = smokeInterval;
@@ -1480,7 +1484,11 @@ Ngô Thị Kim</textarea>
       requestAnimationFrame(animate);
 
       updateBattle();
+      
+      decorFrame++;
+      const shouldUpdateDecor = decorFrame % DECOR_UPDATE_EVERY === 0;
 
+      // ✅ SMOOTH MOVEMENT: Update mỗi frame để mượt
       people.forEach((person, index) => {
         if (!person.userData.eliminated && !person.userData.inBattle) {
           if (activeBattle && !isFinalBattle) {
@@ -1539,36 +1547,38 @@ Ngô Thị Kim</textarea>
           if (person.userData.beer) {
             person.userData.beer.rotation.z = Math.sin(Date.now() * 0.005 + index) * 0.28;
           }
-        } else if (person.userData.eliminated) {
-          // Keep label visible for eliminated people lying down
-          // Labels will still update position
         }
       });
 
+      // ✅ SMOOTH LABELS: Update mỗi 2 frames
       labelFrame++;
       if (labelFrame % LABEL_UPDATE_EVERY === 0) updateNameLabels();
 
-      // Balloons float
-      for (let i = 0; i < balloons.length; i++) {
-        const b = balloons[i];
-        b.userData.floatPhase += 0.02;
-        b.position.y += Math.sin(b.userData.floatPhase) * 0.01;
-        b.rotation.y += 0.003;
+      // Balloons float - Chỉ decorations mới skip frames
+      if (shouldUpdateDecor) {
+        for (let i = 0; i < balloons.length; i++) {
+          const b = balloons[i];
+          b.userData.floatPhase += 0.06;
+          b.position.y += Math.sin(b.userData.floatPhase) * 0.01;
+          b.rotation.y += 0.009;
+        }
       }
 
       // 🌙 Moon gentle float
-      if (moon) {
+      if (shouldUpdateDecor && moon) {
         moon.position.y = 60 + Math.sin(Date.now() * 0.0003) * 2;
-        moon.rotation.y += 0.0005;
+        moon.rotation.y += 0.0015;
       }
 
       // ⭐ Stars twinkling
-      stars.forEach(star => {
-        if (star.isPointLight) {
-          star.userData.twinklePhase += 0.05;
-          star.intensity = star.userData.baseIntensity + Math.sin(star.userData.twinklePhase) * 0.25;
-        }
-      });
+      if (shouldUpdateDecor) {
+        stars.forEach(star => {
+          if (star.isPointLight) {
+            star.userData.twinklePhase += 0.15;
+            star.intensity = star.userData.baseIntensity + Math.sin(star.userData.twinklePhase) * 0.25;
+          }
+        });
+      }
 
       if (!activeBattle || isFinalBattle) {
         cameraAngle += 0.001;

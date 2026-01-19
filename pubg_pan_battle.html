@@ -651,15 +651,17 @@ Ngô Thị Kim</textarea>
             scene = new THREE.Scene();
             
             scene.background = new THREE.Color(0x87ceeb);
-            scene.fog = new THREE.Fog(0x87ceeb, 50, 120);
+            // Fog disabled for performance
+            // scene.fog = new THREE.Fog(0x87ceeb, 50, 120);
 
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
             updateCameraPosition();
 
-            renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('canvas3d'), antialias: true });
+            renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('canvas3d'), antialias: true, powerPreference: "high-performance" });
             renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.2)); // Balanced quality
             renderer.shadowMap.enabled = true;
-            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.shadowMap.type = THREE.BasicShadowMap; // Faster shadows
 
             const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
             scene.add(ambientLight);
@@ -671,12 +673,12 @@ Ngô Thị Kim</textarea>
             sunLight.shadow.camera.right = 80;
             sunLight.shadow.camera.top = 80;
             sunLight.shadow.camera.bottom = -80;
-            sunLight.shadow.mapSize.width = 2048;
-            sunLight.shadow.mapSize.height = 2048;
+            sunLight.shadow.mapSize.width = 512; // Optimized
+            sunLight.shadow.mapSize.height = 512;
             scene.add(sunLight);
 
-            // Ground - darker green grass
-            const groundGeometry = new THREE.CircleGeometry(60, 64);
+            // Ground - darker green grass - OPTIMIZED
+            const groundGeometry = new THREE.CircleGeometry(60, 24);
             const groundMaterial = new THREE.MeshStandardMaterial({ 
                 color: 0x2d5016, // Dark green
                 metalness: 0.0,
@@ -746,7 +748,7 @@ Ngô Thị Kim</textarea>
         function createTree() {
             const treeGroup = new THREE.Group();
 
-            const trunkGeometry = new THREE.CylinderGeometry(0.3, 0.4, 3, 8);
+            const trunkGeometry = new THREE.CylinderGeometry(0.3, 0.4, 3, 6);
             const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x6b4423 });
             const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
             trunk.position.y = 1.5;
@@ -774,13 +776,13 @@ Ngô Thị Kim</textarea>
             for (let i = 0; i < 4; i++) {
                 const size = 0.4 + Math.random() * 0.4;
                 const sphere = new THREE.Mesh(
-                    new THREE.SphereGeometry(size, 8, 8),
+                    new THREE.SphereGeometry(size, 6, 6),
                     bushMaterial
                 );
                 sphere.position.x = (Math.random() - 0.5) * 1;
                 sphere.position.y = size * 0.5;
                 sphere.position.z = (Math.random() - 0.5) * 1;
-                sphere.castShadow = true;
+                sphere.castShadow = false; // Disable shadows for bushes
                 bushGroup.add(sphere);
             }
 
@@ -793,12 +795,12 @@ Ngô Thị Kim</textarea>
             const rockMaterial = new THREE.MeshStandardMaterial({ color: 0x696969 });
             const rock = new THREE.Mesh(rockGeometry, rockMaterial);
             rock.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
-            rock.castShadow = true;
+            rock.castShadow = false; // Disable shadows for rocks
             return rock;
         }
 
         function addClouds() {
-            for (let i = 0; i < 15; i++) {
+            for (let i = 0; i < 8; i++) { // Reduced from 15 to 8
                 const cloud = createCloud();
                 cloud.position.x = (Math.random() - 0.5) * 150;
                 cloud.position.y = 20 + Math.random() * 15;
@@ -817,10 +819,10 @@ Ngô Thị Kim</textarea>
                 opacity: 0.8
             });
 
-            for (let i = 0; i < 4; i++) {
+            for (let i = 0; i < 3; i++) { // Reduced from 4 to 3
                 const size = 1.5 + Math.random() * 1;
                 const sphere = new THREE.Mesh(
-                    new THREE.SphereGeometry(size, 8, 8),
+                    new THREE.SphereGeometry(size, 6, 6),
                     cloudMaterial
                 );
                 sphere.position.x = (Math.random() - 0.5) * 4;
@@ -852,7 +854,7 @@ Ngô Thị Kim</textarea>
                 personGroup.add(foot);
             });
 
-            const legGeometry = new THREE.CylinderGeometry(0.18, 0.15, 0.9, 8);
+            const legGeometry = new THREE.CylinderGeometry(0.18, 0.15, 0.9, 5);
             const legMaterial = new THREE.MeshStandardMaterial({ color: pantsColor });
             
             [-0.2, 0.2].forEach(x => {
@@ -862,14 +864,14 @@ Ngô Thị Kim</textarea>
                 personGroup.add(leg);
             });
 
-            const bodyGeometry = new THREE.CylinderGeometry(0.5, 0.4, 1.1, 12);
+            const bodyGeometry = new THREE.CylinderGeometry(0.5, 0.4, 1.1, 6);
             const bodyMaterial = new THREE.MeshStandardMaterial({ color: shirtColor });
             const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
             body.position.y = 1.6;
             body.castShadow = true;
             personGroup.add(body);
 
-            const armGeometry = new THREE.CylinderGeometry(0.13, 0.11, 0.9, 8);
+            const armGeometry = new THREE.CylinderGeometry(0.13, 0.11, 0.9, 5);
             const skinMaterial = new THREE.MeshStandardMaterial({ color: 0xffd7b5 });
             
             const leftArm = new THREE.Mesh(armGeometry, skinMaterial);
@@ -886,32 +888,32 @@ Ngô Thị Kim</textarea>
             personGroup.add(rightArm);
             personGroup.userData.rightArm = rightArm;
 
-            const handGeometry = new THREE.SphereGeometry(0.15, 8, 8);
+            const handGeometry = new THREE.SphereGeometry(0.15, 5, 5);
             [-0.85, 0.85].forEach(x => {
                 const hand = new THREE.Mesh(handGeometry, skinMaterial);
                 hand.position.set(x, 1.1, 0);
                 personGroup.add(hand);
             });
 
-            const neckGeometry = new THREE.CylinderGeometry(0.18, 0.18, 0.25, 8);
+            const neckGeometry = new THREE.CylinderGeometry(0.18, 0.18, 0.25, 5);
             const neck = new THREE.Mesh(neckGeometry, skinMaterial);
             neck.position.y = 2.25;
             personGroup.add(neck);
 
-            const headGeometry = new THREE.SphereGeometry(0.4, 16, 16);
+            const headGeometry = new THREE.SphereGeometry(0.4, 8, 8);
             const head = new THREE.Mesh(headGeometry, skinMaterial);
             head.position.y = 2.65;
             head.castShadow = true;
             personGroup.add(head);
 
-            const hairGeometry = new THREE.SphereGeometry(0.42, 16, 16, 0, Math.PI * 2, 0, Math.PI / 1.5);
+            const hairGeometry = new THREE.SphereGeometry(0.42, 8, 8, 0, Math.PI * 2, 0, Math.PI / 1.5);
             const hairColors = [0x2c1810, 0x6b4423, 0x3d2314, 0x1a0f0a, 0x8b6f47];
             const hairMaterial = new THREE.MeshStandardMaterial({ color: hairColors[index % hairColors.length] });
             const hair = new THREE.Mesh(hairGeometry, hairMaterial);
             hair.position.y = 2.75;
             personGroup.add(hair);
 
-            const eyeGeometry = new THREE.SphereGeometry(0.08, 8, 8);
+            const eyeGeometry = new THREE.SphereGeometry(0.08, 4, 4);
             const eyeMaterial = new THREE.MeshStandardMaterial({ color: 0x000000 });
             
             [-0.15, 0.15].forEach(x => {
@@ -952,7 +954,7 @@ Ngô Thị Kim</textarea>
         function createPan() {
             const panGroup = new THREE.Group();
 
-            const panGeometry = new THREE.CylinderGeometry(0.35, 0.35, 0.05, 32);
+            const panGeometry = new THREE.CylinderGeometry(0.35, 0.35, 0.05, 16);
             const panMaterial = new THREE.MeshStandardMaterial({ 
                 color: 0x2f2f2f,
                 metalness: 0.9,
@@ -962,7 +964,7 @@ Ngô Thị Kim</textarea>
             panBody.castShadow = true;
             panGroup.add(panBody);
 
-            const handleGeometry = new THREE.CylinderGeometry(0.06, 0.06, 0.6, 8);
+            const handleGeometry = new THREE.CylinderGeometry(0.06, 0.06, 0.6, 5);
             const handleMaterial = new THREE.MeshStandardMaterial({ 
                 color: 0x1a1a1a,
                 metalness: 0.3,
@@ -984,7 +986,7 @@ Ngô Thị Kim</textarea>
                 const offsetX = Math.cos(angle) * 1.5;
                 const offsetZ = Math.sin(angle) * 1.5;
 
-                const boltGeometry = new THREE.CylinderGeometry(0.15, 0.05, 15, 6);
+                const boltGeometry = new THREE.CylinderGeometry(0.15, 0.05, 15, 4);
                 const boltMaterial = new THREE.MeshStandardMaterial({ 
                     color: 0xffff00,
                     emissive: 0xffff00,
