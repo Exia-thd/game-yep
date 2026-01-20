@@ -332,7 +332,7 @@ let labels=[];
 let employeeStates=[]; // 'working' or 'violating'
 let employeeViolations=[];
 
-const VIOLATIONS=[
+const VIOLATIONS = [
   "Quên thẻ nhân viên",
   "Chơi game trong giờ làm việc",
   "Ăn uống trong văn phòng",
@@ -345,9 +345,25 @@ const VIOLATIONS=[
   "Nhấp vào email phishing",
   "Máy tính nhiễm virus do nhấn link lạ",
   "Ngủ gục trong giờ làm việc",
-  "Đi làm trễ"
+  "Đi làm trễ",
+  "Hát karaoke ở chỗ ngồi",
+  "Selfie quá nhiều trong WC",
+  "Nấu mì trong văn phòng",
+  "Đặt hàng online quá 10 đơn/ngày",
+  "Dùng máy in in ảnh cá nhân",
+  "Cắt tóc cho đồng nghiệp trong giờ làm",
+  "Tập yoga giữa văn phòng",
+  "Đọc tarot cho cả team",
+  "Nuôi cá cảnh trong ngăn kéo",
+  "Chơi TikTok quá 2 giờ",
+  "Gọi ship đồ ăn về công ty quá 5 lần/ngày",
+  "Hẹn hò qua Tinder trong meeting",
+  "Trang điểm quá lâu ở bàn làm việc",
+  "Chơi đàn guitar trong giờ nghỉ trưa",
+  "Live reaction World Cup khi đang họp",
+  "Ngủ trong toilet quá 30 phút",
+  "Mang pet đến văn phòng không xin phép"
 ];
-
 // Track violation usage to reduce probability
 let violationWeights=[];
 let usedViolations=[];
@@ -889,6 +905,13 @@ function checkEmployee(){
     
     // Show continue button after result is displayed
     document.getElementById("popupButton").style.display="block";
+    
+    // Auto continue after showing result
+    setTimeout(()=>{
+      if(isGameRunning && checkingEmployee){
+        continuePatrol();
+      }
+    },3000);
   },2000);
 }
 
@@ -902,10 +925,10 @@ function continuePatrol(){
   if(caughtViolations.length>=targetViolations){
     showFinalReport();
   }else{
+    isPaused=false;
     // Wait for check interval before next patrol
     setTimeout(()=>{
-      if(isGameRunning){
-        isPaused=false;
+      if(isGameRunning && !isPaused){
         pickNextTarget();
       }
     },checkInterval*1000);

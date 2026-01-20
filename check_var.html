@@ -900,6 +900,13 @@ function checkVar(){
     }
     
     document.getElementById("popupButton").style.display="block";
+    
+    // Auto continue after showing result
+    setTimeout(()=>{
+      if(isGameRunning && checkingVar){
+        continueCheck();
+      }
+    },3000);
   },2000);
 }
 
@@ -912,9 +919,9 @@ function continueCheck(){
   if(caughtDrunks.length>=targetDrunks){
     showFinalReport();
   }else{
+    isPaused=false;
     setTimeout(()=>{
-      if(isGameRunning){
-        isPaused=false;
+      if(isGameRunning && !isPaused){
         pickNextTarget();
       }
     },checkInterval*1000);
