@@ -284,6 +284,12 @@ Lê Văn C"></textarea>
       backgroundMusic.currentTime = 0;
     }
 
+    function playVictoryMusic() {
+      backgroundMusic.src = 'Music/gaming-game-minecraft-background-music-387000.mp3';
+      backgroundMusic.currentTime = 0;
+      backgroundMusic.play().catch(err => console.log('Victory music play failed:', err));
+    }
+
     // Auto-play next random track when current one ends
     backgroundMusic.addEventListener('ended', () => {
       playRandomMusic();
@@ -1199,8 +1205,9 @@ Lê Văn C"></textarea>
       mode = MODE.ENDED;
       winCine.active = false;
 
-      // Stop music when game ends
+      // Stop music and play victory music
       stopMusic();
+      playVictoryMusic();
 
       winnerNameEl.textContent = winner;
       winnerPanel.classList.remove('hidden');

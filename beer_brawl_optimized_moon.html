@@ -439,6 +439,11 @@ Ngô Thị Kim</textarea>
       }
     }
     
+    // Auto-play handler
+    function onMusicEnded() {
+      playRandomMusic();
+    }
+    
     function playRandomMusic() {
       if (musicTracks.length === 0) {
         console.log('Không có nhạc để phát');
@@ -450,9 +455,7 @@ Ngô Thị Kim</textarea>
         backgroundMusic.volume = 1.0; // Âm lượng 100%
         
         // Khi hết bài, tự động phát bài tiếp theo
-        backgroundMusic.addEventListener('ended', function() {
-          playRandomMusic();
-        });
+        backgroundMusic.addEventListener('ended', onMusicEnded);
       }
       
       // Chọn ngẫu nhiên bài khác với bài hiện tại
@@ -470,6 +473,17 @@ Ngô Thị Kim</textarea>
       if (backgroundMusic) {
         backgroundMusic.pause();
         backgroundMusic.currentTime = 0;
+      }
+    }
+
+    function playVictoryMusic() {
+      if (backgroundMusic) {
+        // Remove auto-play event to prevent interruption after victory music ends
+        backgroundMusic.removeEventListener('ended', onMusicEnded);
+        
+        backgroundMusic.src = 'Music/gaming-game-minecraft-background-music-387000.mp3';
+        backgroundMusic.currentTime = 0;
+        backgroundMusic.play().catch(err => console.log('Victory music play failed:', err));
       }
     }
 
@@ -521,7 +535,7 @@ Ngô Thị Kim</textarea>
 
       renderer = new THREE.WebGLRenderer({ canvas: document.getElementById("canvas3d"), antialias: true, powerPreference: "high-performance" });
       renderer.setSize(window.innerWidth, window.innerHeight);
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.2)); // Moderate quality for balance
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1)); // Optimized for large crowds
       renderer.shadowMap.enabled = true;
       renderer.shadowMap.type = THREE.BasicShadowMap; // Faster than PCFSoftShadowMap
 
@@ -547,7 +561,7 @@ Ngô Thị Kim</textarea>
       createStars();
 
       // Party floor - lighter brown
-      const groundGeometry = new THREE.CircleGeometry(60, 16);
+      const groundGeometry = new THREE.CircleGeometry(60, 12);
       const groundMaterial = new THREE.MeshStandardMaterial({ 
         color: 0x4a3a2f, 
         roughness: 0.85, 
@@ -578,7 +592,7 @@ Ngô Thị Kim</textarea>
 
     function createMoon() {
       // Main moon body
-      const moonGeometry = new THREE.SphereGeometry(8, 16, 16);
+      const moonGeometry = new THREE.SphereGeometry(8, 12, 12);
       const moonMaterial = new THREE.MeshStandardMaterial({
         color: 0xffffdd,
         emissive: 0xffffcc,
@@ -608,7 +622,7 @@ Ngô Thị Kim</textarea>
 
       craterPositions.forEach(crater => {
         const c = new THREE.Mesh(
-          new THREE.SphereGeometry(crater.size, 6, 6),
+          new THREE.SphereGeometry(crater.size, 5, 5),
           craterMat
         );
         c.position.set(
@@ -634,7 +648,7 @@ Ngô Thị Kim</textarea>
       scene.add(moonLight.target);
 
       // Moon glow effect - brighter
-      const glowGeometry = new THREE.SphereGeometry(9.5, 12, 12);
+      const glowGeometry = new THREE.SphereGeometry(9.5, 10, 10);
       const glowMaterial = new THREE.MeshBasicMaterial({
         color: 0xffffdd,
         transparent: true,
@@ -761,7 +775,7 @@ Ngô Thị Kim</textarea>
       const g = new THREE.Group();
 
       const top = new THREE.Mesh(
-        new THREE.CylinderGeometry(2.2, 2.2, 0.18, 12),
+        new THREE.CylinderGeometry(2.2, 2.2, 0.18, 10),
         new THREE.MeshStandardMaterial({ color: 0x2b2b2b, roughness: 0.8 })
       );
       top.position.y = 1.35;
@@ -773,7 +787,7 @@ Ngô Thị Kim</textarea>
       for (let i = 0; i < 4; i++) {
         const a = (i / 4) * Math.PI * 2;
         const leg = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.12, 0.12, 1.35, 6),
+          new THREE.CylinderGeometry(0.12, 0.12, 1.35, 5),
           legMat
         );
         leg.position.set(Math.cos(a) * 1.5, 0.7, Math.sin(a) * 1.5);
@@ -786,7 +800,7 @@ Ngô Thị Kim</textarea>
 
       for (let i = 0; i < 4; i++) {
         const plate = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.55, 0.55, 0.06, 10),
+          new THREE.CylinderGeometry(0.55, 0.55, 0.06, 8),
           plateMat
         );
         const a = (i / 4) * Math.PI * 2;
@@ -795,7 +809,7 @@ Ngô Thị Kim</textarea>
         g.add(plate);
 
         const food = new THREE.Mesh(
-          new THREE.SphereGeometry(0.22, 6, 6),
+          new THREE.SphereGeometry(0.22, 5, 5),
           new THREE.MeshStandardMaterial({ color: foodColors[i % foodColors.length], roughness: 0.6 })
         );
         food.position.set(
@@ -837,7 +851,7 @@ Ngô Thị Kim</textarea>
       }
 
       const keg = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.9, 0.9, 1.6, 12),
+        new THREE.CylinderGeometry(0.9, 0.9, 1.6, 10),
         new THREE.MeshStandardMaterial({ color: 0x777777, metalness: 0.6, roughness: 0.35 })
       );
       keg.position.y = 1.25;
@@ -861,8 +875,8 @@ Ngô Thị Kim</textarea>
 
     const decorBeerGlassMat = new THREE.MeshStandardMaterial({ color: 0xffd966, transparent: true, opacity: 0.82, roughness: 0.35 });
     const decorBeerFoamMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 });
-    const decorBeerGlassGeo = new THREE.CylinderGeometry(0.28, 0.32, 0.75, 8);
-    const decorBeerFoamGeo = new THREE.SphereGeometry(0.3, 6, 6);
+    const decorBeerGlassGeo = new THREE.CylinderGeometry(0.28, 0.32, 0.75, 6);
+    const decorBeerFoamGeo = new THREE.SphereGeometry(0.3, 5, 5);
 
     function createBeerCup() {
       const cup = new THREE.Group();
@@ -1476,7 +1490,8 @@ Ngô Thị Kim</textarea>
 
             addAction("finale", `Hết giờ! Tất cả cùng cụng ly với ${alivePeople.length} người!`);
 
-            const toastInterval = setInterval(() => {
+            let toastInterval; // Declare outside for clearInterval access
+            toastInterval = setInterval(() => {
               const alive = people.filter(p => !p.userData.eliminated);
 
               if (alive.length <= 1) {
@@ -1487,7 +1502,11 @@ Ngô Thị Kim</textarea>
               }
 
               const remaining = alive.length;
-              let toEliminate = Math.max(1, Math.floor(remaining * 0.3));
+              let toEliminate = Math.max(1, Math.floor(remaining * 0.25)); // 25% per wave
+              
+              // Limit max victims per wave to prevent lag
+              toEliminate = Math.min(toEliminate, 15);
+              
               if (toEliminate >= remaining) toEliminate = remaining - 1;
 
               const shuffled = [...alive].sort(() => Math.random() - 0.5);
@@ -1498,16 +1517,33 @@ Ngô Thị Kim</textarea>
 
               if (clinkSound) clinkSound.play();
 
-              alive.forEach((p, idx) => { if (idx % 2 === 0) playToastAnimation(p); });
+              // Animate random people toasting (limit to prevent lag)
+              const toastCount = Math.min(alive.length, 20);
+              alive.forEach((p, idx) => { if (idx < toastCount && idx % 2 === 0) playToastAnimation(p); });
 
               victims.forEach((victim, index) => {
                 setTimeout(() => {
-                  addAction("knockout", `${victim.userData.name} đã gục vì say xỉn trong màn cụng ly 🍺😴`);
                   drunkenSleepEliminate(victim);
-                }, index * 220);
+                  
+                  // Check if only 1 person remains after this elimination
+                  const remaining = people.filter(p => !p.userData.eliminated);
+                  console.log(`After eliminating ${victim.userData.name}, remaining: ${remaining.length}`);
+                  if (remaining.length <= 1) {
+                    console.log('Clearing toastInterval and ending game');
+                    clearInterval(toastInterval);
+                    alert.style.display = "none";
+                    setTimeout(() => endGame(), 500);
+                    return;
+                  }
+                  
+                  // Only log every 3rd victim to reduce spam
+                  if (index % 3 === 0 || index === victims.length - 1) {
+                    addAction("knockout", `${victim.userData.name} và ${Math.min(2, victims.length - index - 1)} người khác đã gục vì say xỉn 🍺😴`);
+                  }
+                }, index * 150); // Faster stagger
               });
 
-            }, 2000);
+            }, 3000); // Every 3 seconds
           } else {
             endGame();
           }
@@ -1520,8 +1556,9 @@ Ngô Thị Kim</textarea>
       clearInterval(timerInterval);
       activeBattle = null;
       
-      // Dừng nhạc nền khi game kết thúc
+      // Dừng nhạc nền và phát nhạc chiến thắng
       stopMusic();
+      playVictoryMusic();
 
       const survivors = people.filter(p => !p.userData.eliminated);
       if (survivors.length === 1 && winSound) winSound.play();
@@ -1586,6 +1623,7 @@ Ngô Thị Kim</textarea>
 
       updateBattle();
       
+      const now = Date.now();
       decorFrame++;
       const shouldUpdateDecor = decorFrame % DECOR_UPDATE_EVERY === 0;
 
@@ -1605,7 +1643,7 @@ Ngô Thị Kim</textarea>
               person.position.x += (dx / distToBattle) * fleeSpeed;
               person.position.z += (dz / distToBattle) * fleeSpeed;
               person.rotation.y = Math.atan2(dz, dx) + Math.PI / 2;
-              person.position.y = Math.abs(Math.sin(Date.now() * 0.02)) * 0.3;
+              person.position.y = Math.abs(Math.sin(now * 0.02)) * 0.3;
 
               const distFromCenter = Math.sqrt(person.position.x ** 2 + person.position.z ** 2);
               if (distFromCenter > 40) {
@@ -1626,7 +1664,7 @@ Ngô Thị Kim</textarea>
               }
 
               person.rotation.y = person.userData.wanderAngle;
-              person.position.y = Math.abs(Math.sin(Date.now() * 0.005 + index)) * 0.15;
+              person.position.y = Math.abs(Math.sin(now * 0.005 + index)) * 0.15;
             }
           } else {
             person.userData.wanderAngle += (Math.random() - 0.5) * 0.1;
@@ -1642,11 +1680,11 @@ Ngô Thị Kim</textarea>
             }
 
             person.rotation.y = person.userData.wanderAngle;
-            person.position.y = Math.abs(Math.sin(Date.now() * 0.005 + index)) * 0.15;
+            person.position.y = Math.abs(Math.sin(now * 0.005 + index)) * 0.15;
           }
 
           if (person.userData.beer) {
-            person.userData.beer.rotation.z = Math.sin(Date.now() * 0.005 + index) * 0.28;
+            person.userData.beer.rotation.z = Math.sin(now * 0.005 + index) * 0.28;
           }
         }
       });
@@ -1667,7 +1705,7 @@ Ngô Thị Kim</textarea>
 
       // 🌙 Moon gentle float
       if (shouldUpdateDecor && moon) {
-        moon.position.y = 60 + Math.sin(Date.now() * 0.0003) * 2;
+        moon.position.y = 60 + Math.sin(now * 0.0003) * 2;
         moon.rotation.y += 0.0015;
       }
 
