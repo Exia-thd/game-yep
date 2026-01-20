@@ -62,10 +62,12 @@
     }
 
     .btn{
-      width:100%;padding:18px;font-size:20px;font-weight:700;font-family:'Sriracha',cursive;
+      width:100%;padding:18px;font-size:20px;font-weight:700;font-family:'Quicksand',sans-serif;
       border:none;border-radius:15px;cursor:pointer;transition:all .25s ease;
-      text-transform:uppercase;letter-spacing:1px;box-shadow:0 6px 20px rgba(0,0,0,0.2);
+      letter-spacing:0.5px;box-shadow:0 6px 20px rgba(0,0,0,0.2);
       pointer-events:all;
+      display:flex;align-items:center;justify-content:center;
+      text-align:center;
     }
     .btn-start{background:linear-gradient(135deg,#667eea 0%,#764ba2 50%,#f093fb 100%);color:#fff;margin-top:10px;
       background-size:200% 100%;animation:gradientSlide 3s ease infinite;position:relative;overflow:hidden;}
@@ -81,6 +83,7 @@
     .btn-start:disabled{opacity:.5;cursor:not-allowed;}
 
     .player-list{
+      display:none; /* Hidden for cleaner UI */
       margin-top:16px;max-height:180px;overflow:auto;background:rgba(255,255,255,0.5);
       border-radius:15px;padding:15px;flex-shrink:0;
     }
@@ -214,7 +217,6 @@ Lê Văn C"></textarea>
         <p style="font-size:14px;color:#666;margin-top:8px;">Tối thiểu 1 giây</p>
       </div>
 
-      <div class="player-list" id="playerList"></div>
       <button class="btn btn-start" id="startBtn" disabled>🏁 Bắt Đầu Đua!</button>
     </div>
 
@@ -1000,6 +1002,9 @@ Lê Văn C"></textarea>
 
     // ===== Player list =====
     function updatePlayerList() {
+      // Skip updating hidden playerList to avoid errors
+      if (!playerList || playerList.style.display === 'none') return;
+      
       const fishEmojis = ['🐟','🐠','🐡','🦈','🐋','🐬','🦑','🐙','🦞','🦀','🦐','🐢','🦭','🐊','🦦'];
       playerList.innerHTML = players.map((name, i) => `
         <div class="player-item">
