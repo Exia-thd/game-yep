@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
 <meta charset="utf-8">
-<title>AI Startup Launch – Office 3D</title>
+<title>TMA Star Performer – Office 3D</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
@@ -101,6 +101,9 @@ button:hover{
   font-size:22px;font-weight:900;
   display:none;z-index:20;
   box-shadow:0 20px 50px rgba(0,0,0,.25);
+  white-space:pre-line;
+  text-align:center;
+  max-width:500px;
 }
 canvas{display:block}
 </style>
@@ -109,7 +112,7 @@ canvas{display:block}
 <body>
 
 <div id="ui">
-  <b>🚀 AI Startup Launch – Office 3D</b><br>
+  <b>⭐ TMA Star Performer – Office 3D</b><br>
   Danh sách người chơi (mỗi dòng 1 người)
   <textarea id="players" rows="6">Player 1
 Player 2
@@ -119,6 +122,8 @@ Player 4</textarea>
   <input id="duration" type="number" value="120">
   Thời gian mỗi event (giây)
   <input id="eventInterval" type="number" value="3">
+  Số lượng người thắng
+  <input id="winnerCount" type="number" value="3" min="1" max="10">
   <button id="start">START</button>
 </div>
 
@@ -250,7 +255,7 @@ for(let x=-140;x<=140;x+=70){
 
 /* ================= GAME DATA ================= */
 let names=[],progress=[],bars=[],desks=[],persons=[],labels=[],progressTexts=[];
-let duration=120,elapsed=0,timer=null,eventInterval=3;
+let duration=120,elapsed=0,timer=null,eventInterval=3,winnerCount=3;
 let isGameRunning=false;
 let lastEventValues=[];
 let isOvertime=false;
@@ -662,6 +667,7 @@ function startGame(){
 
   duration=parseInt(document.getElementById("duration").value)||120;
   eventInterval=parseInt(document.getElementById("eventInterval").value)||3;
+  winnerCount=parseInt(document.getElementById("winnerCount").value)||3;
   elapsed=0;
   progress=new Array(names.length).fill(0);
   lastEventValues=new Array(names.length).fill(0);
@@ -799,46 +805,44 @@ function tick(){
     document.getElementById("timer").innerText=`⏰ OVERTIME`;
     addEventLog("⏰ OVERTIME! Đang chọn người bức phá...");
     
-    // Immediately pick one random person and set to 100%
-    const workingIndices=[];
-    for(let i=0;i<progress.length;i++){
-      if(personStates[i]==='working'){
-        workingIndices.push(i);
-      }
-    }
+    // Get top performers based on current progress
+    const topPerformers=[...progress].map((p,i)=>({p,i}))
+      .sort((a,b)=>b.p-a.p)
+      .slice(0,Math.min(winnerCount,progress.length));
     
-    if(workingIndices.length>0){
-      const luckyIndex=workingIndices[Math.floor(Math.random()*workingIndices.length)];
-      progress[luckyIndex]=100;
+    // Set all top performers to 100%
+    topPerformers.forEach((performer)=>{
+      const idx=performer.i;
+      progress[idx]=100;
       
-      // Update the lucky person's bar - GREEN for winner
-      bars[luckyIndex].scale.y=1;
-      bars[luckyIndex].position.y=0.9+1.5;
-      bars[luckyIndex].material.color.setHex(0x00ff00); // Bright green
-      bars[luckyIndex].material.emissive.setHex(0x00dd00);
-      bars[luckyIndex].material.emissiveIntensity=0.8;
-      updateProgressTextSprite(progressTexts[luckyIndex],100);
+      // Update the winner's bar - GREEN
+      bars[idx].scale.y=1;
+      bars[idx].position.y=0.9+1.5;
+      bars[idx].material.color.setHex(0x00ff00); // Bright green
+      bars[idx].material.emissive.setHex(0x00dd00);
+      bars[idx].material.emissiveIntensity=0.8;
+      updateProgressTextSprite(progressTexts[idx],100);
       
-      // Store that this person won (to prevent color override)
-      lastEventValues[luckyIndex]=100;
+      // Store that this person won
+      lastEventValues[idx]=100;
       
-      addEventLog(`🍀 ${names[luckyIndex]} may mắn được chọn!`);
-      
-      // Stop the timer and show winner
-      clearInterval(timer);
-      timer=null;
-      isGameRunning=false;
-      
-      updateLeaderboard();
-      updateEventProgress();
-      
-      // Show winner after a short delay
-      setTimeout(()=>{
-        showWinner();
-      },500);
-      
-      return; // Exit tick function
-    }
+      addEventLog(`🍀 ${names[idx]} đạt Star Performer!`);
+    });
+    
+    // Stop the timer and show winners
+    clearInterval(timer);
+    timer=null;
+    isGameRunning=false;
+    
+    updateLeaderboard();
+    updateEventProgress();
+    
+    // Show winners after a short delay
+    setTimeout(()=>{
+      showWinner();
+    },500);
+    
+    return; // Exit tick function
   }
 }
 
@@ -890,22 +894,19 @@ function showWinner(){
   stopMusic();
   playVictoryMusic();
   
-  // Find first person who reached 100%
-  let winnerIndex=-1;
-  for(let i=0;i<progress.length;i++){
-    if(progress[i]>=100){
-      winnerIndex=i;
-      break;
-    }
-  }
+  // Get top performers based on winnerCount
+  const topPerformers=[...progress].map((p,i)=>({p,i,name:names[i]}))
+    .sort((a,b)=>b.p-a.p)
+    .slice(0,Math.min(winnerCount,progress.length));
   
-  // If no one reached 100% (shouldn't happen now), show highest progress
-  if(winnerIndex===-1){
-    winnerIndex=progress.indexOf(Math.max(...progress));
-  }
+  // Build winner message
+  let winnerText="🏆 TMA STAR PERFORMERS 🏆\n\n";
+  topPerformers.forEach((performer,index)=>{
+    const medal=index===0?"🥇":index===1?"🥈":index===2?"🥉":"⭐";
+    winnerText+=`${medal} ${index+1}. ${performer.name} - ${performer.p.toFixed(1)}%\n`;
+  });
   
-  document.getElementById("winner").innerText=
-    "🏆 "+names[winnerIndex]+" BỨC PHÁ THÀNH CÔNG!";
+  document.getElementById("winner").innerText=winnerText;
   document.getElementById("winner").style.display="block";
   
   // Show UI panel again for replay
