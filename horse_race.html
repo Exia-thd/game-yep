@@ -135,33 +135,6 @@
     .btn-restart{background:linear-gradient(135deg,#00b894,#00cec9);color:#fff;margin-top:26px;}
     .btn-restart:hover{transform:translateY(-3px);box-shadow:0 10px 30px rgba(0,184,148,0.4);}
     .hidden{display:none !important;}
-
-    .event-log{
-      position:fixed;top:120px;right:20px;width:380px;max-height:560px;
-      background:rgba(255,255,255,0.98);border-radius:20px;padding:20px;
-      box-shadow:0 10px 40px rgba(0,0,0,0.4);border:3px solid rgba(255,255,255,0.8);
-      backdrop-filter:blur(10px);display:none;overflow:auto;pointer-events:all;z-index:9999;
-      transition:opacity 0.5s ease;
-      scroll-behavior:smooth;
-    }
-    .event-log.hidden{
-      opacity:0;
-      pointer-events:none;
-    }
-    .event-log h3{font-family:'Sriracha',cursive;color:#f5576c;font-size:28px;margin:0 0 15px 0;text-align:center;}
-    .event-item{padding:14px;margin-bottom:10px;border-radius:12px;font-size:18px;font-weight:700;line-height:1.5;animation:slideInRight .25s ease;
-      text-shadow:0 1px 2px rgba(0,0,0,0.1);}
-    @keyframes slideInRight{from{opacity:0;transform:translateX(18px);}to{opacity:1;transform:translateX(0);}}
-    .event-caught{background:linear-gradient(135deg,#ff4757,#ff6b6b,#ff8787);color:#fff;box-shadow:0 4px 15px rgba(255,71,87,0.6);
-      border:2px solid rgba(255,255,255,0.5);font-size:20px;animation:eventPulse 1.5s ease infinite;}
-    .event-eliminated{background:linear-gradient(135deg,#ffa502,#ff9ff3,#f368e0);color:#fff;box-shadow:0 4px 15px rgba(255,165,2,0.6);
-      border:2px solid rgba(255,255,255,0.5);text-shadow:1px 1px 2px rgba(0,0,0,0.3);font-size:19px;
-      animation:boostFlash 0.8s ease 3;}
-    @keyframes boostFlash{0%,100%{transform:scale(1);box-shadow:0 4px 15px rgba(255,165,2,0.6);}
-      50%{transform:scale(1.08);box-shadow:0 6px 25px rgba(255,215,0,0.9), 0 0 30px rgba(255,215,0,0.6);}}
-    .event-info{background:linear-gradient(135deg,#0abde3,#48dbfb,#00d2d3);color:#fff;box-shadow:0 4px 15px rgba(10,189,227,0.6);
-      border:2px solid rgba(255,255,255,0.4);}
-    @keyframes eventPulse{0%,100%{transform:scale(1);}50%{transform:scale(1.02);}}
   </style>
 </head>
 
@@ -201,11 +174,6 @@ Lê Văn C"></textarea>
       <h2>🎉 Người Thắng Cuộc 🎉</h2>
       <div class="winner-name" id="winnerName"></div>
       <button class="btn btn-restart" id="restartBtn">🔄 Chơi Lại</button>
-    </div>
-
-    <div id="eventLog" class="event-log">
-      <h3>📜 Nhật Ký Sự Kiện</h3>
-      <div id="eventList"></div>
     </div>
   </div>
 
@@ -266,23 +234,7 @@ Lê Văn C"></textarea>
     const raceInfo = document.getElementById('raceInfo');
     const winnerPanel = document.getElementById('winnerPanel');
     const winnerNameEl = document.getElementById('winnerName');
-    const eventLog = document.getElementById('eventLog');
-    const eventListEl = document.getElementById('eventList');
     const restartBtn = document.getElementById('restartBtn');
-
-    function addEventLog(msg, type='info') {
-      const el = document.createElement('div');
-      el.className = `event-item event-${type}`;
-
-      // Add timestamp and icon for clarity
-      const elapsed = mode === MODE.RACING ? Math.floor((Date.now() - raceStartTime) / 1000) : 0;
-      const timeStr = elapsed > 0 ? `[${elapsed}s] ` : '';
-      const icon = type === 'caught' ? '🏆 ' : type === 'eliminated' ? '💥 ' : 'ℹ️ ';
-
-      el.textContent = timeStr + icon + msg;
-      eventListEl.insertBefore(el, eventListEl.firstChild);
-      while (eventListEl.children.length > 10) eventListEl.removeChild(eventListEl.lastChild);
-    }
 
     // ===== State =====
     let players = [];
@@ -785,7 +737,6 @@ Lê Văn C"></textarea>
         best.active = true;
         best.targetHorse = targetHorse;
         obstacleInProgress = true;
-        addEventLog(`⚠️ Chướng ngại vật xuất hiện! ${targetHorse.name} đang lại gần...`, 'info');
       }
 
       nextObstacleAt = Date.now() + Math.floor(rand(OBSTACLE_GAP_MIN, OBSTACLE_GAP_MAX));
@@ -805,14 +756,6 @@ Lê Văn C"></textarea>
       const now = Date.now();
       chosen.scriptedBoostUntil = now + 2200 + Math.floor(Math.random() * 400);
       chosen.scriptedFatigueUntil = chosen.scriptedBoostUntil + 1600 + Math.floor(Math.random() * 500);
-
-      addEventLog(`⚡ ${chosen.name} tăng tốc đột ngột! Cố gắng vượt qua ${leader.name}!`, 'eliminated');
-      
-      setTimeout(() => {
-        if (!winner && !eliminatedHorses.includes(chosen.name)) {
-          addEventLog(`💨 ${chosen.name} giảm tốc độ...`, 'info');
-        }
-      }, 2300);
     }
 
     function updateHorses() {
@@ -880,24 +823,11 @@ Lê Văn C"></textarea>
 
           if (Math.abs(horse.position - ob.x) < 30) {
             eliminatedHorses.push(horse.name);
-            addEventLog(`💥 ${horse.name} va phải chướng ngại vật và bị loại!`, 'eliminated');
-            
-            // Flash event log for attention on elimination
-            eventLog.style.animation = 'none';
-            setTimeout(() => eventLog.style.opacity = '1', 10);
 
             ob.active = false;
             ob.used = true;
             ob.cooldown = 180;
             obstacleInProgress = false;
-
-            const elimLimit = Math.floor(totalPlayers * maxEliminationPercent);
-            const remaining = totalPlayers - eliminatedHorses.length;
-            if (eliminatedHorses.length >= elimLimit) {
-              addEventLog(`✅ Không còn chướng ngại vật! ${remaining} ngựa còn lại!`, 'info');
-            } else {
-              addEventLog(`⚠️ Còn ${elimLimit - eliminatedHorses.length} ngựa có thể bị loại nữa!`, 'info');
-            }
           }
         }
       });
@@ -922,7 +852,6 @@ Lê Văn C"></textarea>
       if (!wh) return;
 
       wh.isWinner = true;
-      addEventLog(reasonText, 'caught');
 
       // Don't reset position - let winner sprint from current position!
       // wh.position stays as-is in the pack
@@ -934,9 +863,6 @@ Lê Văn C"></textarea>
       winCine.phase = 'SPRINT';
       winCine.startAt = Date.now();
       winCine.finishAt = 0;
-
-      // Hide event log during cinematic
-      eventLog.classList.add('hidden');
 
       // Stop obstacles
       obstacles.forEach(ob => {
@@ -975,7 +901,6 @@ Lê Văn C"></textarea>
         if (sprintDuration >= 4.0) {
           winCine.phase = 'CELEBRATE';
           winCine.finishAt = Date.now();
-          addEventLog(`🏆 ${wh.name} về đích đầu tiên!`, 'caught');
         }
       }
 
@@ -1144,11 +1069,6 @@ Lê Văn C"></textarea>
           // Log leader - reduced frequency for performance
           const leader = aliveHorses.reduce((a,b) => (b.position > a.position ? b : a));
           const sec = Math.floor(elapsed);
-          if (sec > 0 && sec % 7 === 0 && !window['lead_' + sec]) {
-            window['lead_' + sec] = true;
-            const topSpeed = Math.max(...aliveHorses.map(h => h.speed)).toFixed(1);
-            addEventLog(`🏆 ${leader.name} đang dẫn đầu! (Tốc độ: ${topSpeed})`, 'info');
-          }
         }
 
         // Draw obstacles
@@ -1188,9 +1108,6 @@ Lê Văn C"></textarea>
       nextObstacleAt = Date.now() + 2500;
       obstacleInProgress = false;
       nextOvertakeAt = Date.now() + 1500; // Start boost events earlier
-
-      // Show event log again
-      eventLog.classList.remove('hidden');
     }
 
     function startRace() {
@@ -1206,9 +1123,6 @@ Lê Văn C"></textarea>
       mode = MODE.RACING;
 
       raceInfo.style.display = 'block';
-      eventLog.style.display = 'block';
-
-      addEventLog('🏁 Cuộc đua bắt đầu!', 'info');
 
       // Start background music
       playRandomMusic();
