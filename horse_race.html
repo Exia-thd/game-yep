@@ -137,22 +137,28 @@
     .hidden{display:none !important;}
 
     .event-log{
-      position:fixed;top:120px;right:20px;width:340px;max-height:560px;
-      background:rgba(255,255,255,0.95);border-radius:20px;padding:20px;
-      box-shadow:0 10px 30px rgba(0,0,0,0.3);border:3px solid rgba(255,255,255,0.6);
+      position:fixed;top:120px;right:20px;width:380px;max-height:560px;
+      background:rgba(255,255,255,0.98);border-radius:20px;padding:20px;
+      box-shadow:0 10px 40px rgba(0,0,0,0.4);border:3px solid rgba(255,255,255,0.8);
       backdrop-filter:blur(10px);display:none;overflow:auto;pointer-events:all;z-index:9999;
       transition:opacity 0.5s ease;
+      scroll-behavior:smooth;
     }
     .event-log.hidden{
       opacity:0;
       pointer-events:none;
     }
-    .event-log h3{font-family:'Sriracha',cursive;color:#f5576c;font-size:24px;margin:0 0 12px 0;text-align:center;}
-    .event-item{padding:10px;margin-bottom:8px;border-radius:10px;font-size:14px;font-weight:600;line-height:1.3;animation:slideInRight .25s ease;}
+    .event-log h3{font-family:'Sriracha',cursive;color:#f5576c;font-size:28px;margin:0 0 15px 0;text-align:center;}
+    .event-item{padding:14px;margin-bottom:10px;border-radius:12px;font-size:18px;font-weight:700;line-height:1.5;animation:slideInRight .25s ease;
+      text-shadow:0 1px 2px rgba(0,0,0,0.1);}
     @keyframes slideInRight{from{opacity:0;transform:translateX(18px);}to{opacity:1;transform:translateX(0);}}
-    .event-caught{background:linear-gradient(135deg,#ff6b6b,#ff8787,#ffa07a);color:#fff;box-shadow:0 3px 10px rgba(255,107,107,0.4);}
-    .event-eliminated{background:linear-gradient(135deg,#feca57,#ff9ff3,#f368e0);color:#2d3436;box-shadow:0 3px 10px rgba(254,202,87,0.4);}
-    .event-info{background:linear-gradient(135deg,#48dbfb,#0abde3,#00d2d3);color:#fff;box-shadow:0 3px 10px rgba(72,219,251,0.4);}
+    .event-caught{background:linear-gradient(135deg,#ff4757,#ff6b6b,#ff8787);color:#fff;box-shadow:0 4px 15px rgba(255,71,87,0.6);
+      border:2px solid rgba(255,255,255,0.5);font-size:20px;animation:eventPulse 1.5s ease infinite;}
+    .event-eliminated{background:linear-gradient(135deg,#ffa502,#ff9ff3,#f368e0);color:#fff;box-shadow:0 4px 15px rgba(255,165,2,0.6);
+      border:2px solid rgba(255,255,255,0.5);text-shadow:1px 1px 2px rgba(0,0,0,0.3);}
+    .event-info{background:linear-gradient(135deg,#0abde3,#48dbfb,#00d2d3);color:#fff;box-shadow:0 4px 15px rgba(10,189,227,0.6);
+      border:2px solid rgba(255,255,255,0.4);}
+    @keyframes eventPulse{0%,100%{transform:scale(1);}50%{transform:scale(1.02);}}
   </style>
 </head>
 
@@ -264,9 +270,15 @@ Lê Văn C"></textarea>
     function addEventLog(msg, type='info') {
       const el = document.createElement('div');
       el.className = `event-item event-${type}`;
-      el.textContent = msg;
+
+      // Add timestamp and icon for clarity
+      const elapsed = mode === MODE.RACING ? Math.floor((Date.now() - raceStartTime) / 1000) : 0;
+      const timeStr = elapsed > 0 ? `[${elapsed}s] ` : '';
+      const icon = type === 'caught' ? '🏆 ' : type === 'eliminated' ? '💥 ' : 'ℹ️ ';
+
+      el.textContent = timeStr + icon + msg;
       eventListEl.insertBefore(el, eventListEl.firstChild);
-      while (eventListEl.children.length > 15) eventListEl.removeChild(eventListEl.lastChild);
+      while (eventListEl.children.length > 10) eventListEl.removeChild(eventListEl.lastChild);
     }
 
     // ===== State =====
@@ -278,6 +290,10 @@ Lê Văn C"></textarea>
 
     let eliminatedHorses = [];
     let totalPlayers = 0;
+
+    // Horse sorting cache
+    let sortedHorsesCache = [];
+    let lastSortFrame = -1;
 
     // Load horse image
     const horseImg = new Image();
@@ -293,6 +309,50 @@ Lê Văn C"></textarea>
 
     const MODE = { SETUP:'SETUP', RACING:'RACING', WIN_CINEMATIC:'WIN_CINEMATIC', ENDED:'ENDED' };
     let mode = MODE.SETUP;
+
+    // ===== Background Music =====
+    let backgroundMusic = new Audio();
+    backgroundMusic.volume = 1.0;
+
+    const musicTracks = [
+      'Music/edm-gaming-music-335408.mp3',
+      'Music/level-up-energetic-gaming-rock-music-251284.mp3',
+      'Music/victory-awaits-in-the-gaming-universe_astronaut-265184.mp3',
+      'Music/gaming-game-minecraft-background-music-372242.mp3',
+      'Music/retro-game-402454.mp3'
+    ];
+
+    let currentTrackIndex = -1;
+
+    function playRandomMusic() {
+      if (musicTracks.length === 0) return;
+      let newIndex;
+      do {
+        newIndex = Math.floor(Math.random() * musicTracks.length);
+      } while (newIndex === currentTrackIndex && musicTracks.length > 1);
+
+      currentTrackIndex = newIndex;
+      backgroundMusic.src = musicTracks[currentTrackIndex];
+      backgroundMusic.play().catch(err => console.log('Music play failed:', err));
+    }
+
+    function stopMusic() {
+      backgroundMusic.pause();
+      backgroundMusic.currentTime = 0;
+    }
+
+    function playVictoryMusic() {
+      backgroundMusic.src = 'Music/gaming-game-minecraft-background-music-387000.mp3';
+      backgroundMusic.currentTime = 0;
+      backgroundMusic.play().catch(err => console.log('Victory music play failed:', err));
+    }
+
+    // Auto play next track when current ends
+    backgroundMusic.addEventListener('ended', () => {
+      if (mode === MODE.RACING) {
+        playRandomMusic();
+      }
+    });
 
     // Winner cinematic
     let winCine = { active: false, horse: null, phase: 'SPRINT', startAt: 0, finishAt: 0 };
@@ -425,6 +485,12 @@ Lê Văn C"></textarea>
         // Normal mode: position minus camera offset for scrolling effect
         x = horse.position - cameraOffset + canvas.width * 0.2;
       }
+
+      // Culling: skip drawing if horse is off-screen (optimization)
+      if (!horse.isWinner && (x < -200 || x > canvas.width + 200)) {
+        return;
+      }
+
       const y = centerY;
 
       // Fixed scale for all - larger and consistent
@@ -510,25 +576,15 @@ Lê Văn C"></textarea>
 
       ctx.restore();
 
-      // Speed indicator (dust particles) - only show if enough space
-      if (horse.speed > 3 && horses.length <= 30) {
-        for (let i = 0; i < 5; i++) {
-          ctx.fillStyle = `rgba(139, 115, 85, ${0.4 - i * 0.08})`;
+      // Speed indicator (dust particles) - highly optimized
+      if (horse.speed > 3 && horses.length <= 10 && frameCount % 3 === 0) {
+        for (let i = 0; i < 2; i++) {
+          ctx.fillStyle = `rgba(139, 115, 85, ${0.4 - i * 0.1})`;
           ctx.beginPath();
-          const dustX = x - (50 * scale) - i * 10 - (frameCount % 20);
+          const dustX = x - (50 * scale) - i * 12 - (frameCount % 20);
           const dustY = y + (15 * scale) + Math.sin(frameCount * 0.2 + i) * 4;
-          const dustSize = (6 - i * 0.8) * scale;
+          const dustSize = (5 - i) * scale;
           ctx.arc(dustX, dustY, dustSize, 0, Math.PI * 2);
-          ctx.fill();
-        }
-
-        // Additional dirt kicks
-        for (let i = 0; i < 3; i++) {
-          ctx.fillStyle = `rgba(101, 67, 33, ${0.25 - i * 0.08})`;
-          ctx.beginPath();
-          const kickX = x - (45 * scale) - i * 12 - (frameCount % 15) * 0.8;
-          const kickY = y + (12 * scale) + Math.cos(frameCount * 0.25 + i) * 5;
-          ctx.arc(kickX, kickY, (4 - i * 0.8) * scale, 0, Math.PI * 2);
           ctx.fill();
         }
       }
@@ -624,7 +680,7 @@ Lê Văn C"></textarea>
 
     function createObstacles() {
       obstacles = [];
-      const count = 8;
+      const count = 5; // Reduced from 8 for better performance
       for (let i = 0; i < count; i++) {
         obstacles.push({
           x: 200 + i * (canvas.width - 300) / count,
@@ -671,7 +727,7 @@ Lê Văn C"></textarea>
         best.active = true;
         best.targetHorse = targetHorse;
         obstacleInProgress = true;
-        addEventLog(`🚧 ${targetHorse.name} gặp chướng ngại vật!`, 'info');
+        addEventLog(`⚠️ Chướng ngại vật xuất hiện! ${targetHorse.name} đang lại gần...`, 'info');
       }
 
       nextObstacleAt = Date.now() + Math.floor(rand(OBSTACLE_GAP_MIN, OBSTACLE_GAP_MAX));
@@ -692,12 +748,12 @@ Lê Văn C"></textarea>
       chosen.scriptedBoostUntil = now + 2200 + Math.floor(Math.random() * 400);
       chosen.scriptedFatigueUntil = chosen.scriptedBoostUntil + 1600 + Math.floor(Math.random() * 500);
 
-      addEventLog(`⚡ ${chosen.name} bất ngờ bứt tốc!`, 'info');
+      addEventLog(`⚡ ${chosen.name} tăng tốc đột ngột! Cố gắng vượt qua ${leader.name}!`, 'info');
       setTimeout(() => {
         if (!winner && !eliminatedHorses.includes(chosen.name)) {
-          addEventLog(`😵 ${chosen.name} có vẻ mệt...`, 'info');
+          addEventLog(`💨 ${chosen.name} giảm tốc độ...`, 'info');
         }
-      }, 1800);
+      }, 2300);
     }
 
     function updateHorses() {
@@ -765,7 +821,11 @@ Lê Văn C"></textarea>
 
           if (Math.abs(horse.position - ob.x) < 30) {
             eliminatedHorses.push(horse.name);
-            addEventLog(`🚧 ${horse.name} bị vấp ngã!`, 'eliminated');
+            addEventLog(`💥 ${horse.name} va phải chướng ngại vật và bị loại!`, 'eliminated');
+            
+            // Flash event log for attention on elimination
+            eventLog.style.animation = 'none';
+            setTimeout(() => eventLog.style.opacity = '1', 10);
 
             ob.active = false;
             ob.used = true;
@@ -773,8 +833,11 @@ Lê Văn C"></textarea>
             obstacleInProgress = false;
 
             const elimLimit = Math.floor(totalPlayers * maxEliminationPercent);
+            const remaining = totalPlayers - eliminatedHorses.length;
             if (eliminatedHorses.length >= elimLimit) {
-              addEventLog(`🚧 Chướng ngại vật tạm dừng...`, 'info');
+              addEventLog(`✅ Không còn chướng ngại vật! ${remaining} ngựa còn lại!`, 'info');
+            } else {
+              addEventLog(`⚠️ Còn ${elimLimit - eliminatedHorses.length} ngựa có thể bị loại nữa!`, 'info');
             }
           }
         }
@@ -802,8 +865,8 @@ Lê Văn C"></textarea>
       wh.isWinner = true;
       addEventLog(reasonText, 'caught');
 
-      // Reset winner position to sprint from left side to finish (adjusted for larger horse)
-      wh.position = canvas.width * 0.2;
+      // Don't reset position - let winner sprint from current position!
+      // wh.position stays as-is in the pack
 
       // Start cinematic
       mode = MODE.WIN_CINEMATIC;
@@ -828,16 +891,20 @@ Lê Văn C"></textarea>
       const wh = winCine.horse;
 
       if (winCine.phase === 'SPRINT') {
-        // Winner sprints to finish line (moves right on screen)
-        wh.targetSpeed = 8.0;
-        wh.speed += (wh.targetSpeed - wh.speed) * 0.15;
+        // Winner bursts forward from the pack with dramatic speed boost!
+        wh.targetSpeed = 10.0; // Faster than normal for dramatic effect
+        wh.speed += (wh.targetSpeed - wh.speed) * 0.2;
         wh.position += wh.speed;
 
-        // Move camera faster during sprint
-        cameraOffset += wh.speed * 1.5;
+        // Camera follows winner smoothly as they sprint ahead
+        const targetCameraOffset = wh.position - canvas.width * 0.3; // Keep winner at 30% of screen
+        cameraOffset += (targetCameraOffset - cameraOffset) * 0.2;
 
-        // Finish line is at canvas.width - 100
-        if (wh.position >= canvas.width - 120) {
+        // Calculate finish line position (relative to camera/world)
+        const finishLineWorldX = cameraOffset + canvas.width - 100;
+        
+        // Check if winner reached finish line
+        if (wh.position >= finishLineWorldX) {
           winCine.phase = 'CELEBRATE';
           winCine.finishAt = Date.now();
           addEventLog(`🏆 ${wh.name} về đích đầu tiên!`, 'caught');
@@ -865,13 +932,17 @@ Lê Văn C"></textarea>
       winnerPanel.classList.remove('hidden');
       setTimeout(() => winnerPanel.classList.add('show'), 100);
       createConfetti();
+
+      // Stop racing music and play victory music
+      stopMusic();
+      playVictoryMusic();
     }
 
     // ===== Confetti =====
     const confettiParticles = [];
     function createConfetti() {
       const colors = ['#ff6b81', '#70a1ff', '#feca57', '#48dbfb', '#ff6348'];
-      for (let i = 0; i < 100; i++) {
+      for (let i = 0; i < 60; i++) {
         confettiParticles.push({
           x: Math.random() * canvas.width,
           y: Math.random() * canvas.height - canvas.height,
@@ -916,19 +987,27 @@ Lê Văn C"></textarea>
       // Draw background
       drawSky();
 
-      // Update and draw clouds (keep moving during cinematic)
-      clouds.forEach(cloud => {
-        cloud.x -= cloud.speed;
-        if (cloud.x - cameraOffset * 0.3 < -100) cloud.x = canvas.width + cameraOffset * 0.3 + 100;
-        drawCloud(cloud);
-      });
+      // Update and draw clouds (optimized, only every 2 frames)
+      if (frameCount % 2 === 0) {
+        clouds.forEach(cloud => {
+          cloud.x -= cloud.speed;
+          if (cloud.x - cameraOffset * 0.3 < -100) cloud.x = canvas.width + cameraOffset * 0.3 + 100;
+          drawCloud(cloud);
+        });
+      } else {
+        clouds.forEach(cloud => drawCloud(cloud));
+      }
 
       drawGround();
 
-      // Draw trees
+      // Draw trees (optimized - skip if off screen)
       trees.forEach(tree => {
-        if (tree.x - cameraOffset * 0.5 < -50) {
-          tree.x = canvas.width + cameraOffset * 0.5 + 50;
+        const treeScreenX = tree.x - cameraOffset * 0.5;
+        if (treeScreenX < -100 || treeScreenX > canvas.width + 100) {
+          if (tree.x - cameraOffset * 0.5 < -50) {
+            tree.x = canvas.width + cameraOffset * 0.5 + 50;
+          }
+          return;
         }
         drawTree(tree);
       });
@@ -956,8 +1035,12 @@ Lê Văn C"></textarea>
         });
 
         // Draw horses sorted by position (back to front for depth effect)
-        const sortedHorses = [...horses].sort((a, b) => a.position - b.position);
-        sortedHorses.forEach((horse, idx) => drawHorse(horse, idx));
+        // Cache sorting to improve performance - only sort every 5 frames
+        if (frameCount - lastSortFrame > 5 || lastSortFrame === -1) {
+          sortedHorsesCache = [...horses].sort((a, b) => a.position - b.position);
+          lastSortFrame = frameCount;
+        }
+        sortedHorsesCache.forEach((horse, idx) => drawHorse(horse, idx));
 
         return;
       }
@@ -986,12 +1069,16 @@ Lê Văn C"></textarea>
           // Smooth camera movement
           cameraOffset += (targetCameraOffset - cameraOffset) * 0.15;
 
-          // Log leader
+          // Log leader - reduced frequency for performance
           const leader = aliveHorses.reduce((a,b) => (b.position > a.position ? b : a));
           const sec = Math.floor(elapsed);
-          if (sec > 0 && sec % 5 === 0 && !window['lead_' + sec]) {
+          if (sec > 0 && sec % 7 === 0 && !window['lead_' + sec]) {
             window['lead_' + sec] = true;
-            addEventLog(`🏁 Dẫn đầu: ${leader.name}`, 'info');
+            const topSpeed = Math.max(...aliveHorses.map(h => h.speed)).toFixed(1);
+            addEventLog(`🏆 ${leader.name} đang dẫn đầu! (Tốc độ: ${topSpeed})`, 'info');
+            // Flash race info for attention
+            raceInfo.style.animation = 'none';
+            setTimeout(() => raceInfo.style.animation = 'infoPulse 2s ease-in-out infinite', 10);
           }
         }
 
@@ -1002,8 +1089,12 @@ Lê Văn C"></textarea>
       }
 
       // Draw horses sorted by position (back to front for depth effect)
-      const sortedHorses = [...horses].sort((a, b) => a.position - b.position);
-      sortedHorses.forEach((horse, idx) => drawHorse(horse, idx));
+      // Cache sorting to improve performance - only sort every 5 frames
+      if (frameCount - lastSortFrame > 5 || lastSortFrame === -1 || sortedHorsesCache.length === 0) {
+        sortedHorsesCache = [...horses].sort((a, b) => a.position - b.position);
+        lastSortFrame = frameCount;
+      }
+      sortedHorsesCache.forEach((horse, idx) => drawHorse(horse, idx));
 
       // Draw confetti
       if (confettiParticles.length > 0) {
@@ -1020,6 +1111,8 @@ Lê Văn C"></textarea>
       confettiParticles.length = 0;
       frameCount = 0;
       cameraOffset = 0;
+      sortedHorsesCache = [];
+      lastSortFrame = -1;
 
       winCine = { active: false, horse: null, phase: 'SPRINT', startAt: 0, finishAt: 0 };
 
@@ -1047,6 +1140,9 @@ Lê Văn C"></textarea>
       eventLog.style.display = 'block';
 
       addEventLog('🏁 Cuộc đua bắt đầu!', 'info');
+
+      // Start background music
+      playRandomMusic();
     }
 
     // ===== Event Listeners =====
