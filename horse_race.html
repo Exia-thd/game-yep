@@ -881,12 +881,12 @@ Lê Văn C"></textarea>
         wh.speed += (wh.targetSpeed - wh.speed) * 0.25;
         wh.position += wh.speed;
 
-        // Slow down other horses dramatically so winner stands out
+        // Stop other horses completely so winner stands out
         horses.forEach(h => {
           if (!h.isWinner && !eliminatedHorses.includes(h.name)) {
-            h.targetSpeed = 1.0; // Slow them way down
-            h.speed += (h.targetSpeed - h.speed) * 0.15;
-            h.position += h.speed * 0.3; // Move much slower
+            h.targetSpeed = 0; // Stop them completely
+            h.speed += (h.targetSpeed - h.speed) * 0.3;
+            // Don't move other horses at all during cinematic
           }
         });
 
@@ -1083,7 +1083,31 @@ Lê Văn C"></textarea>
         sortedHorsesCache = [...horses].sort((a, b) => a.position - b.position);
         lastSortFrame = frameCount;
       }
-      sortedHorsesCache.forEach((horse, idx) => drawHorse(horse, idx));
+      
+      // In cinematic mode, only draw winner and closest horses for performance
+      if (mode === MODE.WIN_CINEMATIC) {
+        // Find winner and 2-3 closest horses
+        const winnerHorse = sortedHorsesCache.find(h => h.isWinner);
+        const closestHorses = sortedHorsesCache
+          .filter(h => !h.isWinner && !eliminatedHorses.includes(h.name))
+          .sort((a, b) => Math.abs(b.position - winnerHorse.position) - Math.abs(a.position - winnerHorse.position))
+          .slice(0, Math.min(3, totalPlayers - 1)); // Max 3 background horses
+        
+        // Draw background horses first (faded)
+        closestHorses.forEach((horse, idx) => {
+          ctx.globalAlpha = 0.3; // Make them very faded
+          drawHorse(horse, idx);
+          ctx.globalAlpha = 1.0;
+        });
+        
+        // Draw winner on top (full opacity)
+        if (winnerHorse) {
+          drawHorse(winnerHorse, sortedHorsesCache.indexOf(winnerHorse));
+        }
+      } else {
+        // Normal mode: draw all horses
+        sortedHorsesCache.forEach((horse, idx) => drawHorse(horse, idx));
+      }
 
       // Draw confetti
       if (confettiParticles.length > 0) {
