@@ -759,10 +759,12 @@ function createCard(name,index){
   edgeMesh.receiveShadow=true;
   cardGroup.add(edgeMesh);
   
-  // Card back (blue pattern - facing front initially)
+  // Card back (blue pattern with number - facing front initially)
+  const backNumber=(index+1).toString();
+  const backTexture=createTextTexture(backNumber,'#667eea','#ffffff',280);
   const backGeo=new THREE.PlaneGeometry(3.9,5.4);
   const backMat=new THREE.MeshStandardMaterial({
-    color:0x667eea,
+    map:backTexture,
     emissive:0x667eea,
     emissiveIntensity:0.3,
     roughness:0.3,
