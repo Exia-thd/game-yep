@@ -370,8 +370,8 @@ Lê Văn C"></textarea>
 
     // Overtake drama
     let nextOvertakeAt = 0;
-    const OVERTAKE_GAP_MIN = 5000;
-    const OVERTAKE_GAP_MAX = 6500;
+    const OVERTAKE_GAP_MIN = 3000; // Reduced from 5000 for more frequent boosts
+    const OVERTAKE_GAP_MAX = 5000; // Reduced from 6500 for more frequent boosts
 
     // Animation frame counter
     let frameCount = 0;
@@ -426,25 +426,19 @@ Lê Văn C"></textarea>
     }
 
     function drawCloud(cloud) {
-      ctx.fillStyle = 'rgba(255,255,255,0.8)';
+      ctx.fillStyle = 'rgba(255,255,255,0.7)';
       const x = cloud.x - cameraOffset * 0.3; // Parallax effect
       ctx.beginPath();
-      ctx.arc(x, cloud.y, 30, 0, Math.PI * 2);
-      ctx.arc(x + 25, cloud.y, 35, 0, Math.PI * 2);
-      ctx.arc(x + 50, cloud.y, 30, 0, Math.PI * 2);
+      ctx.arc(x, cloud.y, 35, 0, Math.PI * 2);
       ctx.fill();
     }
 
     function drawTree(tree) {
       const x = tree.x - cameraOffset * 0.5; // Parallax effect
-      // Trunk
-      ctx.fillStyle = '#8B4513';
-      ctx.fillRect(x - 8, tree.y, 16, 40);
-
-      // Leaves
+      // Simplified tree (emoji-style)
       ctx.fillStyle = '#228B22';
       ctx.beginPath();
-      ctx.arc(x, tree.y - 10, 25, 0, Math.PI * 2);
+      ctx.arc(x, tree.y, 22, 0, Math.PI * 2);
       ctx.fill();
     }
 
@@ -471,7 +465,7 @@ Lê Văn C"></textarea>
 
     function drawHorse(horse, laneIndex) {
       if (eliminatedHorses.includes(horse.name)) return;
-      if (!horseImgLoaded) return; // Wait for image to load
+      // Don't skip if image not loaded - draw placeholder instead
 
       const trackY = canvas.height * 0.35;
       const trackHeight = canvas.height * 0.65;
@@ -489,11 +483,6 @@ Lê Văn C"></textarea>
         x = horse.position - cameraOffset + canvas.width * 0.2;
       }
 
-      // Culling: skip drawing if horse is off-screen (aggressive optimization)
-      if (!horse.isWinner && (x < -150 || x > canvas.width + 150)) {
-        return;
-      }
-
       const y = centerY;
 
       // Fixed scale for all - smaller for better performance
@@ -504,7 +493,7 @@ Lê Văn C"></textarea>
       const gallopPhase = frameCount * 0.3 * (horse.speed / 2);
       let gallopOffset = Math.abs(Math.sin(gallopPhase)) * (5 * scale / baseScale);
       
-      // BOOST JUMP - ngựa bay lên cao và giữ ở trên khi bức tốc!
+      // BOOST JUMP - ngựa bay lên cao và giữ ở trên khi bức tốc! (ALWAYS VISIBLE)
       const boostCheckTime = Date.now();
       if (boostCheckTime < horse.scriptedBoostUntil && mode === MODE.RACING) {
         const boostDuration = 2200; // Duration of boost
@@ -515,16 +504,16 @@ Lê Văn C"></textarea>
         if (progress < 0.15) {
           // Bay lên cao nhanh (0-15% thời gian)
           const riseProgress = progress / 0.15;
-          jumpHeight = Math.sin(riseProgress * Math.PI * 0.5) * 120; // Bay lên 120 pixels!
+          jumpHeight = Math.sin(riseProgress * Math.PI * 0.5) * 150; // Tăng từ 120 lên 150 pixels!
         } else if (progress < 0.85) {
           // Giữ ở trên cao (15-85% thời gian)
-          jumpHeight = 120; // Giữ ở độ cao max
+          jumpHeight = 150; // Giữ ở độ cao max
           // Thêm dao động nhẹ để sinh động
-          jumpHeight += Math.sin(frameCount * 0.2) * 8;
+          jumpHeight += Math.sin(frameCount * 0.2) * 10;
         } else {
           // Hạ xuống từ từ (85-100% thời gian)
           const fallProgress = (progress - 0.85) / 0.15;
-          jumpHeight = 120 * (1 - Math.sin(fallProgress * Math.PI * 0.5));
+          jumpHeight = 150 * (1 - Math.sin(fallProgress * Math.PI * 0.5));
         }
         
         gallopOffset += jumpHeight;
@@ -549,40 +538,51 @@ Lê Văn C"></textarea>
         ctx.filter = `hue-rotate(${horse.hueRotate}deg) saturate(1.2)`;
       }
 
-      // Draw animated horse GIF
-      ctx.drawImage(horseImg, -horseWidth / 2, -horseHeight / 2, horseWidth, horseHeight);
+      // Draw animated horse GIF or colored rectangle as fallback
+      if (horseImgLoaded) {
+        ctx.drawImage(horseImg, -horseWidth / 2, -horseHeight / 2, horseWidth, horseHeight);
+      } else {
+        // Fallback: draw colored rectangle if image not loaded
+        ctx.fillStyle = horse.color;
+        ctx.fillRect(-horseWidth / 2, -horseHeight / 2, horseWidth, horseHeight);
+        // Draw simple horse emoji as backup
+        ctx.font = `${horseWidth * 0.6}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('🐴', 0, 0);
+      }
 
       // Reset filter
       ctx.filter = 'none';
 
       ctx.restore();
 
-      // Boost aura - show when horse is in scripted boost
+      // Boost aura - show when horse is in scripted boost (ALWAYS VISIBLE)
       const now = Date.now();
       if (now < horse.scriptedBoostUntil && mode === MODE.RACING) {
         ctx.save();
-        ctx.globalAlpha = 0.6 + Math.sin(frameCount * 0.3) * 0.2;
+        ctx.globalAlpha = 0.7 + Math.sin(frameCount * 0.3) * 0.3;
         
-        // Golden aura around boosting horse
-        const gradient = ctx.createRadialGradient(x, y, 0, x, y, horseWidth * 0.8);
-        gradient.addColorStop(0, 'rgba(255, 215, 0, 0.8)');
-        gradient.addColorStop(0.5, 'rgba(255, 165, 0, 0.4)');
+        // Golden aura around boosting horse - LARGER and BRIGHTER
+        const gradient = ctx.createRadialGradient(x, y, 0, x, y, horseWidth * 1.2);
+        gradient.addColorStop(0, 'rgba(255, 215, 0, 0.95)');
+        gradient.addColorStop(0.5, 'rgba(255, 165, 0, 0.6)');
         gradient.addColorStop(1, 'rgba(255, 215, 0, 0)');
         ctx.fillStyle = gradient;
         ctx.beginPath();
-        ctx.arc(x, y, horseWidth * 0.8, 0, Math.PI * 2);
+        ctx.arc(x, y, horseWidth * 1.2, 0, Math.PI * 2);
         ctx.fill();
         
-        // Lightning bolts
-        ctx.strokeStyle = 'rgba(255, 255, 0, 0.9)';
-        ctx.lineWidth = 3;
-        for (let i = 0; i < 3; i++) {
-          const angle = (frameCount * 0.1 + i * Math.PI * 2 / 3);
-          const boltX = x + Math.cos(angle) * horseWidth * 0.6;
-          const boltY = y + Math.sin(angle) * horseWidth * 0.6;
+        // Lightning bolts - BIGGER and MORE VISIBLE
+        ctx.strokeStyle = 'rgba(255, 255, 0, 1)';
+        ctx.lineWidth = 4;
+        for (let i = 0; i < 4; i++) {
+          const angle = (frameCount * 0.15 + i * Math.PI * 2 / 4);
+          const boltX = x + Math.cos(angle) * horseWidth * 0.7;
+          const boltY = y + Math.sin(angle) * horseWidth * 0.7;
           ctx.beginPath();
           ctx.moveTo(boltX, boltY);
-          ctx.lineTo(boltX + Math.cos(angle) * 15, boltY + Math.sin(angle) * 15);
+          ctx.lineTo(boltX + Math.cos(angle) * 20, boltY + Math.sin(angle) * 20);
           ctx.stroke();
         }
         
@@ -673,7 +673,7 @@ Lê Văn C"></textarea>
     // ===== Create Entities =====
     function createClouds() {
       clouds = [];
-      for (let i = 0; i < 6; i++) {
+      for (let i = 0; i < 3; i++) {
         clouds.push({
           x: Math.random() * canvas.width,
           y: 50 + Math.random() * 150,
@@ -684,7 +684,7 @@ Lê Văn C"></textarea>
 
     function createTrees() {
       trees = [];
-      for (let i = 0; i < 8; i++) {
+      for (let i = 0; i < 4; i++) {
         trees.push({
           x: Math.random() * canvas.width,
           y: canvas.height * 0.28 // On grass area, just before track
@@ -723,7 +723,7 @@ Lê Văn C"></textarea>
           color,
           hueRotate, // For color variation in GIF
           depthOffset, // Vertical position variation
-          position: 80, // Start further right to show full horse body
+          position: 150, // Start further right so horses are visible
           speed: rand(1.5, 2.5),
           targetSpeed: rand(1.5, 2.5),
           stamina: 1.0,
@@ -738,7 +738,7 @@ Lê Văn C"></textarea>
 
     function createObstacles() {
       obstacles = [];
-      const count = 5; // Reduced from 8 for better performance
+      const count = 3; // Minimal obstacles for performance
       for (let i = 0; i < count; i++) {
         obstacles.push({
           x: 200 + i * (canvas.width - 300) / count,
@@ -844,12 +844,12 @@ Lê Văn C"></textarea>
         if (now < horse.scriptedBoostUntil) horse.targetSpeed = Math.max(horse.targetSpeed, 5.0);
         else if (now < horse.scriptedFatigueUntil) horse.targetSpeed = Math.min(horse.targetSpeed, 2.0);
 
-        if (horse.burstCD === 0 && horse.stamina > 0.35 && Math.random() < 0.012) {
+        if (horse.burstCD === 0 && horse.stamina > 0.35 && Math.random() < 0.008) {
           horse.targetSpeed = 4.5 + Math.random() * 1.5;
           horse.stamina = Math.max(0, horse.stamina - 0.22);
           horse.burstCD = 95;
         }
-        if (horse.slipCD === 0 && horse.stamina < 0.25 && Math.random() < 0.01) {
+        if (horse.slipCD === 0 && horse.stamina < 0.25 && Math.random() < 0.006) {
           horse.targetSpeed = 1.5 + Math.random() * 0.8;
           horse.slipCD = 85;
         }
@@ -968,11 +968,11 @@ Lê Văn C"></textarea>
         const targetCameraOffset = wh.position - canvas.width * 0.4; // Keep winner at 40% of screen
         cameraOffset += (targetCameraOffset - cameraOffset) * 0.2; // Faster camera
 
-        // Simple finish condition - after sprinting for 2.5 seconds
+        // Extended sprint duration so players can see the dramatic finish!
         const sprintDuration = (Date.now() - winCine.startAt) / 1000;
         
         // Check if winner has sprinted long enough
-        if (sprintDuration >= 2.5) {
+        if (sprintDuration >= 4.0) {
           winCine.phase = 'CELEBRATE';
           winCine.finishAt = Date.now();
           addEventLog(`🏆 ${wh.name} về đích đầu tiên!`, 'caught');
@@ -985,7 +985,7 @@ Lê Văn C"></textarea>
         // Continue camera movement slowly
         cameraOffset += 0.5;
 
-        if (elapsed > 1500) {
+        if (elapsed > 2500) {
           winCine.phase = 'SHOW';
           announceWinnerUI();
         }
@@ -1010,7 +1010,7 @@ Lê Văn C"></textarea>
     const confettiParticles = [];
     function createConfetti() {
       const colors = ['#ff6b81', '#70a1ff', '#feca57', '#48dbfb', '#ff6348'];
-      for (let i = 0; i < 60; i++) {
+      for (let i = 0; i < 30; i++) {
         confettiParticles.push({
           x: Math.random() * canvas.width,
           y: Math.random() * canvas.height - canvas.height,
@@ -1055,30 +1055,34 @@ Lê Văn C"></textarea>
       // Draw background
       drawSky();
 
-      // Update and draw clouds (optimized, only every 3 frames)
-      if (frameCount % 3 === 0) {
-        clouds.forEach(cloud => {
-          cloud.x -= cloud.speed;
-          if (cloud.x - cameraOffset * 0.3 < -100) cloud.x = canvas.width + cameraOffset * 0.3 + 100;
-          drawCloud(cloud);
-        });
-      } else {
-        clouds.forEach(cloud => drawCloud(cloud));
+      // Update and draw clouds (highly optimized - every 5 frames, skip if many players)
+      if (horses.length <= 50) {
+        if (frameCount % 5 === 0) {
+          clouds.forEach(cloud => {
+            cloud.x -= cloud.speed;
+            if (cloud.x - cameraOffset * 0.3 < -100) cloud.x = canvas.width + cameraOffset * 0.3 + 100;
+            drawCloud(cloud);
+          });
+        } else {
+          clouds.forEach(cloud => drawCloud(cloud));
+        }
       }
 
       drawGround();
 
-      // Draw trees (optimized - skip if off screen)
-      trees.forEach(tree => {
-        const treeScreenX = tree.x - cameraOffset * 0.5;
-        if (treeScreenX < -100 || treeScreenX > canvas.width + 100) {
-          if (tree.x - cameraOffset * 0.5 < -50) {
-            tree.x = canvas.width + cameraOffset * 0.5 + 50;
+      // Draw trees (optimized - skip if many players or off screen)
+      if (horses.length <= 50) {
+        trees.forEach(tree => {
+          const treeScreenX = tree.x - cameraOffset * 0.5;
+          if (treeScreenX < -100 || treeScreenX > canvas.width + 100) {
+            if (tree.x - cameraOffset * 0.5 < -50) {
+              tree.x = canvas.width + cameraOffset * 0.5 + 50;
+            }
+            return;
           }
-          return;
-        }
-        drawTree(tree);
-      });
+          drawTree(tree);
+        });
+      }
 
       // Draw finish line only in cinematic mode
       if (mode === MODE.WIN_CINEMATIC) {
@@ -1175,7 +1179,7 @@ Lê Văn C"></textarea>
       obstacles = [];
       confettiParticles.length = 0;
       frameCount = 0;
-      cameraOffset = 0;
+      cameraOffset = -100; // Negative offset to show horses at race start
       sortedHorsesCache = [];
       lastSortFrame = -1;
 
@@ -1183,7 +1187,7 @@ Lê Văn C"></textarea>
 
       nextObstacleAt = Date.now() + 2500;
       obstacleInProgress = false;
-      nextOvertakeAt = Date.now() + 4500;
+      nextOvertakeAt = Date.now() + 1500; // Start boost events earlier
 
       // Show event log again
       eventLog.classList.remove('hidden');
