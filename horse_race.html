@@ -897,14 +897,15 @@ Lê Văn C"></textarea>
         wh.position += wh.speed;
 
         // Camera follows winner smoothly as they sprint ahead
-        const targetCameraOffset = wh.position - canvas.width * 0.3; // Keep winner at 30% of screen
-        cameraOffset += (targetCameraOffset - cameraOffset) * 0.2;
+        const targetCameraOffset = wh.position - canvas.width * 0.4; // Keep winner at 40% of screen
+        cameraOffset += (targetCameraOffset - cameraOffset) * 0.15;
 
-        // Calculate finish line position (relative to camera/world)
-        const finishLineWorldX = cameraOffset + canvas.width - 100;
+        // Simple finish condition - after sprinting for 3 seconds or traveled far enough
+        const sprintDuration = (Date.now() - winCine.startAt) / 1000;
+        const distanceTraveled = wh.position - (cameraOffset + canvas.width * 0.2);
         
-        // Check if winner reached finish line
-        if (wh.position >= finishLineWorldX) {
+        // Check if winner has sprinted long enough (3 seconds) or far enough ahead
+        if (sprintDuration >= 3.0 || distanceTraveled > canvas.width * 0.5) {
           winCine.phase = 'CELEBRATE';
           winCine.finishAt = Date.now();
           addEventLog(`🏆 ${wh.name} về đích đầu tiên!`, 'caught');
