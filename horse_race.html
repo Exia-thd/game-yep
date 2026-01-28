@@ -349,23 +349,6 @@ Lê Văn C"></textarea>
       ctx.lineTo(canvas.width, trackY + trackHeight);
       ctx.stroke();
 
-      // Lane dividers with scrolling effect
-      if (horses.length > 1) {
-        ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-        ctx.lineWidth = 1;
-        ctx.setLineDash([10, 10]);
-        ctx.lineDashOffset = -cameraOffset % 20; // Scrolling dash effect
-        const laneHeight = trackHeight / horses.length;
-        for (let i = 1; i < horses.length; i++) {
-          ctx.beginPath();
-          ctx.moveTo(0, trackY + laneHeight * i);
-          ctx.lineTo(canvas.width, trackY + laneHeight * i);
-          ctx.stroke();
-        }
-        ctx.setLineDash([]);
-        ctx.lineDashOffset = 0;
-      }
-
       // Grass texture lines (scrolling)
       ctx.strokeStyle = 'rgba(34,139,34,0.3)';
       ctx.lineWidth = 2;
@@ -429,8 +412,9 @@ Lê Văn C"></textarea>
 
       const trackY = canvas.height * 0.35;
       const trackHeight = canvas.height * 0.65;
-      const laneHeight = trackHeight / horses.length;
-      const centerY = trackY + laneHeight * laneIndex + laneHeight / 2;
+
+      // All horses run on the same track area with depth offset
+      const centerY = trackY + trackHeight * 0.5 + horse.depthOffset;
 
       // Calculate screen position based on horse position minus camera offset
       let x;
@@ -443,13 +427,9 @@ Lê Văn C"></textarea>
       }
       const y = centerY;
 
-      // Dynamic scaling based on number of players (much smaller base scale)
-      let baseScale = 0.15; // Base scale for the large GIF image
+      // Fixed scale for all - larger and consistent
+      let baseScale = 0.2; // Larger base scale
       let scale = baseScale;
-      if (horses.length > 50) scale = baseScale * 0.5;
-      else if (horses.length > 30) scale = baseScale * 0.6;
-      else if (horses.length > 20) scale = baseScale * 0.75;
-      else if (horses.length > 10) scale = baseScale * 0.9;
 
       // Gallop animation (gentle bounce)
       const gallopPhase = frameCount * 0.3 * (horse.speed / 2);
@@ -489,12 +469,12 @@ Lê Văn C"></textarea>
       ctx.save();
       ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transformation for name tag
 
-      // Dynamic font size based on number of players
-      let fontSize = 16;
-      if (horses.length > 50) fontSize = 10;
-      else if (horses.length > 30) fontSize = 11;
-      else if (horses.length > 20) fontSize = 12;
-      else if (horses.length > 10) fontSize = 14;
+      // Dynamic font size based on number of players (very large)
+      let fontSize = 32;
+      if (horses.length > 50) fontSize = 22;
+      else if (horses.length > 30) fontSize = 26;
+      else if (horses.length > 20) fontSize = 28;
+      else if (horses.length > 10) fontSize = 30;
 
       ctx.fillStyle = 'rgba(255,255,255,0.95)';
       ctx.strokeStyle = horse.color;
@@ -504,7 +484,7 @@ Lê Văn C"></textarea>
 
       const tagX = x - nameWidth/2;
       // Use centerY instead of horseY for stable position (adjusted for larger horse)
-      const tagY = centerY - (laneHeight * 0.48);
+      const tagY = centerY - (horseHeight * 0.8);
       const tagHeight = fontSize + 8;
 
       // Rounded rectangle for name tag
@@ -558,25 +538,22 @@ Lê Văn C"></textarea>
       const x = obstacle.x;
       const trackY = canvas.height * 0.35;
       const trackHeight = canvas.height * 0.65;
+      const centerY = trackY + trackHeight * 0.5;
 
-      // Draw obstacle spanning full track height
+      // Draw obstacle as a hurdle
       ctx.fillStyle = 'rgba(255, 0, 0, 0.3)';
-      ctx.fillRect(x - 3, trackY, 6, trackHeight);
+      ctx.fillRect(x - 5, centerY - 40, 10, 80);
 
-      // Hurdle bars at intervals
+      // Hurdle bar
       ctx.fillStyle = '#ff0000';
-      const barCount = Math.min(10, Math.ceil(horses.length / 5));
-      const barSpacing = trackHeight / barCount;
-      for (let i = 0; i < barCount; i++) {
-        const barY = trackY + i * barSpacing + barSpacing / 2;
-        ctx.fillRect(x - 25, barY - 4, 50, 8);
-      }
+      ctx.fillRect(x - 30, centerY - 30, 60, 10);
+      ctx.fillRect(x - 30, centerY + 20, 60, 10);
 
-      // Warning sign at top
+      // Warning sign
       ctx.fillStyle = '#ffff00';
-      ctx.font = 'bold 24px Arial';
+      ctx.font = 'bold 32px Arial';
       ctx.textAlign = 'center';
-      ctx.fillText('⚠️', x, trackY - 10);
+      ctx.fillText('⚠️', x, centerY - 50);
     }
 
     // ===== Create Entities =====
@@ -625,10 +602,13 @@ Lê Văn C"></textarea>
         const color = colors[idx % colors.length];
         // Random hue rotation for each horse (0-360 degrees)
         const hueRotate = Math.floor(Math.random() * 360);
+        // Random depth offset to create visual separation (spread horses vertically)
+        const depthOffset = (Math.random() - 0.5) * canvas.height * 0.4;
         horses.push({
           name,
           color,
           hueRotate, // For color variation in GIF
+          depthOffset, // Vertical position variation
           position: 80, // Start further right to show full horse body
           speed: rand(1.5, 2.5),
           targetSpeed: rand(1.5, 2.5),
@@ -975,8 +955,9 @@ Lê Văn C"></textarea>
           }
         });
 
-        // Draw horses
-        horses.forEach((horse, idx) => drawHorse(horse, idx));
+        // Draw horses sorted by position (back to front for depth effect)
+        const sortedHorses = [...horses].sort((a, b) => a.position - b.position);
+        sortedHorses.forEach((horse, idx) => drawHorse(horse, idx));
 
         return;
       }
@@ -1020,8 +1001,9 @@ Lê Văn C"></textarea>
         });
       }
 
-      // Draw horses
-      horses.forEach((horse, idx) => drawHorse(horse, idx));
+      // Draw horses sorted by position (back to front for depth effect)
+      const sortedHorses = [...horses].sort((a, b) => a.position - b.position);
+      sortedHorses.forEach((horse, idx) => drawHorse(horse, idx));
 
       // Draw confetti
       if (confettiParticles.length > 0) {
