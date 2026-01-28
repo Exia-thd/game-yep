@@ -321,7 +321,7 @@ Var Võ</textarea>
   </div>
   
   <div class="form-group">
-    <label>🎯 Số Var say xỉn cần tìm để trao quà:</label>
+    <label>🎯 Số Var say xỉn cần tìm để loại:</label>
     <input id="targetDrunks" type="number" value="3" min="1">
   </div>
   
@@ -868,11 +868,11 @@ function checkVar(){
         </div>
         <div class="gift-box">🎁</div>
         <div class="drunk-detail" style="background:linear-gradient(135deg,#ffd700,#ffed4e);">
-          <div><strong>🎉 Nhận ngay hộp quà bất ngờ!</strong></div>
+          <div><strong>🎉 Đã mất cơ hội giật giải tiếp theo!</strong></div>
           <div style="font-size:28px;margin-top:8px;">🎁✨</div>
         </div>
         <p style="text-align:center;color:#ff6b6b;font-weight:700;margin-top:15px;font-size:16px;">
-          😢 Mất cơ hội giật giải lớn nhưng được quà ngay!
+          😢 Mất cơ hội giật giải lớn!
         </p>
       `;
       
@@ -953,7 +953,7 @@ function showFinalReport(){
     <div class="party-title">🎉 KẾT THÚC PARTY!</div>
     <h2 style="color:#ffa500;">🏆 Đã tìm đủ ${targetDrunks} Var say xỉn!</h2>
     <p style="font-weight:700;margin-bottom:20px;font-size:18px;text-align:center;color:#764ba2;">
-      🎁 Danh sách may mắn nhận quà:
+      🎁 Danh sách may mắn bị loại:
     </p>
     <div id="finalReport">
   `;
@@ -963,7 +963,7 @@ function showFinalReport(){
       <div class="report-item">
         <strong>🎭 ${idx+1}. ${item.name}</strong>
         <span class="drunk-text">🍺 ${item.reason}</span>
-        <span class="gift-text">🎁 Hộp quà bất ngờ</span>
+        <span class="gift-text">🎁 Bất ngờ</span>
       </div>
     `;
   });

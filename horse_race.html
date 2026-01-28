@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🐴 Đua Ngựa Bắt Cúp</title>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Sriracha&family=Quicksand:wght@600;700&display=swap');
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{
+      font-family:'Quicksand',sans-serif;
+      overflow:hidden;
+      background:linear-gradient(135deg,#87CEEB 0%,#98D8E8 50%,#B0E8F5 100%);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      min-height:100vh;
+    }
+    #gameCanvas{
+      display:block;
+      background:linear-gradient(to bottom, #87CEEB 0%, #f0f8ff 30%, #90EE90 100%);
+      border:5px solid #fff;
+      box-shadow:0 10px 40px rgba(0,0,0,0.3);
+      border-radius:15px;
+      max-width:95vw;
+      max-height:90vh;
+    }
+
+    .ui-overlay{position:fixed;inset:0;pointer-events:none;z-index:10;}
+
+    .setup-panel{
+      position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+      background:linear-gradient(145deg,rgba(255,255,255,0.95),rgba(255,248,240,0.95));
+      padding:40px;border-radius:30px;
+      box-shadow:0 20px 80px rgba(0,0,0,0.4), 0 0 40px rgba(245,87,108,0.3), inset 0 1px 0 rgba(255,255,255,0.8);
+      pointer-events:all;max-width:520px;width:90%;
+      max-height:85vh;overflow-y:auto;
+      backdrop-filter:blur(20px);border:3px solid rgba(255,255,255,0.8);
+      display:flex;flex-direction:column;
+      animation:panelFloat 3s ease-in-out infinite;
+    }
+    @keyframes panelFloat{
+      0%, 100%{transform:translate(-50%,-50%) translateY(0px);}
+      50%{transform:translate(-50%,-50%) translateY(-5px);}
+    }
+    .setup-panel h1{
+      font-family:'Sriracha',cursive;color:#f5576c;font-size:42px;text-align:center;
+      margin-bottom:10px;text-shadow:3px 3px 0 rgba(255,215,0,0.3), 0 0 20px rgba(245,87,108,0.5);letter-spacing:1px;
+      animation:titleGlow 2s ease-in-out infinite;
+    }
+    @keyframes titleGlow{
+      0%, 100%{text-shadow:3px 3px 0 rgba(255,215,0,0.3), 0 0 20px rgba(245,87,108,0.5);}
+      50%{text-shadow:3px 3px 0 rgba(255,215,0,0.3), 0 0 30px rgba(245,87,108,0.8), 0 0 40px rgba(245,87,108,0.4);}
+    }
+    .setup-panel p{text-align:center;color:#666;margin-bottom:22px;font-size:16px;font-weight:600;}
+
+    .player-input-area{margin-bottom:18px;flex-shrink:0;}
+    .player-input-area label{display:block;color:#f5576c;font-weight:700;margin-bottom:10px;font-size:16px;}
+    #playerInput{
+      width:100%;padding:15px;border:3px solid #f5576c;border-radius:15px;
+      font-size:16px;font-family:'Quicksand',sans-serif;font-weight:600;
+      background:#fff;min-height:150px;resize:vertical;line-height:1.6;
+      transition:all .25s ease;
+    }
+    #playerInput:focus{
+      outline:none;border-color:#ffd700;box-shadow:0 0 0 3px rgba(255,215,0,0.2);
+      transform:translateY(-2px);
+    }
+
+    .btn{
+      width:100%;padding:18px;font-size:20px;font-weight:700;font-family:'Quicksand',sans-serif;
+      border:none;border-radius:15px;cursor:pointer;transition:all .25s ease;
+      letter-spacing:0.5px;box-shadow:0 6px 20px rgba(0,0,0,0.2);
+      pointer-events:all;
+      display:flex;align-items:center;justify-content:center;
+      text-align:center;
+    }
+    .btn-start{background:linear-gradient(135deg,#f093fb 0%,#f5576c 50%,#ffd700 100%);color:#fff;margin-top:10px;
+      background-size:200% 100%;animation:gradientSlide 3s ease infinite;position:relative;overflow:hidden;}
+    .btn-start::before{content:'';position:absolute;top:50%;left:50%;width:0;height:0;
+      background:rgba(255,255,255,0.3);border-radius:50%;transform:translate(-50%,-50%);
+      transition:width 0.6s, height 0.6s;}
+    .btn-start:hover:not(:disabled)::before{width:300%;height:300%;}
+    .btn-start:hover:not(:disabled){transform:translateY(-3px) scale(1.02);box-shadow:0 15px 40px rgba(245,87,108,0.6), 0 0 20px rgba(255,215,0,0.4);}
+    @keyframes gradientSlide{
+      0%, 100%{background-position:0% 50%;}
+      50%{background-position:100% 50%;}
+    }
+    .btn-start:disabled{opacity:.5;cursor:not-allowed;}
+
+    .race-info{
+      position:fixed;top:30px;left:50%;transform:translateX(-50%);
+      background:linear-gradient(145deg,rgba(255,255,255,0.95),rgba(255,248,240,0.95));
+      padding:18px 36px;border-radius:20px;
+      box-shadow:0 10px 40px rgba(0,0,0,0.4), 0 0 30px rgba(245,87,108,0.3);
+      font-family:'Sriracha',cursive;font-size:28px;color:#f5576c;text-align:center;
+      border:3px solid rgba(255,255,255,0.8);backdrop-filter:blur(20px);
+      display:none;pointer-events:all;z-index:9998;
+      animation:infoPulse 2s ease-in-out infinite;
+    }
+    @keyframes infoPulse{
+      0%, 100%{box-shadow:0 10px 40px rgba(0,0,0,0.4), 0 0 30px rgba(245,87,108,0.3);}
+      50%{box-shadow:0 10px 40px rgba(0,0,0,0.4), 0 0 40px rgba(245,87,108,0.6), 0 0 60px rgba(245,87,108,0.2);}
+    }
+
+    .winner-announcement{
+      position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0);
+      background:linear-gradient(145deg,#ffd700,#ffed4e,#ffd700);
+      background-size:200% 200%;animation:rainbowShift 3s ease infinite;
+      padding:60px;border-radius:30px;
+      box-shadow:0 30px 100px rgba(0,0,0,0.5), 0 0 60px rgba(255,215,0,0.8), 0 0 100px rgba(255,215,0,0.4);
+      text-align:center;border:5px solid #fff;
+      z-index:9999;transition:transform .5s cubic-bezier(0.68,-0.55,0.265,1.55);
+      pointer-events:all;
+    }
+    @keyframes rainbowShift{
+      0%, 100%{background-position:0% 50%;filter:hue-rotate(0deg);}
+      50%{background-position:100% 50%;filter:hue-rotate(20deg);}
+    }
+    .winner-announcement.show{transform:translate(-50%,-50%) scale(1);}
+    .winner-announcement h2{
+      font-family:'Sriracha',cursive;font-size:48px;color:#d63031;margin-bottom:18px;
+      text-shadow:3px 3px 0 rgba(0,0,0,0.1);animation:pulse 1s infinite;
+    }
+    .winner-announcement .winner-name{
+      font-size:56px;font-weight:700;color:#2d3436;margin:20px 0;
+      text-shadow:2px 2px 0 rgba(255,255,255,0.8);word-break:break-word;
+    }
+    .winner-announcement .trophy{font-size:100px;animation:bounce .8s infinite;
+      filter:drop-shadow(0 10px 20px rgba(255,215,0,0.6));}
+    @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+    @keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-20px)}}
+
+    .btn-restart{background:linear-gradient(135deg,#00b894,#00cec9);color:#fff;margin-top:26px;}
+    .btn-restart:hover{transform:translateY(-3px);box-shadow:0 10px 30px rgba(0,184,148,0.4);}
+    .hidden{display:none !important;}
+
+    .event-log{
+      position:fixed;top:120px;right:20px;width:340px;max-height:560px;
+      background:rgba(255,255,255,0.95);border-radius:20px;padding:20px;
+      box-shadow:0 10px 30px rgba(0,0,0,0.3);border:3px solid rgba(255,255,255,0.6);
+      backdrop-filter:blur(10px);display:none;overflow:auto;pointer-events:all;z-index:9999;
+      transition:opacity 0.5s ease;
+    }
+    .event-log.hidden{
+      opacity:0;
+      pointer-events:none;
+    }
+    .event-log h3{font-family:'Sriracha',cursive;color:#f5576c;font-size:24px;margin:0 0 12px 0;text-align:center;}
+    .event-item{padding:10px;margin-bottom:8px;border-radius:10px;font-size:14px;font-weight:600;line-height:1.3;animation:slideInRight .25s ease;}
+    @keyframes slideInRight{from{opacity:0;transform:translateX(18px);}to{opacity:1;transform:translateX(0);}}
+    .event-caught{background:linear-gradient(135deg,#ff6b6b,#ff8787,#ffa07a);color:#fff;box-shadow:0 3px 10px rgba(255,107,107,0.4);}
+    .event-eliminated{background:linear-gradient(135deg,#feca57,#ff9ff3,#f368e0);color:#2d3436;box-shadow:0 3px 10px rgba(254,202,87,0.4);}
+    .event-info{background:linear-gradient(135deg,#48dbfb,#0abde3,#00d2d3);color:#fff;box-shadow:0 3px 10px rgba(72,219,251,0.4);}
+  </style>
+</head>
+
+<body>
+  <canvas id="gameCanvas"></canvas>
+
+  <div class="ui-overlay">
+    <div id="setupPanel" class="setup-panel">
+      <h1>🐴 Đua Ngựa Bắt Cúp</h1>
+      <p>Nhập danh sách người chơi để bắt đầu cuộc đua!</p>
+
+      <div class="player-input-area">
+        <label for="playerInput">Danh sách người chơi (mỗi dòng 1 người):</label>
+        <textarea id="playerInput" placeholder="Nguyễn Văn A
+Trần Thị B
+Lê Văn C"></textarea>
+      </div>
+
+      <div class="player-input-area">
+        <label for="raceDuration">⏱️ Thời gian đua (giây):</label>
+        <input type="number" id="raceDuration" min="1" value="30"
+          style="width:100%; padding:15px; border:3px solid #f5576c; border-radius:15px;
+                 font-size:16px; font-family:'Quicksand',sans-serif; font-weight:600;">
+        <p style="font-size:14px;color:#666;margin-top:8px;">Tối thiểu 1 giây</p>
+      </div>
+
+      <button class="btn btn-start" id="startBtn" disabled>🏁 Bắt Đầu Đua!</button>
+    </div>
+
+    <div id="raceInfo" class="race-info">
+      🏁 Cuộc đua đang diễn ra! 🏁<br>
+      <span id="timeRemaining" style="font-size:20px;color:#ff6b6b;">⏱️ 30s</span>
+    </div>
+
+    <div id="winnerPanel" class="winner-announcement hidden">
+      <div class="trophy">🏆</div>
+      <h2>🎉 Người Thắng Cuộc 🎉</h2>
+      <div class="winner-name" id="winnerName"></div>
+      <button class="btn btn-restart" id="restartBtn">🔄 Chơi Lại</button>
+    </div>
+
+    <div id="eventLog" class="event-log">
+      <h3>📜 Nhật Ký Sự Kiện</h3>
+      <div id="eventList"></div>
+    </div>
+  </div>
+
+  <script>
+    'use strict';
+
+    // ===== Canvas Setup =====
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // Set canvas size
+    function resizeCanvas() {
+      const maxWidth = window.innerWidth * 0.95;
+      const maxHeight = window.innerHeight * 0.85;
+      const aspectRatio = 16 / 9;
+
+      let width = maxWidth;
+      let height = width / aspectRatio;
+
+      if (height > maxHeight) {
+        height = maxHeight;
+        width = height * aspectRatio;
+      }
+
+      canvas.width = Math.min(1400, width);
+      canvas.height = Math.min(800, height);
+    }
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    // ===== Helpers =====
+    const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+    const rand  = (a, b) => a + Math.random() * (b - a);
+    const pick  = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+    // Helper to make color darker/lighter
+    function shadeColor(color, percent) {
+      let R = parseInt(color.substring(1,3), 16);
+      let G = parseInt(color.substring(3,5), 16);
+      let B = parseInt(color.substring(5,7), 16);
+
+      R = Math.max(0, Math.min(255, R + percent));
+      G = Math.max(0, Math.min(255, G + percent));
+      B = Math.max(0, Math.min(255, B + percent));
+
+      const RR = R.toString(16).padStart(2, '0');
+      const GG = G.toString(16).padStart(2, '0');
+      const BB = B.toString(16).padStart(2, '0');
+
+      return "#" + RR + GG + BB;
+    }
+
+    // ===== UI =====
+    const setupPanel = document.getElementById('setupPanel');
+    const playerInput = document.getElementById('playerInput');
+    const startBtn = document.getElementById('startBtn');
+    const raceDurationInput = document.getElementById('raceDuration');
+    const raceInfo = document.getElementById('raceInfo');
+    const winnerPanel = document.getElementById('winnerPanel');
+    const winnerNameEl = document.getElementById('winnerName');
+    const eventLog = document.getElementById('eventLog');
+    const eventListEl = document.getElementById('eventList');
+    const restartBtn = document.getElementById('restartBtn');
+
+    function addEventLog(msg, type='info') {
+      const el = document.createElement('div');
+      el.className = `event-item event-${type}`;
+      el.textContent = msg;
+      eventListEl.insertBefore(el, eventListEl.firstChild);
+      while (eventListEl.children.length > 15) eventListEl.removeChild(eventListEl.lastChild);
+    }
+
+    // ===== State =====
+    let players = [];
+    let horses = [];
+    let clouds = [];
+    let trees = [];
+    let obstacles = [];
+
+    let eliminatedHorses = [];
+    let totalPlayers = 0;
+
+    // Load horse image
+    const horseImg = new Image();
+    horseImg.src = 'horse.gif';
+    let horseImgLoaded = false;
+    horseImg.onload = () => {
+      horseImgLoaded = true;
+    };
+
+    let raceDuration = 30;
+    let raceStartTime = 0;
+    let winner = null;
+
+    const MODE = { SETUP:'SETUP', RACING:'RACING', WIN_CINEMATIC:'WIN_CINEMATIC', ENDED:'ENDED' };
+    let mode = MODE.SETUP;
+
+    // Winner cinematic
+    let winCine = { active: false, horse: null, phase: 'SPRINT', startAt: 0, finishAt: 0 };
+    let cameraOffset = 0; // For scrolling background
+
+    // Obstacle scheduler
+    const maxEliminationPercent = 0.30;
+    let nextObstacleAt = 0;
+    let obstacleInProgress = false;
+    const OBSTACLE_GAP_MIN = 5000;
+    const OBSTACLE_GAP_MAX = 12000;
+
+    // Overtake drama
+    let nextOvertakeAt = 0;
+    const OVERTAKE_GAP_MIN = 5000;
+    const OVERTAKE_GAP_MAX = 6500;
+
+    // Animation frame counter
+    let frameCount = 0;
+
+    // ===== Drawing Functions =====
+    function drawSky() {
+      const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height * 0.25);
+      gradient.addColorStop(0, '#87CEEB');
+      gradient.addColorStop(1, '#E0F6FF');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height * 0.25);
+    }
+
+    function drawGround() {
+      // Sky takes less space, track takes more
+      const skyHeight = canvas.height * 0.25;
+
+      // Grass
+      ctx.fillStyle = '#90EE90';
+      ctx.fillRect(0, skyHeight, canvas.width, canvas.height * 0.1);
+
+      // Track (dirt) - much larger now
+      const trackY = canvas.height * 0.35;
+      const trackHeight = canvas.height * 0.65;
+      ctx.fillStyle = '#8B7355';
+      ctx.fillRect(0, trackY, canvas.width, trackHeight);
+
+      // Track lines
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(0, trackY);
+      ctx.lineTo(canvas.width, trackY);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(0, trackY + trackHeight);
+      ctx.lineTo(canvas.width, trackY + trackHeight);
+      ctx.stroke();
+
+      // Lane dividers with scrolling effect
+      if (horses.length > 1) {
+        ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([10, 10]);
+        ctx.lineDashOffset = -cameraOffset % 20; // Scrolling dash effect
+        const laneHeight = trackHeight / horses.length;
+        for (let i = 1; i < horses.length; i++) {
+          ctx.beginPath();
+          ctx.moveTo(0, trackY + laneHeight * i);
+          ctx.lineTo(canvas.width, trackY + laneHeight * i);
+          ctx.stroke();
+        }
+        ctx.setLineDash([]);
+        ctx.lineDashOffset = 0;
+      }
+
+      // Grass texture lines (scrolling)
+      ctx.strokeStyle = 'rgba(34,139,34,0.3)';
+      ctx.lineWidth = 2;
+      const grassSpacing = 40;
+      const grassOffset = cameraOffset * 0.8;
+      for (let x = -(grassOffset % grassSpacing); x < canvas.width; x += grassSpacing) {
+        ctx.beginPath();
+        ctx.moveTo(x, skyHeight);
+        ctx.lineTo(x + 20, skyHeight + canvas.height * 0.1);
+        ctx.stroke();
+      }
+    }
+
+    function drawCloud(cloud) {
+      ctx.fillStyle = 'rgba(255,255,255,0.8)';
+      const x = cloud.x - cameraOffset * 0.3; // Parallax effect
+      ctx.beginPath();
+      ctx.arc(x, cloud.y, 30, 0, Math.PI * 2);
+      ctx.arc(x + 25, cloud.y, 35, 0, Math.PI * 2);
+      ctx.arc(x + 50, cloud.y, 30, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function drawTree(tree) {
+      const x = tree.x - cameraOffset * 0.5; // Parallax effect
+      // Trunk
+      ctx.fillStyle = '#8B4513';
+      ctx.fillRect(x - 8, tree.y, 16, 40);
+
+      // Leaves
+      ctx.fillStyle = '#228B22';
+      ctx.beginPath();
+      ctx.arc(x, tree.y - 10, 25, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function drawFinishLine() {
+      const x = canvas.width - 100;
+      const trackY = canvas.height * 0.35;
+      const trackHeight = canvas.height * 0.65;
+
+      // Checkered flag pattern
+      const squareSize = 15;
+      for (let row = 0; row < Math.ceil(trackHeight / squareSize); row++) {
+        for (let col = 0; col < 3; col++) {
+          const isWhite = (row + col) % 2 === 0;
+          ctx.fillStyle = isWhite ? '#fff' : '#000';
+          ctx.fillRect(x + col * squareSize, trackY + row * squareSize, squareSize, squareSize);
+        }
+      }
+
+      // Trophy at top
+      ctx.font = 'bold 60px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('🏆', x + 22, trackY - 20);
+    }
+
+    function drawHorse(horse, laneIndex) {
+      if (eliminatedHorses.includes(horse.name)) return;
+      if (!horseImgLoaded) return; // Wait for image to load
+
+      const trackY = canvas.height * 0.35;
+      const trackHeight = canvas.height * 0.65;
+      const laneHeight = trackHeight / horses.length;
+      const centerY = trackY + laneHeight * laneIndex + laneHeight / 2;
+
+      // Calculate screen position based on horse position minus camera offset
+      let x;
+      if (mode === MODE.WIN_CINEMATIC && horse.isWinner) {
+        // Winner sprints across screen
+        x = horse.position;
+      } else {
+        // Normal mode: position minus camera offset for scrolling effect
+        x = horse.position - cameraOffset + canvas.width * 0.2;
+      }
+      const y = centerY;
+
+      // Dynamic scaling based on number of players (much smaller base scale)
+      let baseScale = 0.15; // Base scale for the large GIF image
+      let scale = baseScale;
+      if (horses.length > 50) scale = baseScale * 0.5;
+      else if (horses.length > 30) scale = baseScale * 0.6;
+      else if (horses.length > 20) scale = baseScale * 0.75;
+      else if (horses.length > 10) scale = baseScale * 0.9;
+
+      // Gallop animation (gentle bounce)
+      const gallopPhase = frameCount * 0.3 * (horse.speed / 2);
+      const gallopOffset = Math.abs(Math.sin(gallopPhase)) * (5 * scale / baseScale);
+      const horseY = y - gallopOffset;
+
+      // Body bounce (minimal tilt)
+      const bodyTilt = Math.sin(gallopPhase) * 0.015;
+
+      const horseWidth = horseImg.width * scale;
+      const horseHeight = horseImg.height * scale;
+
+      ctx.save();
+      ctx.translate(x, horseY);
+      ctx.rotate(bodyTilt);
+
+      // Shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.beginPath();
+      ctx.ellipse(0, horseHeight * 0.4, horseWidth * 0.35, 8, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Apply color filter based on horse.hueRotate
+      if (horse.hueRotate !== undefined) {
+        ctx.filter = `hue-rotate(${horse.hueRotate}deg) saturate(1.2)`;
+      }
+
+      // Draw animated horse GIF
+      ctx.drawImage(horseImg, -horseWidth / 2, -horseHeight / 2, horseWidth, horseHeight);
+
+      // Reset filter
+      ctx.filter = 'none';
+
+      ctx.restore();
+
+      // Name tag - fixed position, no bouncing
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transformation for name tag
+
+      // Dynamic font size based on number of players
+      let fontSize = 16;
+      if (horses.length > 50) fontSize = 10;
+      else if (horses.length > 30) fontSize = 11;
+      else if (horses.length > 20) fontSize = 12;
+      else if (horses.length > 10) fontSize = 14;
+
+      ctx.fillStyle = 'rgba(255,255,255,0.95)';
+      ctx.strokeStyle = horse.color;
+      ctx.lineWidth = 2;
+      ctx.font = `bold ${fontSize}px Quicksand`;
+      const nameWidth = ctx.measureText(horse.name).width + 20;
+
+      const tagX = x - nameWidth/2;
+      // Use centerY instead of horseY for stable position (adjusted for larger horse)
+      const tagY = centerY - (laneHeight * 0.48);
+      const tagHeight = fontSize + 8;
+
+      // Rounded rectangle for name tag
+      const radius = 6;
+      ctx.beginPath();
+      ctx.moveTo(tagX + radius, tagY);
+      ctx.lineTo(tagX + nameWidth - radius, tagY);
+      ctx.quadraticCurveTo(tagX + nameWidth, tagY, tagX + nameWidth, tagY + radius);
+      ctx.lineTo(tagX + nameWidth, tagY + tagHeight - radius);
+      ctx.quadraticCurveTo(tagX + nameWidth, tagY + tagHeight, tagX + nameWidth - radius, tagY + tagHeight);
+      ctx.lineTo(tagX + radius, tagY + tagHeight);
+      ctx.quadraticCurveTo(tagX, tagY + tagHeight, tagX, tagY + tagHeight - radius);
+      ctx.lineTo(tagX, tagY + radius);
+      ctx.quadraticCurveTo(tagX, tagY, tagX + radius, tagY);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = '#333';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(horse.name, x, tagY + tagHeight/2);
+
+      ctx.restore();
+
+      // Speed indicator (dust particles) - only show if enough space
+      if (horse.speed > 3 && horses.length <= 30) {
+        for (let i = 0; i < 5; i++) {
+          ctx.fillStyle = `rgba(139, 115, 85, ${0.4 - i * 0.08})`;
+          ctx.beginPath();
+          const dustX = x - (50 * scale) - i * 10 - (frameCount % 20);
+          const dustY = y + (15 * scale) + Math.sin(frameCount * 0.2 + i) * 4;
+          const dustSize = (6 - i * 0.8) * scale;
+          ctx.arc(dustX, dustY, dustSize, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Additional dirt kicks
+        for (let i = 0; i < 3; i++) {
+          ctx.fillStyle = `rgba(101, 67, 33, ${0.25 - i * 0.08})`;
+          ctx.beginPath();
+          const kickX = x - (45 * scale) - i * 12 - (frameCount % 15) * 0.8;
+          const kickY = y + (12 * scale) + Math.cos(frameCount * 0.25 + i) * 5;
+          ctx.arc(kickX, kickY, (4 - i * 0.8) * scale, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+
+    function drawObstacle(obstacle) {
+      const x = obstacle.x;
+      const trackY = canvas.height * 0.35;
+      const trackHeight = canvas.height * 0.65;
+
+      // Draw obstacle spanning full track height
+      ctx.fillStyle = 'rgba(255, 0, 0, 0.3)';
+      ctx.fillRect(x - 3, trackY, 6, trackHeight);
+
+      // Hurdle bars at intervals
+      ctx.fillStyle = '#ff0000';
+      const barCount = Math.min(10, Math.ceil(horses.length / 5));
+      const barSpacing = trackHeight / barCount;
+      for (let i = 0; i < barCount; i++) {
+        const barY = trackY + i * barSpacing + barSpacing / 2;
+        ctx.fillRect(x - 25, barY - 4, 50, 8);
+      }
+
+      // Warning sign at top
+      ctx.fillStyle = '#ffff00';
+      ctx.font = 'bold 24px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('⚠️', x, trackY - 10);
+    }
+
+    // ===== Create Entities =====
+    function createClouds() {
+      clouds = [];
+      for (let i = 0; i < 6; i++) {
+        clouds.push({
+          x: Math.random() * canvas.width,
+          y: 50 + Math.random() * 150,
+          speed: 0.1 + Math.random() * 0.3
+        });
+      }
+    }
+
+    function createTrees() {
+      trees = [];
+      for (let i = 0; i < 8; i++) {
+        trees.push({
+          x: Math.random() * canvas.width,
+          y: canvas.height * 0.28 // On grass area, just before track
+        });
+      }
+    }
+
+    function createHorses() {
+      const colors = [
+        '#8B4513', // Nâu đất
+        '#654321', // Nâu sô-cô-la
+        '#D2691E', // Nâu vàng
+        '#000000', // Đen
+        '#FFFFFF', // Trắng
+        '#A9A9A9', // Xám
+        '#DEB887', // Vàng cát
+        '#CD853F', // Nâu nhạt
+        '#B8860B', // Vàng tối
+        '#8B7355', // Nâu tan
+        '#4A4A4A', // Xám đen
+        '#F5DEB3', // Vàng be
+        '#C19A6B', // Nâu camel
+        '#6F4E37', // Nâu cà phê
+        '#483C32'  // Nâu đậm
+      ];
+
+      horses = [];
+      players.forEach((name, idx) => {
+        const color = colors[idx % colors.length];
+        // Random hue rotation for each horse (0-360 degrees)
+        const hueRotate = Math.floor(Math.random() * 360);
+        horses.push({
+          name,
+          color,
+          hueRotate, // For color variation in GIF
+          position: 80, // Start further right to show full horse body
+          speed: rand(1.5, 2.5),
+          targetSpeed: rand(1.5, 2.5),
+          stamina: 1.0,
+          burstCD: 0,
+          slipCD: 0,
+          scriptedBoostUntil: 0,
+          scriptedFatigueUntil: 0,
+          isWinner: false
+        });
+      });
+    }
+
+    function createObstacles() {
+      obstacles = [];
+      const count = 8;
+      for (let i = 0; i < count; i++) {
+        obstacles.push({
+          x: 200 + i * (canvas.width - 300) / count,
+          active: false,
+          used: false,
+          cooldown: 0
+        });
+      }
+    }
+
+    // ===== Game Logic =====
+    function tryScheduleObstacle() {
+      const elapsed = (Date.now() - raceStartTime) / 1000;
+      const remaining = Math.max(0, raceDuration - elapsed);
+
+      const elimLimit = Math.floor(totalPlayers * maxEliminationPercent);
+      const canEliminateMore = eliminatedHorses.length < elimLimit;
+
+      if (!canEliminateMore) return;
+      if (remaining <= 4) return;
+      if (obstacleInProgress) return;
+      if (Date.now() < nextObstacleAt) return;
+
+      const alive = horses.filter(h => !eliminatedHorses.includes(h.name));
+      if (!alive.length) return;
+
+      const sorted = [...alive].sort((a,b) => b.position - a.position);
+      const topK = sorted.slice(0, Math.max(2, Math.floor(sorted.length * 0.5)));
+      const targetHorse = pick(topK);
+
+      // Find nearest unused obstacle
+      let best = null;
+      let bestDist = Infinity;
+      for (const ob of obstacles) {
+        if (ob.used || ob.cooldown > 0) continue;
+        const dist = Math.abs(targetHorse.position - ob.x);
+        if (dist < bestDist && dist < 150) {
+          bestDist = dist;
+          best = ob;
+        }
+      }
+
+      if (best) {
+        best.active = true;
+        best.targetHorse = targetHorse;
+        obstacleInProgress = true;
+        addEventLog(`🚧 ${targetHorse.name} gặp chướng ngại vật!`, 'info');
+      }
+
+      nextObstacleAt = Date.now() + Math.floor(rand(OBSTACLE_GAP_MIN, OBSTACLE_GAP_MAX));
+    }
+
+    function scheduleOvertakeIfNeeded() {
+      if (Date.now() < nextOvertakeAt) return;
+      nextOvertakeAt = Date.now() + Math.floor(rand(OVERTAKE_GAP_MIN, OVERTAKE_GAP_MAX));
+
+      const alive = horses.filter(h => !eliminatedHorses.includes(h.name));
+      if (alive.length < 2) return;
+
+      const leader = alive.reduce((a,b) => (b.position > a.position ? b : a));
+      const candidates = alive.filter(h => h.name !== leader.name);
+      const chosen = pick(candidates);
+
+      const now = Date.now();
+      chosen.scriptedBoostUntil = now + 2200 + Math.floor(Math.random() * 400);
+      chosen.scriptedFatigueUntil = chosen.scriptedBoostUntil + 1600 + Math.floor(Math.random() * 500);
+
+      addEventLog(`⚡ ${chosen.name} bất ngờ bứt tốc!`, 'info');
+      setTimeout(() => {
+        if (!winner && !eliminatedHorses.includes(chosen.name)) {
+          addEventLog(`😵 ${chosen.name} có vẻ mệt...`, 'info');
+        }
+      }, 1800);
+    }
+
+    function updateHorses() {
+      const alive = horses.filter(h => !eliminatedHorses.includes(h.name));
+      if (!alive.length) return;
+
+      const leader = alive.reduce((a,b) => (b.position > a.position ? b : a));
+
+      horses.forEach(horse => {
+        if (eliminatedHorses.includes(horse.name)) return;
+
+        // Don't update regular horses in cinematic mode
+        if (mode === MODE.WIN_CINEMATIC && !horse.isWinner) return;
+
+        horse.burstCD = Math.max(0, horse.burstCD - 1);
+        horse.slipCD = Math.max(0, horse.slipCD - 1);
+
+        const drain = Math.max(0, horse.speed - 2.5) * 0.003;
+        const regen = Math.max(0, 2.8 - horse.speed) * 0.002;
+        horse.stamina = clamp(horse.stamina - drain + regen, 0, 1);
+
+        const distFromLeader = Math.abs(horse.position - leader.position);
+        if (distFromLeader > 80) horse.targetSpeed = Math.max(horse.targetSpeed, 3.0);
+        if (distFromLeader < 20) horse.targetSpeed = Math.min(horse.targetSpeed, 2.0);
+
+        horse.targetSpeed = clamp(horse.targetSpeed + (Math.random() - 0.5) * 0.1, 1.5, 4.5);
+
+        const now = Date.now();
+        if (now < horse.scriptedBoostUntil) horse.targetSpeed = Math.max(horse.targetSpeed, 5.0);
+        else if (now < horse.scriptedFatigueUntil) horse.targetSpeed = Math.min(horse.targetSpeed, 2.0);
+
+        if (horse.burstCD === 0 && horse.stamina > 0.35 && Math.random() < 0.012) {
+          horse.targetSpeed = 4.5 + Math.random() * 1.5;
+          horse.stamina = Math.max(0, horse.stamina - 0.22);
+          horse.burstCD = 95;
+        }
+        if (horse.slipCD === 0 && horse.stamina < 0.25 && Math.random() < 0.01) {
+          horse.targetSpeed = 1.5 + Math.random() * 0.8;
+          horse.slipCD = 85;
+        }
+
+        horse.speed += (horse.targetSpeed - horse.speed) * 0.08;
+        horse.position += horse.speed;
+
+        // Only limit position during cinematic mode
+        if (mode === MODE.WIN_CINEMATIC && horse.isWinner) {
+          horse.position = Math.min(horse.position, canvas.width - 120);
+        }
+      });
+    }
+
+    function updateObstacles() {
+      obstacles.forEach(ob => {
+        if (ob.cooldown > 0) ob.cooldown--;
+
+        if (ob.active && ob.targetHorse) {
+          const horse = ob.targetHorse;
+          if (eliminatedHorses.includes(horse.name)) {
+            ob.active = false;
+            ob.used = true;
+            ob.cooldown = 180;
+            obstacleInProgress = false;
+            return;
+          }
+
+          if (Math.abs(horse.position - ob.x) < 30) {
+            eliminatedHorses.push(horse.name);
+            addEventLog(`🚧 ${horse.name} bị vấp ngã!`, 'eliminated');
+
+            ob.active = false;
+            ob.used = true;
+            ob.cooldown = 180;
+            obstacleInProgress = false;
+
+            const elimLimit = Math.floor(totalPlayers * maxEliminationPercent);
+            if (eliminatedHorses.length >= elimLimit) {
+              addEventLog(`🚧 Chướng ngại vật tạm dừng...`, 'info');
+            }
+          }
+        }
+      });
+    }
+
+    function checkWinner() {
+      const elapsed = (Date.now() - raceStartTime) / 1000;
+      const alive = horses.filter(h => !eliminatedHorses.includes(h.name));
+
+      // Only declare winner when time is up
+      if (elapsed >= raceDuration && !winner) {
+        const leader = alive.reduce((a,b) => (b.position > a.position ? b : a));
+        setWinner(leader.name, `⏰ Hết giờ! ${leader.name} về đích!`);
+      }
+    }
+
+    function setWinner(name, reasonText) {
+      if (winner) return;
+      winner = name;
+
+      const wh = horses.find(h => h.name === name);
+      if (!wh) return;
+
+      wh.isWinner = true;
+      addEventLog(reasonText, 'caught');
+
+      // Reset winner position to sprint from left side to finish (adjusted for larger horse)
+      wh.position = canvas.width * 0.2;
+
+      // Start cinematic
+      mode = MODE.WIN_CINEMATIC;
+      winCine.active = true;
+      winCine.horse = wh;
+      winCine.phase = 'SPRINT';
+      winCine.startAt = Date.now();
+      winCine.finishAt = 0;
+
+      // Hide event log during cinematic
+      eventLog.classList.add('hidden');
+
+      // Stop obstacles
+      obstacles.forEach(ob => {
+        ob.isCatching = false;
+      });
+      obstacleInProgress = false;
+    }
+
+    function updateWinnerCinematic(time) {
+      if (!winCine.active || !winCine.horse) return;
+      const wh = winCine.horse;
+
+      if (winCine.phase === 'SPRINT') {
+        // Winner sprints to finish line (moves right on screen)
+        wh.targetSpeed = 8.0;
+        wh.speed += (wh.targetSpeed - wh.speed) * 0.15;
+        wh.position += wh.speed;
+
+        // Move camera faster during sprint
+        cameraOffset += wh.speed * 1.5;
+
+        // Finish line is at canvas.width - 100
+        if (wh.position >= canvas.width - 120) {
+          winCine.phase = 'CELEBRATE';
+          winCine.finishAt = Date.now();
+          addEventLog(`🏆 ${wh.name} về đích đầu tiên!`, 'caught');
+        }
+      }
+
+      if (winCine.phase === 'CELEBRATE') {
+        const elapsed = Date.now() - winCine.finishAt;
+
+        // Continue camera movement slowly
+        cameraOffset += 0.5;
+
+        if (elapsed > 1500) {
+          winCine.phase = 'SHOW';
+          announceWinnerUI();
+        }
+      }
+    }
+
+    function announceWinnerUI() {
+      mode = MODE.ENDED;
+      winCine.active = false;
+
+      winnerNameEl.textContent = winner;
+      winnerPanel.classList.remove('hidden');
+      setTimeout(() => winnerPanel.classList.add('show'), 100);
+      createConfetti();
+    }
+
+    // ===== Confetti =====
+    const confettiParticles = [];
+    function createConfetti() {
+      const colors = ['#ff6b81', '#70a1ff', '#feca57', '#48dbfb', '#ff6348'];
+      for (let i = 0; i < 100; i++) {
+        confettiParticles.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height - canvas.height,
+          color: colors[Math.floor(Math.random() * colors.length)],
+          size: 5 + Math.random() * 10,
+          speedY: 2 + Math.random() * 3,
+          speedX: (Math.random() - 0.5) * 2,
+          rotation: Math.random() * Math.PI * 2,
+          rotationSpeed: (Math.random() - 0.5) * 0.2
+        });
+      }
+    }
+
+    function drawConfetti() {
+      confettiParticles.forEach((p, index) => {
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rotation);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.size/2, -p.size/2, p.size, p.size);
+        ctx.restore();
+
+        p.y += p.speedY;
+        p.x += p.speedX;
+        p.rotation += p.rotationSpeed;
+
+        if (p.y > canvas.height) {
+          confettiParticles.splice(index, 1);
+        }
+      });
+    }
+
+    // ===== Main Game Loop =====
+    function gameLoop() {
+      requestAnimationFrame(gameLoop);
+
+      frameCount++;
+
+      // Clear canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Draw background
+      drawSky();
+
+      // Update and draw clouds (keep moving during cinematic)
+      clouds.forEach(cloud => {
+        cloud.x -= cloud.speed;
+        if (cloud.x - cameraOffset * 0.3 < -100) cloud.x = canvas.width + cameraOffset * 0.3 + 100;
+        drawCloud(cloud);
+      });
+
+      drawGround();
+
+      // Draw trees
+      trees.forEach(tree => {
+        if (tree.x - cameraOffset * 0.5 < -50) {
+          tree.x = canvas.width + cameraOffset * 0.5 + 50;
+        }
+        drawTree(tree);
+      });
+
+      // Draw finish line only in cinematic mode
+      if (mode === MODE.WIN_CINEMATIC) {
+        drawFinishLine();
+      }
+
+      if (mode === MODE.WIN_CINEMATIC) {
+        // Update time display
+        const elapsed = (Date.now() - raceStartTime) / 1000;
+        const remaining = Math.max(0, raceDuration - elapsed);
+        const timeEl = document.getElementById('timeRemaining');
+        if (timeEl) timeEl.textContent = `⏱️ ${Math.ceil(remaining)}s`;
+
+        // Update winner cinematic (this updates winner horse and camera)
+        updateWinnerCinematic(Date.now() * 0.001);
+
+        // Update other horses position for tracking (they stay on screen but still "race")
+        horses.forEach(horse => {
+          if (!horse.isWinner && !eliminatedHorses.includes(horse.name)) {
+            horse.position += horse.speed;
+          }
+        });
+
+        // Draw horses
+        horses.forEach((horse, idx) => drawHorse(horse, idx));
+
+        return;
+      }
+
+      if (mode === MODE.RACING) {
+        // Update time
+        const elapsed = (Date.now() - raceStartTime) / 1000;
+        const remaining = Math.max(0, raceDuration - elapsed);
+        const timeEl = document.getElementById('timeRemaining');
+        if (timeEl) timeEl.textContent = `⏱️ ${Math.ceil(remaining)}s`;
+
+        // Update game logic
+        updateHorses();
+        updateObstacles();
+        tryScheduleObstacle();
+        scheduleOvertakeIfNeeded();
+        checkWinner();
+
+        // Update camera offset to keep horses on left side of screen
+        const aliveHorses = horses.filter(h => !eliminatedHorses.includes(h.name));
+        if (aliveHorses.length > 0) {
+          // Calculate average position of all alive horses
+          const avgPosition = aliveHorses.reduce((sum, h) => sum + h.position, 0) / aliveHorses.length;
+          // Camera follows the pack to keep them at 20% of screen (left-center for better view)
+          const targetCameraOffset = avgPosition - canvas.width * 0.2;
+          // Smooth camera movement
+          cameraOffset += (targetCameraOffset - cameraOffset) * 0.15;
+
+          // Log leader
+          const leader = aliveHorses.reduce((a,b) => (b.position > a.position ? b : a));
+          const sec = Math.floor(elapsed);
+          if (sec > 0 && sec % 5 === 0 && !window['lead_' + sec]) {
+            window['lead_' + sec] = true;
+            addEventLog(`🏁 Dẫn đầu: ${leader.name}`, 'info');
+          }
+        }
+
+        // Draw obstacles
+        obstacles.forEach(ob => {
+          if (!ob.used) drawObstacle(ob);
+        });
+      }
+
+      // Draw horses
+      horses.forEach((horse, idx) => drawHorse(horse, idx));
+
+      // Draw confetti
+      if (confettiParticles.length > 0) {
+        drawConfetti();
+      }
+    }
+
+    // ===== Reset / Start =====
+    function resetRace() {
+      winner = null;
+      eliminatedHorses = [];
+      horses = [];
+      obstacles = [];
+      confettiParticles.length = 0;
+      frameCount = 0;
+      cameraOffset = 0;
+
+      winCine = { active: false, horse: null, phase: 'SPRINT', startAt: 0, finishAt: 0 };
+
+      nextObstacleAt = Date.now() + 2500;
+      obstacleInProgress = false;
+      nextOvertakeAt = Date.now() + 4500;
+
+      // Show event log again
+      eventLog.classList.remove('hidden');
+    }
+
+    function startRace() {
+      resetRace();
+
+      totalPlayers = players.length;
+      createClouds();
+      createTrees();
+      createHorses();
+      createObstacles();
+
+      raceStartTime = Date.now();
+      mode = MODE.RACING;
+
+      raceInfo.style.display = 'block';
+      eventLog.style.display = 'block';
+
+      addEventLog('🏁 Cuộc đua bắt đầu!', 'info');
+    }
+
+    // ===== Event Listeners =====
+    playerInput.addEventListener('input', () => {
+      const text = playerInput.value.trim();
+      players = text ? text.split('\n').map(s => s.trim()).filter(Boolean) : [];
+      startBtn.disabled = players.length < 2;
+    });
+
+    startBtn.addEventListener('click', () => {
+      const text = playerInput.value.trim();
+      if (!text) return alert('Vui lòng nhập danh sách người chơi!');
+      players = text.split('\n').map(s => s.trim()).filter(Boolean);
+      if (players.length < 2) return alert('Cần ít nhất 2 người chơi!');
+
+      raceDuration = Math.max(1, parseInt(raceDurationInput.value, 10) || 30);
+
+      setupPanel.classList.add('hidden');
+      const timeEl = document.getElementById('timeRemaining');
+      if (timeEl) timeEl.textContent = `⏱️ ${raceDuration}s`;
+
+      startRace();
+    });
+
+    restartBtn.addEventListener('click', () => location.reload());
+
+    // ===== Initialize =====
+    createClouds();
+    createTrees();
+    gameLoop();
+  </script>
+</body>
+</html>
