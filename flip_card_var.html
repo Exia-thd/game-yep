@@ -1144,11 +1144,11 @@ function updateHUD(){
   `;
   
   if(winners.length>0){
-    let listHTML='<strong style="color:#ffd700;">🏆 Người trúng giải:</strong><br>';
+    let listHTML='<strong style="color:#0047AB;">🏆 Người trúng giải:</strong><br>';
     winners.forEach((item,idx)=>{
       listHTML+=`
         <div class="drunk-item">
-          ${idx+1}. <strong style="color:#ffd700;">${item.name}</strong><br>
+          ${idx+1}. <strong style="color:#0047AB;">${item.name}</strong><br>
           <span style="color:#764ba2;font-size:12px;">🎁 Đạt giải</span>
         </div>
       `;

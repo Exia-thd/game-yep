@@ -752,10 +752,18 @@ Lê Văn C"></textarea>
 
     function createTrees() {
       trees = [];
-      for (let i = 0; i < 4; i++) {
+      // Thêm cây cối ở phía trên đường đua (vùng grass)
+      for (let i = 0; i < 8; i++) {
         trees.push({
-          x: Math.random() * canvas.width,
-          y: canvas.height * 0.28 // On grass area, just before track
+          x: Math.random() * canvas.width * 2, // Phân bố rộng hơn
+          y: canvas.height * 0.28 // Vùng grass phía trên track
+        });
+      }
+      // Thêm cây ở vùng sky/grass phía trên
+      for (let i = 0; i < 5; i++) {
+        trees.push({
+          x: Math.random() * canvas.width * 2,
+          y: canvas.height * 0.15 + Math.random() * canvas.height * 0.08
         });
       }
     }
@@ -1256,8 +1264,8 @@ Lê Văn C"></textarea>
 
         // Update game logic
         updateHorses();
-        updateObstacles();
-        tryScheduleObstacle();
+        // updateObstacles(); // Vô hiệu hóa obstacles
+        // tryScheduleObstacle(); // Vô hiệu hóa obstacles
         scheduleOvertakeIfNeeded();
         checkWinner();
 
@@ -1272,10 +1280,10 @@ Lê Văn C"></textarea>
           cameraOffset += (targetCameraOffset - cameraOffset) * 0.15;
         }
 
-        // Draw obstacles
-        obstacles.forEach(ob => {
-          if (!ob.used) drawObstacle(ob);
-        });
+        // Draw obstacles - DISABLED (hàng rào đã bị xóa)
+        // obstacles.forEach(ob => {
+        //   if (!ob.used) drawObstacle(ob);
+        // });
       }
 
       // Draw horses sorted by position (back to front for depth effect)
