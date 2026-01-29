@@ -1116,10 +1116,11 @@ Ngô Thị Kim</textarea>
       }, 30);
     }
 
-    function drunkenSleepEliminate(victim) {
+    function drunkenSleepEliminate(victim, winner) {
       if (!victim || victim.userData.eliminated) return;
 
       victim.userData.eliminated = true;
+      victim.userData.inBattle = false;
       eliminatedCount++;
       updateStats();
 
@@ -1131,7 +1132,7 @@ Ngô Thị Kim</textarea>
           clearInterval(fallInterval);
           victim.rotation.x = Math.PI / 2;
           victim.position.y = 0.3;
-          
+
           // Start continuous smoke animation
           startSleepingSmoke(victim);
         } else {
@@ -1145,11 +1146,6 @@ Ngô Thị Kim</textarea>
       // Reset battle state after falling
       setTimeout(() => {
         if (activeBattle) {
-          try {
-            activeBattle.fighter1.userData.inBattle = false;
-            activeBattle.fighter2.userData.inBattle = false;
-          } catch(e) {}
-
           const alert = document.getElementById("battleAlert");
           alert.style.display = "none";
 
@@ -1461,9 +1457,13 @@ Ngô Thị Kim</textarea>
         winner.userData.beer.rotation.x = 0;
         winner.userData.beer.rotation.z = 0;
       }
-      if (winner) winner.position.y = 0;
+      if (winner) {
+        winner.position.y = 0;
+        // Reset inBattle ngay lập tức để người thắng có thể di chuyển
+        winner.userData.inBattle = false;
+      }
 
-      drunkenSleepEliminate(loser);
+      drunkenSleepEliminate(loser, winner);
     }
 
     function updateStats() {
