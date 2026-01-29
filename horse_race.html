@@ -250,6 +250,19 @@ Lê Văn C"></textarea>
     let sortedHorsesCache = [];
     let lastSortFrame = -1;
 
+    // Pre-rendered horse canvases for better performance (avoid filter on every frame)
+    const horseCanvasCache = new Map();
+
+    // Performance settings based on player count
+    let perfSettings = {
+      drawShadows: true,
+      drawParticles: true,
+      drawComplexAura: true,
+      drawTrees: true,
+      drawClouds: true,
+      simplifiedNameTags: false
+    };
+
     // Load horse image
     const horseImg = new Image();
     horseImg.src = 'horse.gif';
@@ -328,6 +341,11 @@ Lê Văn C"></textarea>
     // Animation frame counter
     let frameCount = 0;
 
+    // Frame rate limiting for better performance
+    let lastFrameTime = 0;
+    const TARGET_FPS = 60;
+    let targetFrameTime = 1000 / TARGET_FPS;
+
     // ===== Drawing Functions =====
     function drawSky() {
       const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height * 0.25);
@@ -395,7 +413,14 @@ Lê Văn C"></textarea>
     }
 
     function drawFinishLine() {
-      const x = canvas.width - 100;
+      // Finish line position in world space (far ahead of starting position)
+      const finishLineWorldX = 3000; // Fixed position in world
+      // Convert to screen space
+      const x = finishLineWorldX - cameraOffset + canvas.width * 0.2;
+
+      // Only draw if visible on screen
+      if (x < -100 || x > canvas.width + 100) return;
+
       const trackY = canvas.height * 0.35;
       const trackHeight = canvas.height * 0.65;
 
@@ -428,8 +453,8 @@ Lê Văn C"></textarea>
       // Calculate screen position based on horse position minus camera offset
       let x;
       if (mode === MODE.WIN_CINEMATIC && horse.isWinner) {
-        // Winner sprints across screen
-        x = horse.position;
+        // Winner stays centered on screen at 50% as camera follows
+        x = canvas.width * 0.5;
       } else {
         // Normal mode: position minus camera offset for scrolling effect
         x = horse.position - cameraOffset + canvas.width * 0.2;
@@ -441,17 +466,28 @@ Lê Văn C"></textarea>
       let baseScale = 0.15; // Reduced from 0.2 for performance
       let scale = baseScale;
 
+      // Calculate dimensions once
+      const horseWidth = horseImg.width * scale;
+      const horseHeight = horseImg.height * scale;
+
+      // VIEWPORT CULLING - Skip drawing if horse is off-screen (major performance boost!)
+      // BUT: Never cull the winner horse during cinematic mode!
+      const isWinnerInCinematic = (mode === MODE.WIN_CINEMATIC && horse.isWinner);
+      if (!isWinnerInCinematic && (x < -horseWidth * 2 || x > canvas.width + horseWidth * 2)) {
+        return; // Don't draw horses outside viewport
+      }
+
       // Gallop animation (gentle bounce)
       const gallopPhase = frameCount * 0.3 * (horse.speed / 2);
       let gallopOffset = Math.abs(Math.sin(gallopPhase)) * (5 * scale / baseScale);
-      
+
       // BOOST JUMP - ngựa bay lên cao và giữ ở trên khi bức tốc! (ALWAYS VISIBLE)
       const boostCheckTime = Date.now();
       if (boostCheckTime < horse.scriptedBoostUntil && mode === MODE.RACING) {
         const boostDuration = 2200; // Duration of boost
         const elapsed = boostDuration - (horse.scriptedBoostUntil - boostCheckTime);
         const progress = elapsed / boostDuration; // 0 to 1
-        
+
         let jumpHeight = 0;
         if (progress < 0.15) {
           // Bay lên cao nhanh (0-15% thời gian)
@@ -467,32 +503,51 @@ Lê Văn C"></textarea>
           const fallProgress = (progress - 0.85) / 0.15;
           jumpHeight = 150 * (1 - Math.sin(fallProgress * Math.PI * 0.5));
         }
-        
+
         gallopOffset += jumpHeight;
       }
-      
+
       const horseY = y - gallopOffset;
 
       // Body bounce (minimal tilt)
       const bodyTilt = Math.sin(gallopPhase) * 0.015;
 
-      const horseWidth = horseImg.width * scale;
-      const horseHeight = horseImg.height * scale;
-
       ctx.save();
       ctx.translate(x, horseY);
       ctx.rotate(bodyTilt);
 
-      // Shadow - removed for performance
-
-      // Apply color filter based on horse.hueRotate
-      if (horse.hueRotate !== undefined) {
-        ctx.filter = `hue-rotate(${horse.hueRotate}deg) saturate(1.2)`;
-      }
-
       // Draw animated horse GIF or colored rectangle as fallback
+      // NOTE: CSS filter hue-rotate is VERY expensive, disabled for performance
+      // Color variation is achieved through pre-rendered canvases or simple tinting
       if (horseImgLoaded) {
-        ctx.drawImage(horseImg, -horseWidth / 2, -horseHeight / 2, horseWidth, horseHeight);
+        // Use cached pre-rendered horse if available for better performance
+        const cacheKey = `${horse.name}_${horse.hueRotate}`;
+        let cachedCanvas = horseCanvasCache.get(cacheKey);
+
+        if (!cachedCanvas && horseCanvasCache.size < 100) {
+          // Pre-render horse with hue rotation (only once per horse)
+          cachedCanvas = document.createElement('canvas');
+          cachedCanvas.width = horseImg.width;
+          cachedCanvas.height = horseImg.height;
+          const cacheCtx = cachedCanvas.getContext('2d');
+
+          // Only apply filter during pre-render (once), not every frame!
+          if (horses.length <= 20) { // Only apply filter for smaller player counts
+            cacheCtx.filter = `hue-rotate(${horse.hueRotate}deg) saturate(1.2)`;
+          }
+          cacheCtx.drawImage(horseImg, 0, 0);
+          cacheCtx.filter = 'none';
+
+          horseCanvasCache.set(cacheKey, cachedCanvas);
+        }
+
+        // Draw pre-rendered horse (much faster!)
+        if (cachedCanvas) {
+          ctx.drawImage(cachedCanvas, -horseWidth / 2, -horseHeight / 2, horseWidth, horseHeight);
+        } else {
+          // Fallback: draw without filter
+          ctx.drawImage(horseImg, -horseWidth / 2, -horseHeight / 2, horseWidth, horseHeight);
+        }
       } else {
         // Fallback: draw colored rectangle if image not loaded
         ctx.fillStyle = horse.color;
@@ -504,40 +559,50 @@ Lê Văn C"></textarea>
         ctx.fillText('🐴', 0, 0);
       }
 
-      // Reset filter
-      ctx.filter = 'none';
-
       ctx.restore();
 
-      // Boost aura - show when horse is in scripted boost (ALWAYS VISIBLE)
+      // Boost aura - show when horse is in scripted boost
       const now = Date.now();
       if (now < horse.scriptedBoostUntil && mode === MODE.RACING) {
         ctx.save();
-        ctx.globalAlpha = 0.7 + Math.sin(frameCount * 0.3) * 0.3;
-        
-        // Golden aura around boosting horse - LARGER and BRIGHTER
-        const gradient = ctx.createRadialGradient(x, y, 0, x, y, horseWidth * 1.2);
-        gradient.addColorStop(0, 'rgba(255, 215, 0, 0.95)');
-        gradient.addColorStop(0.5, 'rgba(255, 165, 0, 0.6)');
-        gradient.addColorStop(1, 'rgba(255, 215, 0, 0)');
-        ctx.fillStyle = gradient;
-        ctx.beginPath();
-        ctx.arc(x, y, horseWidth * 1.2, 0, Math.PI * 2);
-        ctx.fill();
-        
-        // Lightning bolts - BIGGER and MORE VISIBLE
-        ctx.strokeStyle = 'rgba(255, 255, 0, 1)';
-        ctx.lineWidth = 4;
-        for (let i = 0; i < 4; i++) {
-          const angle = (frameCount * 0.15 + i * Math.PI * 2 / 4);
-          const boltX = x + Math.cos(angle) * horseWidth * 0.7;
-          const boltY = y + Math.sin(angle) * horseWidth * 0.7;
+
+        if (perfSettings.drawComplexAura) {
+          // Complex aura for low player counts
+          ctx.globalAlpha = 0.7 + Math.sin(frameCount * 0.3) * 0.3;
+
+          // Golden aura around boosting horse
+          const gradient = ctx.createRadialGradient(x, y, 0, x, y, horseWidth * 1.2);
+          gradient.addColorStop(0, 'rgba(255, 215, 0, 0.95)');
+          gradient.addColorStop(0.5, 'rgba(255, 165, 0, 0.6)');
+          gradient.addColorStop(1, 'rgba(255, 215, 0, 0)');
+          ctx.fillStyle = gradient;
           ctx.beginPath();
-          ctx.moveTo(boltX, boltY);
-          ctx.lineTo(boltX + Math.cos(angle) * 20, boltY + Math.sin(angle) * 20);
-          ctx.stroke();
+          ctx.arc(x, y, horseWidth * 1.2, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Lightning bolts - only draw every other frame for performance
+          if (frameCount % 2 === 0) {
+            ctx.strokeStyle = 'rgba(255, 255, 0, 1)';
+            ctx.lineWidth = 4;
+            for (let i = 0; i < 4; i++) {
+              const angle = (frameCount * 0.15 + i * Math.PI * 2 / 4);
+              const boltX = x + Math.cos(angle) * horseWidth * 0.7;
+              const boltY = y + Math.sin(angle) * horseWidth * 0.7;
+              ctx.beginPath();
+              ctx.moveTo(boltX, boltY);
+              ctx.lineTo(boltX + Math.cos(angle) * 20, boltY + Math.sin(angle) * 20);
+              ctx.stroke();
+            }
+          }
+        } else {
+          // Simple glow for high player counts (MUCH faster!)
+          ctx.globalAlpha = 0.6;
+          ctx.fillStyle = '#FFD700';
+          ctx.beginPath();
+          ctx.arc(x, y, horseWidth * 0.8, 0, Math.PI * 2);
+          ctx.fill();
         }
-        
+
         ctx.restore();
       }
 
@@ -547,14 +612,11 @@ Lê Văn C"></textarea>
 
       // Dynamic font size based on number of players (optimized)
       let fontSize = 28;
-      if (horses.length > 50) fontSize = 20;
-      else if (horses.length > 30) fontSize = 22;
-      else if (horses.length > 20) fontSize = 24;
-      else if (horses.length > 10) fontSize = 26;
+      if (horses.length > 50) fontSize = 18;
+      else if (horses.length > 30) fontSize = 20;
+      else if (horses.length > 20) fontSize = 22;
+      else if (horses.length > 10) fontSize = 24;
 
-      ctx.fillStyle = 'rgba(255,255,255,0.95)';
-      ctx.strokeStyle = horse.color;
-      ctx.lineWidth = 2;
       ctx.font = `bold ${fontSize}px Quicksand`;
       const nameWidth = ctx.measureText(horse.name).width + 20;
 
@@ -563,21 +625,34 @@ Lê Văn C"></textarea>
       const tagY = centerY - (horseHeight * 0.8);
       const tagHeight = fontSize + 8;
 
-      // Rounded rectangle for name tag
-      const radius = 6;
-      ctx.beginPath();
-      ctx.moveTo(tagX + radius, tagY);
-      ctx.lineTo(tagX + nameWidth - radius, tagY);
-      ctx.quadraticCurveTo(tagX + nameWidth, tagY, tagX + nameWidth, tagY + radius);
-      ctx.lineTo(tagX + nameWidth, tagY + tagHeight - radius);
-      ctx.quadraticCurveTo(tagX + nameWidth, tagY + tagHeight, tagX + nameWidth - radius, tagY + tagHeight);
-      ctx.lineTo(tagX + radius, tagY + tagHeight);
-      ctx.quadraticCurveTo(tagX, tagY + tagHeight, tagX, tagY + tagHeight - radius);
-      ctx.lineTo(tagX, tagY + radius);
-      ctx.quadraticCurveTo(tagX, tagY, tagX + radius, tagY);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
+      if (perfSettings.simplifiedNameTags) {
+        // Simple rectangle - MUCH faster for many players!
+        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+        ctx.fillRect(tagX, tagY, nameWidth, tagHeight);
+        ctx.strokeStyle = horse.color;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(tagX, tagY, nameWidth, tagHeight);
+      } else {
+        // Rounded rectangle for name tag (prettier but slower)
+        ctx.fillStyle = 'rgba(255,255,255,0.95)';
+        ctx.strokeStyle = horse.color;
+        ctx.lineWidth = 2;
+
+        const radius = 6;
+        ctx.beginPath();
+        ctx.moveTo(tagX + radius, tagY);
+        ctx.lineTo(tagX + nameWidth - radius, tagY);
+        ctx.quadraticCurveTo(tagX + nameWidth, tagY, tagX + nameWidth, tagY + radius);
+        ctx.lineTo(tagX + nameWidth, tagY + tagHeight - radius);
+        ctx.quadraticCurveTo(tagX + nameWidth, tagY + tagHeight, tagX + nameWidth - radius, tagY + tagHeight);
+        ctx.lineTo(tagX + radius, tagY + tagHeight);
+        ctx.quadraticCurveTo(tagX, tagY + tagHeight, tagX, tagY + tagHeight - radius);
+        ctx.lineTo(tagX, tagY + radius);
+        ctx.quadraticCurveTo(tagX, tagY, tagX + radius, tagY);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+      }
 
       ctx.fillStyle = '#333';
       ctx.textAlign = 'center';
@@ -586,8 +661,8 @@ Lê Văn C"></textarea>
 
       ctx.restore();
 
-      // Speed indicator (dust particles) - disabled for performance with many players
-      if (horse.speed > 3 && horses.length <= 5 && frameCount % 5 === 0) {
+      // Speed indicator (dust particles) - only draw when performance allows
+      if (perfSettings.drawParticles && horse.speed > 3 && frameCount % 5 === 0) {
         for (let i = 0; i < 1; i++) {
           ctx.fillStyle = `rgba(139, 115, 85, ${0.4 - i * 0.1})`;
           ctx.beginPath();
@@ -644,6 +719,61 @@ Lê Văn C"></textarea>
       }
     }
 
+    // Update performance settings based on player count
+    function updatePerformanceSettings(playerCount) {
+      if (playerCount > 50) {
+        perfSettings = {
+          drawShadows: false,
+          drawParticles: false,
+          drawComplexAura: false,
+          drawTrees: false,
+          drawClouds: false,
+          simplifiedNameTags: true
+        };
+        targetFrameTime = 1000 / 30; // 30 FPS for 50+ players
+      } else if (playerCount > 30) {
+        perfSettings = {
+          drawShadows: false,
+          drawParticles: false,
+          drawComplexAura: false,
+          drawTrees: true,
+          drawClouds: true,
+          simplifiedNameTags: true
+        };
+        targetFrameTime = 1000 / 45; // 45 FPS for 30-50 players
+      } else if (playerCount > 20) {
+        perfSettings = {
+          drawShadows: false,
+          drawParticles: false,
+          drawComplexAura: false,
+          drawTrees: true,
+          drawClouds: true,
+          simplifiedNameTags: true
+        };
+        targetFrameTime = 1000 / 60; // 60 FPS
+      } else if (playerCount > 10) {
+        perfSettings = {
+          drawShadows: false,
+          drawParticles: false,
+          drawComplexAura: true,
+          drawTrees: true,
+          drawClouds: true,
+          simplifiedNameTags: false
+        };
+        targetFrameTime = 1000 / 60; // 60 FPS
+      } else {
+        perfSettings = {
+          drawShadows: false,
+          drawParticles: true,
+          drawComplexAura: true,
+          drawTrees: true,
+          drawClouds: true,
+          simplifiedNameTags: false
+        };
+        targetFrameTime = 1000 / 60; // 60 FPS
+      }
+    }
+
     function createHorses() {
       const colors = [
         '#8B4513', // Nâu đất
@@ -664,6 +794,8 @@ Lê Văn C"></textarea>
       ];
 
       horses = [];
+      horseCanvasCache.clear(); // Clear cache for new race
+
       players.forEach((name, idx) => {
         const color = colors[idx % colors.length];
         // Random hue rotation for each horse (0-360 degrees)
@@ -686,14 +818,21 @@ Lê Văn C"></textarea>
           isWinner: false
         });
       });
+
+      // Update performance settings based on player count
+      updatePerformanceSettings(players.length);
     }
 
     function createObstacles() {
       obstacles = [];
-      const count = 3; // Minimal obstacles for performance
+      // Scale obstacle count based on player count for better performance
+      let count = 3;
+      if (horses.length > 50) count = 1; // Minimal obstacles for many players
+      else if (horses.length > 20) count = 2;
+
       for (let i = 0; i < count; i++) {
         obstacles.push({
-          x: 200 + i * (canvas.width - 300) / count,
+          x: 200 + i * (canvas.width - 300) / Math.max(1, count),
           active: false,
           used: false,
           cooldown: 0
@@ -799,11 +938,6 @@ Lê Văn C"></textarea>
 
         horse.speed += (horse.targetSpeed - horse.speed) * 0.08;
         horse.position += horse.speed;
-
-        // Only limit position during cinematic mode
-        if (mode === MODE.WIN_CINEMATIC && horse.isWinner) {
-          horse.position = Math.min(horse.position, canvas.width - 120);
-        }
       });
     }
 
@@ -891,8 +1025,8 @@ Lê Văn C"></textarea>
         });
 
         // Camera follows winner smoothly as they sprint ahead
-        const targetCameraOffset = wh.position - canvas.width * 0.4; // Keep winner at 40% of screen
-        cameraOffset += (targetCameraOffset - cameraOffset) * 0.2; // Faster camera
+        const targetCameraOffset = wh.position - canvas.width * 0.5; // Keep winner centered
+        cameraOffset += (targetCameraOffset - cameraOffset) * 0.15; // Smooth camera
 
         // Extended sprint duration so players can see the dramatic finish!
         const sprintDuration = (Date.now() - winCine.startAt) / 1000;
@@ -935,7 +1069,9 @@ Lê Văn C"></textarea>
     const confettiParticles = [];
     function createConfetti() {
       const colors = ['#ff6b81', '#70a1ff', '#feca57', '#48dbfb', '#ff6348'];
-      for (let i = 0; i < 30; i++) {
+      // Reduce confetti count for better performance with many players
+      const count = horses.length > 50 ? 10 : (horses.length > 20 ? 20 : 30);
+      for (let i = 0; i < count; i++) {
         confettiParticles.push({
           x: Math.random() * canvas.width,
           y: Math.random() * canvas.height - canvas.height,
@@ -969,8 +1105,15 @@ Lê Văn C"></textarea>
     }
 
     // ===== Main Game Loop =====
-    function gameLoop() {
+    function gameLoop(currentTime) {
       requestAnimationFrame(gameLoop);
+
+      // Frame rate limiting for better performance with many players
+      const elapsed = currentTime - lastFrameTime;
+      if (elapsed < targetFrameTime) {
+        return; // Skip this frame to maintain target FPS
+      }
+      lastFrameTime = currentTime - (elapsed % targetFrameTime);
 
       frameCount++;
 
@@ -980,8 +1123,8 @@ Lê Văn C"></textarea>
       // Draw background
       drawSky();
 
-      // Update and draw clouds (highly optimized - every 5 frames, skip if many players)
-      if (horses.length <= 50) {
+      // Update and draw clouds (highly optimized - skip if many players)
+      if (perfSettings.drawClouds) {
         if (frameCount % 5 === 0) {
           clouds.forEach(cloud => {
             cloud.x -= cloud.speed;
@@ -996,7 +1139,7 @@ Lê Văn C"></textarea>
       drawGround();
 
       // Draw trees (optimized - skip if many players or off screen)
-      if (horses.length <= 50) {
+      if (perfSettings.drawTrees) {
         trees.forEach(tree => {
           const treeScreenX = tree.x - cameraOffset * 0.5;
           if (treeScreenX < -100 || treeScreenX > canvas.width + 100) {
@@ -1065,10 +1208,6 @@ Lê Văn C"></textarea>
           const targetCameraOffset = avgPosition - canvas.width * 0.2;
           // Smooth camera movement
           cameraOffset += (targetCameraOffset - cameraOffset) * 0.15;
-
-          // Log leader - reduced frequency for performance
-          const leader = aliveHorses.reduce((a,b) => (b.position > a.position ? b : a));
-          const sec = Math.floor(elapsed);
         }
 
         // Draw obstacles
@@ -1078,8 +1217,9 @@ Lê Văn C"></textarea>
       }
 
       // Draw horses sorted by position (back to front for depth effect)
-      // Cache sorting to improve performance - only sort every 15 frames
-      if (frameCount - lastSortFrame > 15 || lastSortFrame === -1 || sortedHorsesCache.length === 0) {
+      // Cache sorting to improve performance - interval based on player count
+      const sortInterval = horses.length > 50 ? 30 : (horses.length > 20 ? 20 : 15);
+      if (frameCount - lastSortFrame > sortInterval || lastSortFrame === -1 || sortedHorsesCache.length === 0) {
         sortedHorsesCache = [...horses].sort((a, b) => a.position - b.position);
         lastSortFrame = frameCount;
       }
