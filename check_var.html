@@ -179,17 +179,6 @@ button:hover{
   max-width:100%;
   box-sizing:border-box;
 }
-.gift-box{
-  font-size:60px;
-  text-align:center;
-  margin:15px 0;
-  animation:shake 0.8s infinite;
-}
-@keyframes shake{
-  0%,100%{transform:rotate(0deg);}
-  25%{transform:rotate(-5deg);}
-  75%{transform:rotate(5deg);}
-}
 #popupButton{
   width:100%;
   margin-top:20px;
@@ -211,7 +200,7 @@ button:hover{
 
 /* Final report popup */
 #finalReport{
-  max-height:420px;
+  max-height:600px;
   overflow-y:auto;
   margin-bottom:18px;
 }
@@ -233,13 +222,6 @@ button:hover{
   margin-top:6px;
   display:block;
   font-weight:600;
-}
-.report-item .gift-text{
-  color:#ffa500;
-  margin-top:6px;
-  display:block;
-  font-weight:600;
-  font-style:italic;
 }
 .loading-spinner{
   display:inline-block;
@@ -866,13 +848,8 @@ function checkVar(){
           <div><strong>🍺 Nguyên nhân:</strong></div>
           <div>${drunkReason}</div>
         </div>
-        <div class="gift-box">🎁</div>
-        <div class="drunk-detail" style="background:linear-gradient(135deg,#ffd700,#ffed4e);">
-          <div><strong>🎉 Đã mất cơ hội giật giải tiếp theo!</strong></div>
-          <div style="font-size:28px;margin-top:8px;">🎁✨</div>
-        </div>
         <p style="text-align:center;color:#ff6b6b;font-weight:700;margin-top:15px;font-size:16px;">
-          😢 Mất cơ hội giật giải lớn!
+          😵 Đã bị phát hiện say xỉn!
         </p>
       `;
       
@@ -902,7 +879,7 @@ function checkVar(){
           ${skipReason}
         </p>
         <p style="text-align:center;color:#667eea;font-weight:600;margin-top:15px;font-size:15px;">
-          Vẫn còn cơ hội giật giải lớn! 🎊
+          Tiếp tục party! 🎊
         </p>
       `;
     }
@@ -953,7 +930,7 @@ function showFinalReport(){
     <div class="party-title">🎉 KẾT THÚC PARTY!</div>
     <h2 style="color:#ffa500;">🏆 Đã tìm đủ ${targetDrunks} Var say xỉn!</h2>
     <p style="font-weight:700;margin-bottom:20px;font-size:18px;text-align:center;color:#764ba2;">
-      🎁 Danh sách may mắn bị loại:
+      📋 Danh sách Var bị loại:
     </p>
     <div id="finalReport">
   `;
@@ -963,16 +940,15 @@ function showFinalReport(){
       <div class="report-item">
         <strong>🎭 ${idx+1}. ${item.name}</strong>
         <span class="drunk-text">🍺 ${item.reason}</span>
-        <span class="gift-text">🎁 Bất ngờ</span>
       </div>
     `;
   });
   
   reportHTML+=`</div>
     <p style="text-align:center;font-weight:700;color:#667eea;margin:20px 0;font-size:16px;">
-      🎊 Chúc mừng các Var may mắn! Hẹn gặp lại ở party sau! 🍻
+      🎊 Chúc mừng đã hoàn thành party! Hẹn gặp lại ở party sau! 🍻
     </p>
-    <button id="copyButton">📋 COPY DANH SÁCH QUÀ</button>
+    <button id="copyButton">📋 COPY DANH SÁCH</button>
     <button id="resetButton">🔄 PARTY MỚI</button>
   `;
   
@@ -989,8 +965,7 @@ function copyDrunkList(){
   
   caughtDrunks.forEach((item,idx)=>{
     text+=`${idx+1}. 🎭 ${item.name}\n`;
-    text+=`   🍺 ${item.reason}\n`;
-    text+=`   🎁 Hộp quà bất ngờ\n\n`;
+    text+=`   🍺 ${item.reason}\n\n`;
   });
   
   text+="=".repeat(50)+"\n";
@@ -1044,12 +1019,11 @@ function updateHUD(){
   `;
   
   if(caughtDrunks.length>0){
-    let listHTML='<strong style="color:#ffa500;">🏆 Danh sách may mắn:</strong><br>';
+    let listHTML='<strong style="color:#ffa500;">🏆 Danh sách đã loại:</strong><br>';
     caughtDrunks.forEach((item,idx)=>{
       listHTML+=`
         <div class="drunk-item">
-          ${idx+1}. <strong style="color:#ff6b6b;">${item.name}</strong><br>
-          <span style="color:#764ba2;font-size:12px;">🎁 Hộp quà</span>
+          ${idx+1}. <strong style="color:#ff6b6b;">${item.name}</strong>
         </div>
       `;
     });
