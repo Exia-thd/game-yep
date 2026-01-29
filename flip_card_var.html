@@ -90,6 +90,37 @@ button:hover{
   50%{background-position:100% 50%;}
 }
 
+.btn-random{
+  width:100%;
+  padding:12px;
+  border-radius:12px;
+  border:none;
+  font-weight:700;
+  cursor:pointer;
+  background:linear-gradient(135deg,#667eea 0%,#764ba2 50%,#667eea 100%);
+  background-size:200% 100%;
+  color:#ffffff;
+  font-size:15px;
+  transition:all 0.3s;
+  box-shadow:0 5px 15px rgba(102,126,234,0.4);
+  animation:gradientSlide 3s ease infinite;
+  position:relative;
+  overflow:hidden;
+}
+.btn-random::before{
+  content:'';position:absolute;top:50%;left:50%;
+  width:0;height:0;background:rgba(255,255,255,0.3);
+  border-radius:50%;transform:translate(-50%,-50%);
+  transition:width 0.6s, height 0.6s;
+}
+.btn-random:hover::before{
+  width:300%;height:300%;
+}
+.btn-random:hover{
+  transform:translateY(-2px);
+  box-shadow:0 10px 30px rgba(102,126,234,0.6), 0 0 20px rgba(102,126,234,0.3);
+}
+
 #hud{
   position:fixed;right:12px;top:12px;width:340px;
   background:linear-gradient(145deg,rgba(255,255,255,0.96),rgba(248,249,255,0.96));
@@ -370,13 +401,14 @@ Var Lê
 Var Phạm
 Var Hoàng
 Var Võ</textarea>
+    <button id="randomBtn" class="btn-random" style="margin-top:10px;">🔀 Random Danh Sách</button>
   </div>
-  
+
   <div class="form-group">
     <label>🎯 Số giải thưởng:</label>
     <input id="targetDrunks" type="number" value="3" min="1">
   </div>
-  
+
   <button id="start">🎊 BẮT ĐẦU LẬT THẺ!</button>
 </div>
 
@@ -856,6 +888,17 @@ function buildCardGame(playerNames){
   deactivateAllSpotlights();
 }
 
+/* ================= UTILITY FUNCTIONS ================= */
+// Fisher-Yates shuffle algorithm
+function shuffleArray(array){
+  const arr=[...array]; // Create a copy
+  for(let i=arr.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [arr[i],arr[j]]=[arr[j],arr[i]];
+  }
+  return arr;
+}
+
 /* ================= GAME LOGIC ================= */
 function startGame(){
   if(isGameRunning){
@@ -1208,6 +1251,34 @@ function animate(){
 animate();
 
 /* ================= EVENT LISTENERS ================= */
+// Random button - shuffle player list
+document.getElementById("randomBtn").addEventListener("click",()=>{
+  const text=document.getElementById("players").value.trim();
+
+  if(!text){
+    alert('Vui lòng nhập danh sách người tham gia trước!');
+    return;
+  }
+
+  const playerList=text.split('\n').map(s=>s.trim()).filter(Boolean);
+
+  if(playerList.length<2){
+    alert('Cần ít nhất 2 người tham gia để random!');
+    return;
+  }
+
+  // Shuffle the list
+  const shuffled=shuffleArray(playerList);
+  document.getElementById("players").value=shuffled.join('\n');
+
+  // Visual feedback
+  const randomBtn=document.getElementById("randomBtn");
+  randomBtn.textContent='✨ Đã Random!';
+  setTimeout(()=>{
+    randomBtn.textContent='🔀 Random Danh Sách';
+  },1000);
+});
+
 document.getElementById("start").addEventListener("click",startGame);
 document.getElementById("popupButton").addEventListener("click",continueGame);
 

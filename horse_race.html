@@ -89,6 +89,17 @@
     }
     .btn-start:disabled{opacity:.5;cursor:not-allowed;}
 
+    .btn-random{
+      background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+      color:#fff;
+      background-size:200% 100%;
+      animation:gradientSlide 3s ease infinite;
+    }
+    .btn-random:hover{
+      transform:translateY(-2px);
+      box-shadow:0 10px 30px rgba(102,126,234,0.5);
+    }
+
     .race-info{
       position:fixed;top:30px;left:50%;transform:translateX(-50%);
       background:linear-gradient(145deg,rgba(255,255,255,0.95),rgba(255,248,240,0.95));
@@ -151,6 +162,9 @@
         <textarea id="playerInput" placeholder="Nguyễn Văn A
 Trần Thị B
 Lê Văn C"></textarea>
+        <button class="btn btn-random" id="randomBtn" style="margin-top:10px; background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); color:#fff; padding:12px; font-size:16px;">
+          🔀 Random Danh Sách
+        </button>
       </div>
 
       <div class="player-input-area">
@@ -230,6 +244,7 @@ Lê Văn C"></textarea>
     const setupPanel = document.getElementById('setupPanel');
     const playerInput = document.getElementById('playerInput');
     const startBtn = document.getElementById('startBtn');
+    const randomBtn = document.getElementById('randomBtn');
     const raceDurationInput = document.getElementById('raceDuration');
     const raceInfo = document.getElementById('raceInfo');
     const winnerPanel = document.getElementById('winnerPanel');
@@ -524,16 +539,20 @@ Lê Văn C"></textarea>
         const cacheKey = `${horse.name}_${horse.hueRotate}`;
         let cachedCanvas = horseCanvasCache.get(cacheKey);
 
-        if (!cachedCanvas && horseCanvasCache.size < 100) {
+        if (!cachedCanvas && horseCanvasCache.size < 200) {
           // Pre-render horse with hue rotation (only once per horse)
           cachedCanvas = document.createElement('canvas');
           cachedCanvas.width = horseImg.width;
           cachedCanvas.height = horseImg.height;
           const cacheCtx = cachedCanvas.getContext('2d');
 
-          // Only apply filter during pre-render (once), not every frame!
-          if (horses.length <= 20) { // Only apply filter for smaller player counts
-            cacheCtx.filter = `hue-rotate(${horse.hueRotate}deg) saturate(1.2)`;
+          // Apply color filter during pre-render (once), not every frame!
+          // For many players (>50), skip filter to save memory and performance
+          if (horses.length <= 50) {
+            cacheCtx.filter = `hue-rotate(${horse.hueRotate}deg) saturate(1.3) brightness(1.1)`;
+          } else {
+            // For 50+ players, use lighter filter for performance
+            cacheCtx.filter = `hue-rotate(${horse.hueRotate}deg)`;
           }
           cacheCtx.drawImage(horseImg, 0, 0);
           cacheCtx.filter = 'none';
@@ -626,19 +645,27 @@ Lê Văn C"></textarea>
       const tagHeight = fontSize + 8;
 
       if (perfSettings.simplifiedNameTags) {
-        // Simple rectangle - MUCH faster for many players!
-        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+        // Simple rectangle with colored border - MUCH faster for many players!
+        ctx.fillStyle = 'rgba(255,255,255,0.95)';
         ctx.fillRect(tagX, tagY, nameWidth, tagHeight);
+
+        // Colored border (thicker and more vibrant)
         ctx.strokeStyle = horse.color;
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 3;
         ctx.strokeRect(tagX, tagY, nameWidth, tagHeight);
       } else {
         // Rounded rectangle for name tag (prettier but slower)
-        ctx.fillStyle = 'rgba(255,255,255,0.95)';
-        ctx.strokeStyle = horse.color;
-        ctx.lineWidth = 2;
+        // Glow effect for better visibility
+        ctx.shadowColor = horse.color;
+        ctx.shadowBlur = 8;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
 
-        const radius = 6;
+        ctx.fillStyle = 'rgba(255,255,255,0.98)';
+        ctx.strokeStyle = horse.color;
+        ctx.lineWidth = 3;
+
+        const radius = 8;
         ctx.beginPath();
         ctx.moveTo(tagX + radius, tagY);
         ctx.lineTo(tagX + nameWidth - radius, tagY);
@@ -652,12 +679,26 @@ Lê Văn C"></textarea>
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
+
+        // Reset shadow
+        ctx.shadowBlur = 0;
       }
 
-      ctx.fillStyle = '#333';
+      // Text with slight shadow for better readability
+      ctx.shadowColor = 'rgba(0,0,0,0.3)';
+      ctx.shadowBlur = 2;
+      ctx.shadowOffsetX = 1;
+      ctx.shadowOffsetY = 1;
+
+      ctx.fillStyle = '#222';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(horse.name, x, tagY + tagHeight/2);
+
+      // Reset shadow
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 0;
 
       ctx.restore();
 
@@ -775,36 +816,57 @@ Lê Văn C"></textarea>
     }
 
     function createHorses() {
-      const colors = [
-        '#8B4513', // Nâu đất
-        '#654321', // Nâu sô-cô-la
-        '#D2691E', // Nâu vàng
-        '#000000', // Đen
-        '#FFFFFF', // Trắng
-        '#A9A9A9', // Xám
-        '#DEB887', // Vàng cát
-        '#CD853F', // Nâu nhạt
-        '#B8860B', // Vàng tối
-        '#8B7355', // Nâu tan
-        '#4A4A4A', // Xám đen
-        '#F5DEB3', // Vàng be
-        '#C19A6B', // Nâu camel
-        '#6F4E37', // Nâu cà phê
-        '#483C32'  // Nâu đậm
+      // Bảng màu đẹp cho viền name tag và các hiệu ứng
+      const borderColors = [
+        '#FF1744', '#D500F9', '#2979FF', '#00E676', '#FFEA00',
+        '#FF6D00', '#00BFA5', '#DD2C00', '#AA00FF', '#0091EA',
+        '#76FF03', '#FF9100', '#E040FB', '#18FFFF', '#FFC400',
+        '#FF3D00', '#651FFF', '#00B0FF', '#C6FF00', '#FF6E40',
+        '#7C4DFF', '#00E5FF', '#AEEA00', '#FF9E80', '#B388FF',
+        '#82B1FF', '#B9F6CA', '#FFD180', '#FF80AB', '#84FFFF'
+      ];
+
+      // Các giá trị hue-rotate tốt cho màu sắc đẹp và phân biệt rõ
+      const niceHues = [
+        0,    // Nâu gốc
+        30,   // Nâu cam
+        60,   // Vàng nâu
+        90,   // Vàng xanh
+        120,  // Xanh lá
+        150,  // Xanh lá nhạt
+        180,  // Xanh dương
+        210,  // Xanh dương đậm
+        240,  // Tím xanh
+        270,  // Tím
+        300,  // Tím hồng
+        330,  // Hồng đỏ
+        45,   // Cam vàng
+        135,  // Xanh lá sáng
+        225,  // Xanh tím
+        315   // Hồng
       ];
 
       horses = [];
       horseCanvasCache.clear(); // Clear cache for new race
 
       players.forEach((name, idx) => {
-        const color = colors[idx % colors.length];
-        // Random hue rotation for each horse (0-360 degrees)
-        const hueRotate = Math.floor(Math.random() * 360);
+        const borderColor = borderColors[idx % borderColors.length];
+
+        // Chọn hue rotation theo thứ tự từ bảng màu đẹp, sau đó random
+        let hueRotate;
+        if (idx < niceHues.length) {
+          hueRotate = niceHues[idx];
+        } else {
+          // Nếu nhiều người chơi hơn bảng màu, random nhưng tránh trùng
+          hueRotate = (idx * 37) % 360; // 37 là số nguyên tố để tạo phân bố đều
+        }
+
         // Random depth offset to create visual separation (spread horses vertically)
         const depthOffset = (Math.random() - 0.5) * canvas.height * 0.4;
+
         horses.push({
           name,
-          color,
+          color: borderColor, // Dùng cho viền name tag
           hueRotate, // For color variation in GIF
           depthOffset, // Vertical position variation
           position: 150, // Start further right so horses are visible
@@ -1292,11 +1354,50 @@ Lê Văn C"></textarea>
       playRandomMusic();
     }
 
+    // ===== Utility Functions =====
+    // Fisher-Yates shuffle algorithm
+    function shuffleArray(array) {
+      const arr = [...array]; // Create a copy
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
     // ===== Event Listeners =====
     playerInput.addEventListener('input', () => {
       const text = playerInput.value.trim();
       players = text ? text.split('\n').map(s => s.trim()).filter(Boolean) : [];
       startBtn.disabled = players.length < 2;
+    });
+
+    // Random button - shuffle player list
+    randomBtn.addEventListener('click', () => {
+      const text = playerInput.value.trim();
+      if (!text) {
+        alert('Vui lòng nhập danh sách người chơi trước!');
+        return;
+      }
+
+      const playerList = text.split('\n').map(s => s.trim()).filter(Boolean);
+      if (playerList.length < 2) {
+        alert('Cần ít nhất 2 người chơi để random!');
+        return;
+      }
+
+      // Shuffle the list
+      const shuffled = shuffleArray(playerList);
+      playerInput.value = shuffled.join('\n');
+
+      // Update players array
+      players = shuffled;
+
+      // Visual feedback
+      randomBtn.textContent = '✨ Đã Random!';
+      setTimeout(() => {
+        randomBtn.textContent = '🔀 Random Danh Sách';
+      }, 1000);
     });
 
     startBtn.addEventListener('click', () => {
