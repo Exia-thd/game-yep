@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>⚡ NEON PROTOCOL: CYBER SYNDICATE</title>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #050510;
+      --panel: rgba(0,255,180,0.04);
+      --border: rgba(0,255,180,0.15);
+      --neon: #00ffb4;
+      --neon2: #00cfff;
+      --neon3: #ff3cac;
+      --neon4: #f7b731;
+      --text: #c8fae8;
+      --muted: rgba(200,250,232,0.45);
+      --red: #ff4d6d;
+    }
+
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      font-family: 'Share Tech Mono', monospace;
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Scanline overlay ── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,.12) 2px, rgba(0,0,0,.12) 4px);
+    }
+
+    /* ── Header ── */
+    header {
+      position: relative; z-index: 10;
+      background: rgba(0,0,0,.7);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 20px;
+      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+    }
+    .logo {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.05rem; font-weight: 900;
+      color: var(--neon);
+      text-shadow: 0 0 12px var(--neon), 0 0 30px rgba(0,255,180,.3);
+      letter-spacing: 2px;
+    }
+    .logo span { color: var(--neon3); }
+    .back-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: .78rem;
+      padding: 6px 14px; cursor: pointer; border-radius: 4px;
+      transition: all .2s;
+    }
+    .back-btn:hover { border-color: var(--neon2); color: var(--neon2); }
+
+    /* ── Level badge ── */
+    .lvl-badge {
+      font-family: 'Orbitron', sans-serif; font-size: .7rem;
+      background: linear-gradient(90deg, var(--neon), var(--neon2));
+      color: #000; padding: 4px 10px; border-radius: 20px; font-weight: 700;
+    }
+
+    /* ── Resource bar ── */
+    .res-bar {
+      position: relative; z-index: 10;
+      background: rgba(0,0,0,.8);
+      border-bottom: 1px solid var(--border);
+      display: flex; flex-wrap: wrap; gap: 6px;
+      padding: 10px 20px;
+    }
+    .res {
+      display: flex; align-items: center; gap: 7px;
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: 6px; padding: 6px 12px; font-size: .78rem;
+    }
+    .res-icon { font-size: 1rem; }
+    .res-label { color: var(--muted); font-size: .68rem; }
+    .res-val { color: var(--neon); font-weight: 700; font-size: .9rem; }
+    .res-val.blue { color: var(--neon2); }
+    .res-val.yellow { color: var(--neon4); }
+    .res-val.pink { color: var(--neon3); }
+
+    /* ── Energy bar visual ── */
+    .energy-wrap { display: flex; flex-direction: column; gap: 2px; }
+    .energy-track {
+      width: 90px; height: 5px;
+      background: rgba(255,255,255,.08); border-radius: 3px; overflow: hidden;
+    }
+    .energy-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--neon2), var(--neon));
+      border-radius: 3px;
+      transition: width .5s;
+      box-shadow: 0 0 6px var(--neon);
+    }
+
+    /* ── Main layout ── */
+    .game-wrap {
+      position: relative; z-index: 10;
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      gap: 0;
+      min-height: calc(100vh - 120px);
+    }
+    @media (max-width: 700px) {
+      .game-wrap { grid-template-columns: 1fr; }
+    }
+
+    /* ── Sidebar (The Rig) ── */
+    .sidebar {
+      background: rgba(0,0,0,.6);
+      border-right: 1px solid var(--border);
+      padding: 20px 16px;
+      display: flex; flex-direction: column; gap: 16px;
+    }
+    .panel-title {
+      font-family: 'Orbitron', sans-serif;
+      font-size: .7rem; letter-spacing: 3px;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px; margin-bottom: 4px;
+    }
+    .rig-stat {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .rig-stat-left { display: flex; align-items: center; gap: 8px; font-size: .82rem; }
+    .rig-icon { font-size: 1.2rem; }
+    .rig-name { color: var(--text); }
+    .rig-lv { font-family: 'Orbitron', sans-serif; font-size: .65rem; color: var(--neon); }
+    .upgrade-btn {
+      background: transparent;
+      border: 1px solid var(--neon);
+      color: var(--neon);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: .7rem; padding: 4px 10px; cursor: pointer; border-radius: 4px;
+      transition: all .2s; white-space: nowrap;
+    }
+    .upgrade-btn:hover:not(:disabled) {
+      background: rgba(0,255,180,.1);
+      box-shadow: 0 0 8px rgba(0,255,180,.3);
+    }
+    .upgrade-btn:disabled { opacity: .35; cursor: not-allowed; border-color: var(--muted); color: var(--muted); }
+    .upgrade-cost { font-size: .65rem; color: var(--muted); margin-top: 2px; text-align: right; }
+    .progress-wrap { margin-top: 4px; }
+    .progress-label { font-size: .65rem; color: var(--muted); margin-bottom: 3px; display: flex; justify-content: space-between; }
+    .progress-track { height: 4px; background: rgba(255,255,255,.07); border-radius: 2px; overflow: hidden; }
+    .progress-fill { height: 100%; border-radius: 2px; transition: width .4s; }
+
+    /* ── Tabs ── */
+    .main-panel { display: flex; flex-direction: column; }
+    .tabs {
+      display: flex; background: rgba(0,0,0,.7);
+      border-bottom: 1px solid var(--border);
+    }
+    .tab {
+      flex: 1; padding: 12px 8px; text-align: center;
+      font-size: .75rem; cursor: pointer; border: none;
+      background: transparent; color: var(--muted);
+      font-family: 'Share Tech Mono', monospace;
+      border-bottom: 2px solid transparent;
+      transition: all .2s; letter-spacing: 1px;
+    }
+    .tab:hover { color: var(--text); }
+    .tab.active { color: var(--neon); border-bottom-color: var(--neon); }
+    .tab-content { display: none; padding: 20px; flex: 1; overflow-y: auto; }
+    .tab-content.active { display: block; }
+
+    /* ── Mission cards ── */
+    .mission-grid { display: flex; flex-direction: column; gap: 12px; }
+    .mission-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px; padding: 16px;
+      transition: border-color .2s;
+    }
+    .mission-card:hover { border-color: rgba(0,255,180,.35); }
+    .mission-card.locked { opacity: .45; }
+    .mc-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+    .mc-title { font-family: 'Orbitron', sans-serif; font-size: .8rem; color: var(--neon); }
+    .mc-diff {
+      font-size: .65rem; padding: 2px 8px; border-radius: 10px;
+      font-family: 'Orbitron', sans-serif;
+    }
+    .diff-easy { background: rgba(0,255,180,.15); color: var(--neon); border: 1px solid rgba(0,255,180,.3); }
+    .diff-medium { background: rgba(247,183,49,.15); color: var(--neon4); border: 1px solid rgba(247,183,49,.3); }
+    .diff-hard { background: rgba(255,61,172,.15); color: var(--neon3); border: 1px solid rgba(255,61,172,.3); }
+    .diff-elite { background: rgba(120,0,255,.15); color: #b97fff; border: 1px solid rgba(120,0,255,.3); }
+    .mc-desc { font-size: .75rem; color: var(--muted); margin-bottom: 12px; line-height: 1.5; }
+    .mc-foot { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+    .mc-rewards { display: flex; gap: 10px; font-size: .72rem; }
+    .reward { display: flex; align-items: center; gap: 4px; }
+    .mc-costs { display: flex; gap: 8px; font-size: .7rem; color: var(--muted); }
+    .run-btn {
+      background: linear-gradient(90deg, var(--neon), var(--neon2));
+      color: #000; border: none; border-radius: 5px;
+      font-family: 'Orbitron', sans-serif; font-weight: 700; font-size: .7rem;
+      padding: 7px 16px; cursor: pointer; transition: all .2s;
+    }
+    .run-btn:hover:not(:disabled) { filter: brightness(1.15); box-shadow: 0 0 12px rgba(0,255,180,.4); }
+    .run-btn:disabled { opacity: .35; cursor: not-allowed; }
+    .run-btn.running {
+      background: linear-gradient(90deg, #f7b731, #ff8c00);
+      animation: pulse 1s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .7; } }
+
+    /* Mission progress */
+    .mc-progress { margin-top: 10px; display: none; }
+    .mc-progress.show { display: block; }
+    .mp-bar { height: 4px; background: rgba(255,255,255,.07); border-radius: 2px; overflow: hidden; margin-top: 4px; }
+    .mp-fill { height: 100%; background: linear-gradient(90deg, var(--neon2), var(--neon)); border-radius: 2px; transition: width .3s; }
+    .mp-label { font-size: .65rem; color: var(--muted); }
+
+    /* ── Tech Tree ── */
+    .tech-branches { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; }
+    @media (max-width: 600px) { .tech-branches { grid-template-columns: 1fr; } }
+    .tech-branch { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 14px; }
+    .branch-title { font-family: 'Orbitron', sans-serif; font-size: .72rem; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+    .branch-agg { color: var(--neon3); }
+    .branch-def { color: var(--neon2); }
+    .branch-min { color: var(--neon4); }
+    .tech-node {
+      background: rgba(0,0,0,.4); border: 1px solid var(--border);
+      border-radius: 6px; padding: 10px; margin-bottom: 8px;
+      transition: border-color .2s;
+    }
+    .tech-node.unlocked { border-color: var(--neon); background: rgba(0,255,180,.05); }
+    .tech-node.locked-req { opacity: .4; }
+    .tn-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+    .tn-name { font-size: .75rem; font-weight: 700; }
+    .tn-status { font-size: .65rem; }
+    .tn-desc { font-size: .68rem; color: var(--muted); margin-bottom: 8px; line-height: 1.4; }
+    .tn-cost { font-size: .65rem; color: var(--neon4); margin-bottom: 6px; }
+    .unlock-btn {
+      background: transparent; border: 1px solid var(--neon4); color: var(--neon4);
+      font-family: 'Share Tech Mono', monospace; font-size: .68rem;
+      padding: 4px 10px; border-radius: 4px; cursor: pointer; transition: all .2s; width: 100%;
+    }
+    .unlock-btn:hover:not(:disabled) { background: rgba(247,183,49,.1); }
+    .unlock-btn:disabled { opacity: .3; cursor: not-allowed; }
+    .unlock-btn.done { border-color: var(--neon); color: var(--neon); cursor: default; }
+
+    /* ── Log ── */
+    .log-wrap {
+      background: rgba(0,0,0,.5); border: 1px solid var(--border);
+      border-radius: 8px; height: 420px; overflow-y: auto;
+      padding: 14px; font-size: .75rem; line-height: 1.7;
+    }
+    .log-wrap::-webkit-scrollbar { width: 4px; }
+    .log-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+    .log-line { margin-bottom: 2px; }
+    .log-time { color: rgba(200,250,232,.3); margin-right: 8px; }
+    .log-success { color: var(--neon); }
+    .log-fail { color: var(--red); }
+    .log-info { color: var(--neon2); }
+    .log-warn { color: var(--neon4); }
+    .log-sys { color: var(--neon3); }
+
+    /* ── Notification toast ── */
+    #toast {
+      position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+      background: rgba(0,0,0,.9); border: 1px solid var(--neon);
+      border-radius: 8px; padding: 12px 20px;
+      font-size: .8rem; color: var(--neon);
+      box-shadow: 0 0 20px rgba(0,255,180,.3);
+      transform: translateY(80px); opacity: 0;
+      transition: all .35s cubic-bezier(.34,1.56,.64,1);
+      max-width: 280px;
+    }
+    #toast.show { transform: translateY(0); opacity: 1; }
+
+    /* ── Stats section in sidebar ── */
+    .stat-row { display: flex; justify-content: space-between; font-size: .73rem; margin-bottom: 6px; }
+    .stat-row .label { color: var(--muted); }
+    .stat-row .value { color: var(--text); }
+    .stat-row .value.good { color: var(--neon); }
+
+    /* ── XP bar ── */
+    .xp-section { margin-top: 4px; }
+    .xp-track { height: 6px; background: rgba(255,255,255,.06); border-radius: 3px; overflow: hidden; margin-top: 4px; }
+    .xp-fill { height: 100%; background: linear-gradient(90deg, var(--neon3), var(--neon4)); border-radius: 3px; transition: width .5s; }
+
+    /* Scrollbar global */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">⚡ NEON <span>PROTOCOL</span> // CYBER SYNDICATE</div>
+  <div style="display:flex;gap:10px;align-items:center;">
+    <span class="lvl-badge" id="lvl-badge">LV 1</span>
+    <button class="back-btn" onclick="location.href='index.html'">← HUB</button>
+  </div>
+</header>
+
+<div class="res-bar">
+  <div class="res">
+    <span class="res-icon">💠</span>
+    <div>
+      <div class="res-label">NANO-CREDITS</div>
+      <div class="res-val" id="res-nc">500</div>
+    </div>
+  </div>
+  <div class="res">
+    <span class="res-icon">🔷</span>
+    <div>
+      <div class="res-label">DATA FRAGS</div>
+      <div class="res-val blue" id="res-df">10</div>
+    </div>
+  </div>
+  <div class="res">
+    <span class="res-icon">⚡</span>
+    <div class="energy-wrap">
+      <div class="res-label">ENERGY <span id="res-en-num">100</span>/<span id="res-en-max">100</span></div>
+      <div class="energy-track"><div class="energy-fill" id="energy-fill" style="width:100%"></div></div>
+    </div>
+  </div>
+  <div class="res">
+    <span class="res-icon">📊</span>
+    <div>
+      <div class="res-label">MISSIONS DONE</div>
+      <div class="res-val yellow" id="res-missions">0</div>
+    </div>
+  </div>
+</div>
+
+<div class="game-wrap">
+
+  <!-- ── Sidebar ── -->
+  <div class="sidebar">
+    <div>
+      <div class="panel-title">// THE RIG</div>
+
+      <!-- CPU -->
+      <div class="rig-stat">
+        <div class="rig-stat-left">
+          <span class="rig-icon">🖥️</span>
+          <div>
+            <div class="rig-name">CPU Clusters</div>
+            <div class="rig-lv" id="cpu-lv">LV 1 — Speed x1.0</div>
+          </div>
+        </div>
+        <div>
+          <button class="upgrade-btn" id="btn-cpu" onclick="upgrade('cpu')">UPGRADE</button>
+          <div class="upgrade-cost" id="cost-cpu">500 NC</div>
+        </div>
+      </div>
+      <div class="progress-wrap" style="margin-bottom:12px;">
+        <div class="progress-label"><span>Proc. Speed</span><span id="cpu-pct">20%</span></div>
+        <div class="progress-track"><div class="progress-fill" id="cpu-bar" style="width:20%;background:linear-gradient(90deg,#00ffb4,#00cfff);"></div></div>
+      </div>
+
+      <!-- Storage -->
+      <div class="rig-stat">
+        <div class="rig-stat-left">
+          <span class="rig-icon">💾</span>
+          <div>
+            <div class="rig-name">Storage Arrays</div>
+            <div class="rig-lv" id="stor-lv">LV 1 — Cap x1.0</div>
+          </div>
+        </div>
+        <div>
+          <button class="upgrade-btn" id="btn-stor" onclick="upgrade('stor')">UPGRADE</button>
+          <div class="upgrade-cost" id="cost-stor">400 NC</div>
+        </div>
+      </div>
+      <div class="progress-wrap" style="margin-bottom:12px;">
+        <div class="progress-label"><span>Capacity</span><span id="stor-pct">20%</span></div>
+        <div class="progress-track"><div class="progress-fill" id="stor-bar" style="width:20%;background:linear-gradient(90deg,#f7b731,#ff8c00);"></div></div>
+      </div>
+
+      <!-- Cooling -->
+      <div class="rig-stat">
+        <div class="rig-stat-left">
+          <span class="res-icon">❄️</span>
+          <div>
+            <div class="rig-name">Cooling System</div>
+            <div class="rig-lv" id="cool-lv">LV 1 — Regen 1/5s</div>
+          </div>
+        </div>
+        <div>
+          <button class="upgrade-btn" id="btn-cool" onclick="upgrade('cool')">UPGRADE</button>
+          <div class="upgrade-cost" id="cost-cool">350 NC</div>
+        </div>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-label"><span>Cooling</span><span id="cool-pct">20%</span></div>
+        <div class="progress-track"><div class="progress-fill" id="cool-bar" style="width:20%;background:linear-gradient(90deg,#00cfff,#7b2fff);"></div></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="panel-title">// OPERATOR STATS</div>
+      <div class="stat-row"><span class="label">Level</span><span class="value good" id="stat-lv">1</span></div>
+      <div class="stat-row"><span class="label">XP</span><span class="value" id="stat-xp">0 / 200</span></div>
+      <div class="xp-section">
+        <div class="xp-track"><div class="xp-fill" id="xp-bar" style="width:0%"></div></div>
+      </div>
+      <div class="stat-row" style="margin-top:10px;"><span class="label">Total NC earned</span><span class="value" id="stat-nc-total">0</span></div>
+      <div class="stat-row"><span class="label">Total DF earned</span><span class="value" id="stat-df-total">0</span></div>
+      <div class="stat-row"><span class="label">Tech unlocked</span><span class="value" id="stat-tech">0 / 9</span></div>
+      <div class="stat-row"><span class="label">Success rate</span><span class="value good" id="stat-rate">—</span></div>
+    </div>
+  </div>
+
+  <!-- ── Main Panel ── -->
+  <div class="main-panel">
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('missions')">📡 MISSIONS</button>
+      <button class="tab" onclick="switchTab('tech')">🔬 TECH TREE</button>
+      <button class="tab" onclick="switchTab('log')">📟 SYS LOG</button>
+    </div>
+
+    <!-- MISSIONS TAB -->
+    <div class="tab-content active" id="tab-missions">
+      <div class="mission-grid" id="mission-grid">
+        <!-- populated by JS -->
+      </div>
+    </div>
+
+    <!-- TECH TREE TAB -->
+    <div class="tab-content" id="tab-tech">
+      <div style="margin-bottom:16px;font-size:.75rem;color:var(--muted);">
+        Spend <span style="color:var(--neon2)">Data Fragments (DF)</span> to unlock tech nodes. Each branch shapes your playstyle.
+      </div>
+      <div class="tech-branches" id="tech-grid">
+        <!-- populated by JS -->
+      </div>
+    </div>
+
+    <!-- LOG TAB -->
+    <div class="tab-content" id="tab-log">
+      <div class="log-wrap" id="log-wrap"></div>
+    </div>
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* ═══════════════════════════════════
+   GAME STATE
+═══════════════════════════════════ */
+const G = {
+  nc: 500, df: 10, energy: 100,
+  xp: 0, level: 1,
+  missionsDone: 0, missionsFailed: 0,
+  ncTotal: 0, dfTotal: 0,
+  rig: { cpu: 1, stor: 1, cool: 1 },
+  tech: {
+    // Aggressive
+    exploit1: false, darknet: false, icebreaker: false,
+    // Defense
+    firewall: false, encryption: false, ghost: false,
+    // Mining
+    miner: false, optimizer: false, cluster: false,
+  },
+  activeMissions: {}, // key: missionId, value: {endTime, timerId}
+};
+
+/* ═══════════════════════════════════
+   DERIVED STATS
+═══════════════════════════════════ */
+function maxEnergy() { return 100 + (G.rig.cool - 1) * 25; }
+function regenRate()  { return G.rig.cool; } // energy per 5s tick
+function taskSpeed()  {
+  const base = 1 / G.rig.cpu;
+  return G.tech.optimizer ? base * 0.75 : base;
+}
+function xpNeeded(lv) { return lv * 200; }
+
+/* ═══════════════════════════════════
+   MISSIONS DEFINITION
+═══════════════════════════════════ */
+const MISSIONS = [
+  {
+    id: 'scan_corp',
+    title: 'SCAN // NeoCorp Network',
+    diff: 'easy', diffLabel: 'EASY',
+    desc: 'Quét mạng nội bộ NeoCorp để tìm lỗ hổng. Đây là nhiệm vụ đơn giản, phù hợp mới vào nghề.',
+    energy: 20, time: 8,
+    reward: { nc: 300, df: 0, xp: 40 },
+    unlock: 1,
+  },
+  {
+    id: 'leech_wifi',
+    title: 'LEECH // Public Relay Node',
+    diff: 'easy', diffLabel: 'EASY',
+    desc: 'Khai thác relay node công cộng để thu thập Nano-Credits thụ động.',
+    energy: 15, time: 6,
+    reward: { nc: 200, df: 1, xp: 25 },
+    unlock: 1,
+  },
+  {
+    id: 'breach_bank',
+    title: 'BREACH // Zeta Bank Firewall',
+    diff: 'medium', diffLabel: 'MEDIUM',
+    desc: 'Phá tường lửa của Zeta Bank. Cần CPU mạnh để xử lý thuật toán giải mã.',
+    energy: 40, time: 14,
+    reward: { nc: 1200, df: 5, xp: 100 },
+    unlock: 3,
+  },
+  {
+    id: 'ghost_corp',
+    title: 'INFILTRATE // MegaCorp HQ',
+    diff: 'medium', diffLabel: 'MEDIUM',
+    desc: 'Xâm nhập vào mạng nội bộ MegaCorp mà không để lại dấu vết. Data Fragments trôi nổi khắp nơi.',
+    energy: 35, time: 12,
+    reward: { nc: 900, df: 8, xp: 90 },
+    unlock: 4,
+  },
+  {
+    id: 'raid_gov',
+    title: 'RAID // Government Archive',
+    diff: 'hard', diffLabel: 'HARD',
+    desc: 'Đột kích kho lưu trữ chính phủ để lấy dữ liệu tuyệt mật. Rủi ro cao, phần thưởng cực lớn.',
+    energy: 60, time: 20,
+    reward: { nc: 3500, df: 18, xp: 220 },
+    unlock: 6,
+  },
+  {
+    id: 'takeover',
+    title: 'TAKEOVER // Syndicate Server Farm',
+    diff: 'hard', diffLabel: 'HARD',
+    desc: 'Chiếm quyền kiểm soát server farm của Syndicate đối địch. Cần kỹ năng tổng hợp ở đỉnh cao.',
+    energy: 70, time: 24,
+    reward: { nc: 5000, df: 25, xp: 300 },
+    unlock: 8,
+  },
+  {
+    id: 'worldboss',
+    title: '⚡ WORLD BOSS // Aether Corporation',
+    diff: 'elite', diffLabel: 'ELITE',
+    desc: 'Aether Corp — tập đoàn kiểm soát 80% mạng lưới toàn cầu. Chỉ Operator đạt Level 10+ mới dám thách thức.',
+    energy: 100, time: 40,
+    reward: { nc: 15000, df: 80, xp: 800 },
+    unlock: 10,
+  },
+];
+
+/* ═══════════════════════════════════
+   RIG UPGRADE CONFIG
+═══════════════════════════════════ */
+const RIG_MAX = 5;
+function rigCost(type, lv) {
+  const base = { cpu: 500, stor: 400, cool: 350 };
+  return Math.round(base[type] * Math.pow(1.9, lv - 1));
+}
+
+/* ═══════════════════════════════════
+   TECH TREE DEFINITION
+═══════════════════════════════════ */
+const TECH_TREE = {
+  aggressive: {
+    title: '⚔️ AGGRESSIVE HACKING',
+    color: 'var(--neon3)',
+    nodes: [
+      { id: 'exploit1', name: 'Exploit v1.0', cost: 8, req: null, desc: 'Nhiệm vụ tấn công nhận thêm +25% NC.' },
+      { id: 'darknet', name: 'Darknet Access', cost: 15, req: 'exploit1', desc: 'Mở khóa nhiệm vụ hạng HARD sớm hơn 2 level.' },
+      { id: 'icebreaker', name: 'ICEbreaker', cost: 30, req: 'darknet', desc: 'Giảm 30% energy cho tất cả nhiệm vụ.' },
+    ]
+  },
+  defense: {
+    title: '🛡️ DIGITAL DEFENSE',
+    color: 'var(--neon2)',
+    nodes: [
+      { id: 'firewall', name: 'Firewall v1', cost: 8, req: null, desc: 'Tăng 20% XP nhận được từ mọi nhiệm vụ.' },
+      { id: 'encryption', name: 'AES-512 Encrypt', cost: 15, req: 'firewall', desc: 'Nhiệm vụ thất bại không mất energy.' },
+      { id: 'ghost', name: 'Ghost Protocol', cost: 30, req: 'encryption', desc: 'Tất cả nhiệm vụ có +15% cơ hội thành công.' },
+    ]
+  },
+  mining: {
+    title: '⛏️ MINING & OPTIMIZATION',
+    color: 'var(--neon4)',
+    nodes: [
+      { id: 'miner', name: 'Passive Miner', cost: 10, req: null, desc: 'Thu thập +10 NC mỗi 10 giây tự động.' },
+      { id: 'optimizer', name: 'Task Optimizer', cost: 18, req: 'miner', desc: 'Giảm 25% thời gian thực hiện nhiệm vụ.' },
+      { id: 'cluster', name: 'Data Cluster', cost: 35, req: 'optimizer', desc: 'Nhiệm vụ thành công nhận thêm +40% DF.' },
+    ]
+  }
+};
+
+/* ═══════════════════════════════════
+   LOG
+═══════════════════════════════════ */
+const logEl = document.getElementById('log-wrap');
+function addLog(msg, type = 'info') {
+  const t = new Date();
+  const ts = `${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}:${String(t.getSeconds()).padStart(2,'0')}`;
+  const div = document.createElement('div');
+  div.className = 'log-line';
+  div.innerHTML = `<span class="log-time">[${ts}]</span><span class="log-${type}">${msg}</span>`;
+  logEl.appendChild(div);
+  logEl.scrollTop = logEl.scrollHeight;
+  // Keep max 150 lines
+  while (logEl.children.length > 150) logEl.removeChild(logEl.firstChild);
+}
+
+/* ═══════════════════════════════════
+   TOAST
+═══════════════════════════════════ */
+let toastTimer;
+function toast(msg, color = 'var(--neon)') {
+  const el = document.getElementById('toast');
+  el.style.borderColor = color;
+  el.style.color = color;
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+/* ═══════════════════════════════════
+   SUCCESS CHANCE
+═══════════════════════════════════ */
+function successChance(m) {
+  const base = { easy: 0.92, medium: 0.75, hard: 0.60, elite: 0.45 };
+  let ch = base[m.diff];
+  if (G.tech.ghost) ch += 0.15;
+  // CPU helps on hard missions
+  if (m.diff === 'hard' || m.diff === 'elite') ch += (G.rig.cpu - 1) * 0.05;
+  return Math.min(0.97, ch);
+}
+
+/* ═══════════════════════════════════
+   RUN MISSION
+═══════════════════════════════════ */
+function runMission(id) {
+  const m = MISSIONS.find(x => x.id === id);
+  if (!m) return;
+  if (G.activeMissions[id]) return;
+
+  let cost = m.energy;
+  if (G.tech.icebreaker) cost = Math.round(cost * 0.7);
+
+  if (G.energy < cost) { toast('⚡ Không đủ Energy!', 'var(--red)'); return; }
+  if (G.level < m.unlock) { toast('🔒 Level chưa đủ!', 'var(--red)'); return; }
+
+  G.energy -= cost;
+  updateUI();
+
+  const duration = Math.round(m.time * taskSpeed() * 1000);
+  const endTime = Date.now() + duration;
+  G.activeMissions[id] = { endTime };
+
+  addLog(`▶ Khởi động nhiệm vụ: ${m.title}`, 'info');
+
+  // Animate progress bar
+  const prog = document.getElementById(`prog-${id}`);
+  const fill = document.getElementById(`fill-${id}`);
+  const btn  = document.getElementById(`btn-${id}`);
+  if (prog) { prog.classList.add('show'); }
+  if (btn)  { btn.textContent = '⏳ RUNNING...'; btn.classList.add('running'); btn.disabled = true; }
+
+  const interval = setInterval(() => {
+    const remaining = endTime - Date.now();
+    const pct = Math.max(0, Math.min(100, 100 - (remaining / duration * 100)));
+    if (fill) fill.style.width = pct + '%';
+    if (remaining <= 0) {
+      clearInterval(interval);
+      completeMission(id, m);
+    }
+  }, 200);
+
+  G.activeMissions[id].interval = interval;
+}
+
+function completeMission(id, m) {
+  delete G.activeMissions[id];
+
+  const prog = document.getElementById(`prog-${id}`);
+  const fill = document.getElementById(`fill-${id}`);
+  const btn  = document.getElementById(`btn-${id}`);
+  if (prog) prog.classList.remove('show');
+  if (fill) fill.style.width = '0%';
+  if (btn)  { btn.textContent = '▶ EXECUTE'; btn.classList.remove('running'); btn.disabled = false; }
+
+  const success = Math.random() < successChance(m);
+  G.missionsDone++;
+
+  if (success) {
+    let nc = m.reward.nc;
+    let df = m.reward.df;
+    let xp = m.reward.xp;
+
+    if (G.tech.exploit1 && (m.diff === 'medium' || m.diff === 'hard' || m.diff === 'elite')) nc = Math.round(nc * 1.25);
+    if (G.tech.cluster && df > 0) df = Math.round(df * 1.4);
+    if (G.tech.firewall) xp = Math.round(xp * 1.2);
+
+    const ncCap = 5000 * G.rig.stor;
+    G.nc = Math.min(ncCap, G.nc + nc);
+    G.df += df;
+    G.ncTotal += nc;
+    G.dfTotal += df;
+    gainXP(xp);
+
+    addLog(`✅ [${m.title}] — +${nc} NC | +${df} DF | +${xp} XP`, 'success');
+    toast(`✅ Mission complete! +${nc} NC`, 'var(--neon)');
+  } else {
+    if (!G.tech.encryption) { /* energy already spent */ }
+    addLog(`❌ [${m.title}] — MISSION FAILED. Tường lửa phản công!`, 'fail');
+    toast('❌ Mission failed!', 'var(--red)');
+    G.missionsFailed++;
+  }
+
+  updateUI();
+}
+
+/* ═══════════════════════════════════
+   XP / LEVEL
+═══════════════════════════════════ */
+function gainXP(amount) {
+  G.xp += amount;
+  const needed = xpNeeded(G.level);
+  if (G.xp >= needed) {
+    G.xp -= needed;
+    G.level++;
+    toast(`🎉 LEVEL UP! Now LV ${G.level}`, 'var(--neon4)');
+    addLog(`🎉 Level Up! → LV ${G.level}. Nhiệm vụ mới được mở khóa!`, 'sys');
+    renderMissions(); // re-render to unlock new missions
+  }
+}
+
+/* ═══════════════════════════════════
+   UPGRADE
+═══════════════════════════════════ */
+function upgrade(type) {
+  const lv = G.rig[type];
+  if (lv >= RIG_MAX) return;
+  const cost = rigCost(type, lv);
+  if (G.nc < cost) { toast('💠 Không đủ Nano-Credits!', 'var(--red)'); return; }
+  G.nc -= cost;
+  G.rig[type]++;
+  const names = { cpu: 'CPU Clusters', stor: 'Storage Arrays', cool: 'Cooling System' };
+  addLog(`🔧 Upgrade: ${names[type]} → LV ${G.rig[type]}`, 'warn');
+  toast(`🔧 ${names[type]} upgraded to LV ${G.rig[type]}!`, 'var(--neon4)');
+  updateUI();
+}
+
+/* ═══════════════════════════════════
+   UNLOCK TECH
+═══════════════════════════════════ */
+function unlockTech(id) {
+  let node;
+  for (const branch of Object.values(TECH_TREE)) {
+    node = branch.nodes.find(n => n.id === id);
+    if (node) break;
+  }
+  if (!node) return;
+  if (G.tech[id]) { toast('Already unlocked!'); return; }
+  if (node.req && !G.tech[node.req]) { toast('🔒 Cần unlock node trước!', 'var(--red)'); return; }
+  if (G.df < node.cost) { toast('🔷 Không đủ Data Fragments!', 'var(--red)'); return; }
+  G.df -= node.cost;
+  G.tech[id] = true;
+  addLog(`🔬 Tech unlocked: ${node.name}`, 'sys');
+  toast(`🔬 ${node.name} activated!`, 'var(--neon3)');
+  updateUI();
+  renderTech();
+}
+
+/* ═══════════════════════════════════
+   PASSIVE SYSTEMS
+═══════════════════════════════════ */
+// Energy regen
+setInterval(() => {
+  const max = maxEnergy();
+  if (G.energy < max) {
+    G.energy = Math.min(max, G.energy + regenRate());
+    updateResources();
+  }
+}, 5000);
+
+// Passive miner
+setInterval(() => {
+  if (G.tech.miner) {
+    const cap = 5000 * G.rig.stor;
+    G.nc = Math.min(cap, G.nc + 10);
+    G.ncTotal += 10;
+    updateResources();
+  }
+}, 10000);
+
+/* ═══════════════════════════════════
+   RENDER MISSIONS
+═══════════════════════════════════ */
+function renderMissions() {
+  const grid = document.getElementById('mission-grid');
+  grid.innerHTML = '';
+
+  MISSIONS.forEach(m => {
+    const locked = G.level < m.unlock;
+    let energyCost = m.energy;
+    if (G.tech.icebreaker) energyCost = Math.round(energyCost * 0.7);
+    const chance = Math.round(successChance(m) * 100);
+    const timeStr = Math.round(m.time * taskSpeed()) + 's';
+
+    const card = document.createElement('div');
+    card.className = 'mission-card' + (locked ? ' locked' : '');
+    card.innerHTML = `
+      <div class="mc-head">
+        <div class="mc-title">${m.title}</div>
+        <div class="mc-diff diff-${m.diff}">${m.diffLabel}</div>
+      </div>
+      <div class="mc-desc">${m.desc}${locked ? `<br><span style="color:var(--neon3)">🔒 Yêu cầu Level ${m.unlock}</span>` : ''}</div>
+      <div class="mc-foot">
+        <div>
+          <div class="mc-rewards">
+            ${m.reward.nc ? `<div class="reward"><span>💠</span><span style="color:var(--neon)">${m.reward.nc} NC</span></div>` : ''}
+            ${m.reward.df ? `<div class="reward"><span>🔷</span><span style="color:var(--neon2)">${m.reward.df} DF</span></div>` : ''}
+            <div class="reward"><span>✨</span><span style="color:var(--neon4)">${m.reward.xp} XP</span></div>
+          </div>
+          <div class="mc-costs" style="margin-top:4px;">
+            <span>⚡ ${energyCost} energy</span>
+            <span>⏱ ~${timeStr}</span>
+            <span>🎯 ${chance}% success</span>
+          </div>
+        </div>
+        <button class="run-btn" id="btn-${m.id}" onclick="runMission('${m.id}')" ${locked ? 'disabled' : ''}>▶ EXECUTE</button>
+      </div>
+      <div class="mc-progress" id="prog-${m.id}">
+        <div class="mp-label">Processing...</div>
+        <div class="mp-bar"><div class="mp-fill" id="fill-${m.id}" style="width:0%"></div></div>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+/* ═══════════════════════════════════
+   RENDER TECH TREE
+═══════════════════════════════════ */
+function renderTech() {
+  const grid = document.getElementById('tech-grid');
+  grid.innerHTML = '';
+
+  Object.entries(TECH_TREE).forEach(([key, branch]) => {
+    const col = document.createElement('div');
+    col.className = 'tech-branch';
+    col.innerHTML = `<div class="branch-title branch-${key === 'aggressive' ? 'agg' : key === 'defense' ? 'def' : 'min'}" style="color:${branch.color}">${branch.title}</div>`;
+
+    branch.nodes.forEach(node => {
+      const unlocked = G.tech[node.id];
+      const reqOk = !node.req || G.tech[node.req];
+      const canAfford = G.df >= node.cost;
+
+      const el = document.createElement('div');
+      el.className = 'tech-node' + (unlocked ? ' unlocked' : (!reqOk ? ' locked-req' : ''));
+      el.innerHTML = `
+        <div class="tn-head">
+          <div class="tn-name" style="color:${branch.color}">${node.name}</div>
+          <div class="tn-status">${unlocked ? '✅' : (reqOk ? '🔓' : '🔒')}</div>
+        </div>
+        <div class="tn-desc">${node.desc}</div>
+        ${!unlocked ? `<div class="tn-cost">Cost: ${node.cost} DF${node.req ? ` · Requires: ${TECH_TREE[key].nodes.find(n=>n.id===node.req)?.name}` : ''}</div>` : ''}
+        ${unlocked
+          ? `<button class="unlock-btn done" disabled>ACTIVE</button>`
+          : `<button class="unlock-btn" onclick="unlockTech('${node.id}')" ${!reqOk || !canAfford ? 'disabled' : ''}>
+              ${!reqOk ? '🔒 LOCKED' : (canAfford ? 'UNLOCK' : `Need ${node.cost} DF`)}
+             </button>`
+        }
+      `;
+      col.appendChild(el);
+    });
+
+    grid.appendChild(col);
+  });
+}
+
+/* ═══════════════════════════════════
+   UPDATE UI
+═══════════════════════════════════ */
+function updateResources() {
+  const max = maxEnergy();
+  document.getElementById('res-nc').textContent = G.nc.toLocaleString();
+  document.getElementById('res-df').textContent = G.df;
+  document.getElementById('res-en-num').textContent = G.energy;
+  document.getElementById('res-en-max').textContent = max;
+  document.getElementById('energy-fill').style.width = (G.energy / max * 100) + '%';
+  document.getElementById('res-missions').textContent = G.missionsDone;
+}
+
+function updateUI() {
+  updateResources();
+
+  // Rig
+  const rigData = [
+    { key: 'cpu', lv: 'cpu-lv', bar: 'cpu-bar', pct: 'cpu-pct', label: v => `LV ${v} — Speed x${v.toFixed(1)}` },
+    { key: 'stor', lv: 'stor-lv', bar: 'stor-bar', pct: 'stor-pct', label: v => `LV ${v} — Cap x${v.toFixed(1)}` },
+    { key: 'cool', lv: 'cool-lv', bar: 'cool-bar', pct: 'cool-pct', label: v => `LV ${v} — Regen ${v}/5s` },
+  ];
+  rigData.forEach(r => {
+    const lv = G.rig[r.key];
+    document.getElementById(r.lv).textContent = r.label(lv);
+    const pct = ((lv - 1) / (RIG_MAX - 1) * 80 + 20);
+    document.getElementById(r.bar).style.width = pct + '%';
+    document.getElementById(r.pct).textContent = Math.round(pct) + '%';
+    const btn = document.getElementById(`btn-${r.key}`);
+    const costEl = document.getElementById(`cost-${r.key}`);
+    if (lv >= RIG_MAX) {
+      btn.textContent = 'MAX'; btn.disabled = true;
+      costEl.textContent = 'MAXED';
+    } else {
+      const cost = rigCost(r.key, lv);
+      btn.disabled = G.nc < cost;
+      costEl.textContent = cost.toLocaleString() + ' NC';
+    }
+  });
+
+  // Stats
+  const needed = xpNeeded(G.level);
+  document.getElementById('lvl-badge').textContent = `LV ${G.level}`;
+  document.getElementById('stat-lv').textContent = G.level;
+  document.getElementById('stat-xp').textContent = `${G.xp} / ${needed}`;
+  document.getElementById('xp-bar').style.width = (G.xp / needed * 100) + '%';
+  document.getElementById('stat-nc-total').textContent = G.ncTotal.toLocaleString();
+  document.getElementById('stat-df-total').textContent = G.dfTotal;
+  document.getElementById('stat-tech').textContent = Object.values(G.tech).filter(Boolean).length + ' / 9';
+  const total = G.missionsDone + G.missionsFailed;
+  document.getElementById('stat-rate').textContent = total ? Math.round(G.missionsDone / total * 100) + '%' : '—';
+}
+
+/* ═══════════════════════════════════
+   TABS
+═══════════════════════════════════ */
+function switchTab(name) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  event.currentTarget.classList.add('active');
+  if (name === 'tech') renderTech();
+}
+
+/* ═══════════════════════════════════
+   INIT
+═══════════════════════════════════ */
+renderMissions();
+updateUI();
+addLog('🟢 NEON PROTOCOL v2.088 — System online. Welcome, Operator.', 'sys');
+addLog('💡 Tip: Chạy nhiệm vụ để kiếm NC và DF. Nâng cấp The Rig để tăng hiệu suất.', 'info');
+addLog('💡 Tip: Unlock Tech Tree để mở thêm khả năng đặc biệt.', 'info');
+</script>
+</body>
+</html>
