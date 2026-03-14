@@ -1,0 +1,1090 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>⚡ Stickman Nexus: Dual Strike</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      background: #0d0d1a;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      min-height: 100vh; font-family: 'Segoe UI', sans-serif;
+      overflow: hidden; touch-action: none; user-select: none;
+    }
+    canvas { display: block; touch-action: none; }
+
+    /* ── Mobile controls ── */
+    #ctrl {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      height: 160px; pointer-events: none;
+      display: none;
+    }
+    #joy-zone {
+      position: absolute; left: 16px; bottom: 16px;
+      width: 130px; height: 130px; pointer-events: all;
+    }
+    #joy-base {
+      width: 130px; height: 130px; border-radius: 50%;
+      background: rgba(255,255,255,.07);
+      border: 2px solid rgba(255,255,255,.2);
+      position: relative;
+    }
+    #joy-knob {
+      width: 50px; height: 50px; border-radius: 50%;
+      background: rgba(255,255,255,.45);
+      border: 2px solid rgba(255,255,255,.6);
+      position: absolute; top: 40px; left: 40px;
+      transition: top .04s, left .04s;
+    }
+    #btns {
+      position: absolute; right: 14px; bottom: 14px;
+      width: 180px; height: 130px; pointer-events: all;
+    }
+    .mb {
+      position: absolute; border-radius: 50%;
+      width: 54px; height: 54px; border: none;
+      font-size: 1.3rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      pointer-events: all; touch-action: manipulation;
+      box-shadow: 0 4px 12px rgba(0,0,0,.4);
+      -webkit-tap-highlight-color: transparent;
+    }
+    #mb-j { background: rgba(255,80,80,.85);  bottom: 60px; left: 8px; }
+    #mb-k { background: rgba(60,180,255,.85); bottom: 60px; right: 8px; }
+    #mb-l { background: rgba(255,200,40,.85); bottom: 2px;  left: 63px; }
+    #mb-b {
+      position: absolute; bottom: 2px; right: 8px;
+      width: 54px; height: 28px; border-radius: 14px;
+      background: rgba(180,180,180,.6); border: none;
+      color: #fff; font-size: .75rem; pointer-events: all;
+      touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+    }
+    #back-btn {
+      position: fixed; top: 10px; left: 12px;
+      background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.15);
+      color: rgba(255,255,255,.6); font-size: .75rem; padding: 5px 12px;
+      border-radius: 5px; cursor: pointer; z-index: 100;
+    }
+  </style>
+</head>
+<body>
+<button id="back-btn" onclick="location.href='index.html'">← HUB</button>
+<canvas id="c"></canvas>
+
+<div id="ctrl">
+  <div id="joy-zone">
+    <div id="joy-base"><div id="joy-knob"></div></div>
+  </div>
+  <div id="btns">
+    <button class="mb" id="mb-j">👊</button>
+    <button class="mb" id="mb-k">🦵</button>
+    <button class="mb" id="mb-l">✨</button>
+    <button id="mb-b">🛡 BLOCK</button>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════
+   CANVAS SETUP
+═══════════════════════════════════════════════════ */
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H, GROUND, SCALE;
+
+function resize() {
+  const maxW = Math.min(window.innerWidth, 860);
+  const maxH = Math.min(window.innerHeight - (isMobile() ? 160 : 0), 480);
+  SCALE = Math.min(maxW / 800, maxH / 450);
+  W = canvas.width  = Math.round(800 * SCALE);
+  H = canvas.height = Math.round(450 * SCALE);
+  GROUND = Math.round(380 * SCALE);
+}
+const isMobile = () => 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+window.addEventListener('resize', () => { resize(); });
+resize();
+if (isMobile()) document.getElementById('ctrl').style.display = 'block';
+
+function sc(v) { return v * SCALE; } // scale helper
+
+/* ═══════════════════════════════════════════════════
+   CONSTANTS
+═══════════════════════════════════════════════════ */
+const GRAV    = 0.55;
+const WALK_SP = 3.2;
+const JUMP_V  = -13;
+const MAX_HP  = 100;
+
+// Attack definitions: [startup, active, recovery, dmg, kbX, kbY, range]
+const ATTACKS = {
+  fist: {
+    atk1:    [4,  6,  8,  10, 4.5, -2, 60],
+    atk2:    [8,  8, 12,  18, 7.0, -5, 55],
+    special: [10, 12, 16, 28, 10, -8, 70],
+  },
+  sword: {
+    atk1:    [5,  8,  9,  14, 5.5, -2, 90],
+    atk2:    [9,  10, 14, 22, 8.0, -4, 85],
+    special: [14, 14, 18, 38, 12, -9, 95],
+  },
+  staff: {
+    atk1:    [6,  6, 10,  12, 4.0, -2, 100],
+    atk2:    [8,  8, 12,  20, 6.0, -6, 95],
+    special: [12, 16, 20, 32, 5.0, -12, 110],
+  },
+};
+
+const WEAPONS = ['fist','sword','staff'];
+const WEAPON_ICON = { fist: '👊', sword: '⚔️', staff: '🪄' };
+
+/* ═══════════════════════════════════════════════════
+   INPUT
+═══════════════════════════════════════════════════ */
+const keys = {};
+window.addEventListener('keydown', e => { keys[e.code] = true; });
+window.addEventListener('keyup',   e => { keys[e.code] = false; });
+
+// Mobile input state
+const mInput = { dx: 0, j: false, k: false, l: false, block: false };
+
+// Joystick
+let joyActive = false, joyId = -1, joyOx = 0, joyOy = 0;
+const joyEl = document.getElementById('joy-zone');
+const knob  = document.getElementById('joy-knob');
+joyEl.addEventListener('touchstart', e => {
+  const t = e.changedTouches[0];
+  joyActive = true; joyId = t.identifier;
+  joyOx = t.clientX; joyOy = t.clientY;
+  e.preventDefault();
+}, {passive:false});
+window.addEventListener('touchmove', e => {
+  for (const t of e.changedTouches) {
+    if (t.identifier === joyId) {
+      const dx = t.clientX - joyOx;
+      mInput.dx = Math.max(-1, Math.min(1, dx / 50));
+      const off = Math.min(45, Math.abs(dx));
+      knob.style.left = (40 + (dx > 0 ? off : -off)) + 'px';
+    }
+  }
+  e.preventDefault();
+}, {passive:false});
+window.addEventListener('touchend', e => {
+  for (const t of e.changedTouches) {
+    if (t.identifier === joyId) {
+      joyActive = false; joyId = -1; mInput.dx = 0;
+      knob.style.left = '40px'; knob.style.top = '40px';
+    }
+  }
+});
+
+function mbDown(key) { mInput[key] = true; }
+function mbUp(key)   { mInput[key] = false; }
+['j','k','l'].forEach(k => {
+  const el = document.getElementById('mb-' + k);
+  el.addEventListener('touchstart', e => { mbDown(k); e.preventDefault(); }, {passive:false});
+  el.addEventListener('touchend',   e => { mbUp(k); e.preventDefault(); },   {passive:false});
+});
+const mbBlock = document.getElementById('mb-b');
+mbBlock.addEventListener('touchstart', e => { mInput.block = true; e.preventDefault(); }, {passive:false});
+mbBlock.addEventListener('touchend',   e => { mInput.block = false; }, {passive:false});
+
+/* ═══════════════════════════════════════════════════
+   PARTICLE SYSTEM
+═══════════════════════════════════════════════════ */
+const particles = [];
+function spawnHit(x, y, color, count = 8) {
+  for (let i = 0; i < count; i++) {
+    const a = (Math.random() * Math.PI * 2);
+    const spd = 2 + Math.random() * 5;
+    particles.push({
+      x, y,
+      vx: Math.cos(a) * spd * SCALE,
+      vy: Math.sin(a) * spd * SCALE - 2 * SCALE,
+      life: 20 + Math.random() * 20,
+      maxLife: 0,
+      r: (2 + Math.random() * 4) * SCALE,
+      color,
+    });
+    particles[particles.length-1].maxLife = particles[particles.length-1].life;
+  }
+}
+function spawnSpecial(x, y, color) {
+  spawnHit(x, y, color, 16);
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    particles.push({
+      x, y,
+      vx: Math.cos(a) * 4 * SCALE,
+      vy: Math.sin(a) * 4 * SCALE,
+      life: 35, maxLife: 35,
+      r: 6 * SCALE,
+      color: '#fff',
+    });
+  }
+}
+
+function updateParticles() {
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx; p.y += p.vy; p.vy += 0.2 * SCALE;
+    p.life--;
+    if (p.life <= 0) particles.splice(i, 1);
+  }
+}
+function drawParticles() {
+  particles.forEach(p => {
+    ctx.save();
+    ctx.globalAlpha = p.life / p.maxLife;
+    ctx.fillStyle = p.color;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+  });
+}
+
+/* ═══════════════════════════════════════════════════
+   STICKMAN DRAWING
+═══════════════════════════════════════════════════ */
+// All sizes in "game units" — will be scaled by SCALE
+function drawStickman(f) {
+  const x = f.x, y = f.y;
+  const dir = f.facing; // 1=right, -1=left
+  const s = SCALE;
+  const p = getPose(f.state, f.stateFrame, dir, f.vy);
+
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(dir, 1); // flip for facing
+
+  const lw = 3 * s;
+  ctx.lineWidth = lw; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+
+  // Glow effect for special / blocking
+  if (f.state === 'special' || (f.state === 'block' && f.stateFrame < 5)) {
+    ctx.shadowColor = f.color; ctx.shadowBlur = 18 * s;
+  }
+
+  // Weapon visual (behind body)
+  if (f.weapon !== 'fist') {
+    drawWeapon(ctx, f.weapon, p, f.state, f.stateFrame, s, f.color);
+  }
+
+  ctx.strokeStyle = f.invincible > 0 && f.invincible % 4 < 2 ? '#fff' : f.color;
+
+  // Body
+  line(ctx, 0, -72*s, 0, -37*s);
+  // Head
+  ctx.beginPath(); ctx.arc(0, -84*s, 11*s, 0, Math.PI*2); ctx.stroke();
+
+  // Arms
+  line(ctx, 0, -68*s, p.rAx*s, p.rAy*s);
+  line(ctx, 0, -68*s, p.lAx*s, p.lAy*s);
+  // Elbow joints
+  line(ctx, p.rAx*s, p.rAy*s, p.rHx*s, p.rHy*s);
+  line(ctx, p.lAx*s, p.lAy*s, p.lHx*s, p.lHy*s);
+
+  // Legs
+  line(ctx, 0, -37*s, p.rKx*s, p.rKy*s);
+  line(ctx, 0, -37*s, p.lKx*s, p.lKy*s);
+  line(ctx, p.rKx*s, p.rKy*s, p.rFx*s, p.rFy*s);
+  line(ctx, p.lKx*s, p.lKy*s, p.lFx*s, p.lFy*s);
+
+  ctx.restore();
+
+  // HP bar above head
+  drawHpBar(x - 30*s, y - 105*s, 60*s, f.hp, f.color);
+}
+
+function line(ctx, x1, y1, x2, y2) {
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+}
+
+function drawWeapon(ctx, weapon, p, state, frame, s, color) {
+  ctx.save();
+  ctx.strokeStyle = color; ctx.lineWidth = 4*s; ctx.shadowBlur = 0;
+  if (weapon === 'sword') {
+    // Sword along right arm direction
+    const angle = Math.atan2((p.rHy - p.rAy), (p.rHx - p.rAx));
+    const bx = p.rHx*s, by = p.rHy*s;
+    ctx.beginPath();
+    ctx.moveTo(bx, by);
+    ctx.lineTo(bx + Math.cos(angle)*32*s, by + Math.sin(angle)*32*s);
+    ctx.stroke();
+    // crossguard
+    ctx.lineWidth = 2*s;
+    ctx.beginPath();
+    ctx.moveTo(bx + Math.cos(angle+Math.PI/2)*8*s, by + Math.sin(angle+Math.PI/2)*8*s);
+    ctx.lineTo(bx + Math.cos(angle-Math.PI/2)*8*s, by + Math.sin(angle-Math.PI/2)*8*s);
+    ctx.stroke();
+  } else if (weapon === 'staff') {
+    ctx.strokeStyle = '#b97fff';
+    const bx = p.rHx*s, by = p.rHy*s;
+    ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx + 0, by - 40*s); ctx.stroke();
+    // orb
+    ctx.shadowColor = '#b97fff'; ctx.shadowBlur = 12*s;
+    ctx.beginPath(); ctx.arc(bx, by - 44*s, 6*s, 0, Math.PI*2); ctx.fillStyle = '#e0b0ff'; ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawHpBar(x, y, w, hp, color) {
+  const h = 5 * SCALE;
+  ctx.fillStyle = 'rgba(0,0,0,.5)';
+  ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = color;
+  ctx.fillRect(x, y, w * Math.max(0, hp / MAX_HP), h);
+  ctx.strokeStyle = 'rgba(255,255,255,.2)'; ctx.lineWidth = 1;
+  ctx.strokeRect(x, y, w, h);
+}
+
+/* ── Pose computation ── */
+function getPose(state, fr, dir, vy) {
+  switch(state) {
+    case 'idle': {
+      const b = Math.sin(fr * 0.05) * 2;
+      return {
+        rAx: 18, rAy: -56+b, rHx: 24, rHy: -44+b,
+        lAx: -18, lAy: -56-b, lHx: -24, lHy: -44-b,
+        rKx: 12, rKy: -18, rFx: 14, rFy: 0,
+        lKx: -12, lKy: -18, lFx: -14, lFy: 0,
+      };
+    }
+    case 'walk': {
+      const s = Math.sin(fr * 0.22);
+      return {
+        rAx: 16-s*8, rAy: -58+Math.abs(s)*4, rHx: 20-s*12, rHy: -46+Math.abs(s)*4,
+        lAx: -16+s*8, lAy: -58+Math.abs(s)*4, lHx: -20+s*12, lHy: -46+Math.abs(s)*4,
+        rKx: 10+s*14, rKy: -18+Math.abs(s)*4, rFx: 14+s*16, rFy: s > 0 ? -s*8 : 0,
+        lKx: -10-s*14, lKy: -18+Math.abs(s)*4, lFx: -14-s*16, lFy: s < 0 ? s*8 : 0,
+      };
+    }
+    case 'jump': {
+      return {
+        rAx: 24, rAy: -72, rHx: 30, rHy: -62,
+        lAx: -24, lAy: -72, lHx: -30, lHy: -62,
+        rKx: 14, rKy: -24, rFx: 20, rFy: -12,
+        lKx: -14, lKy: -24, lFx: -20, lFy: -12,
+      };
+    }
+    case 'attack1': {
+      // Punch — extend right arm
+      const p = Math.min(1, fr / 6);
+      const r = Math.max(0, (fr - 10) / 6);
+      const ext = p - r;
+      return {
+        rAx: 20+ext*22, rAy: -62+ext*8, rHx: 28+ext*22, rHy: -55+ext*8,
+        lAx: -20, lAy: -65, lHx: -26, lHy: -55,
+        rKx: 14, rKy: -18, rFx: 16, rFy: 0,
+        lKx: -12, lKy: -20, lFx: -14, lFy: 0,
+      };
+    }
+    case 'attack2': {
+      // Kick — extend right leg
+      const p = Math.min(1, fr / 10);
+      const r = Math.max(0, (fr - 16) / 8);
+      const ext = p - r;
+      return {
+        rAx: 20, rAy: -76, rHx: 26, rHy: -68,
+        lAx: -20, lAy: -76, lHx: -26, lHy: -68,
+        rKx: 14+ext*28, rKy: -28-ext*12, rFx: 22+ext*28, rFy: -18-ext*20,
+        lKx: -10, lKy: -20, lFx: -14, lFy: 0,
+      };
+    }
+    case 'special': {
+      const spin = fr * 0.28;
+      return {
+        rAx: 24*Math.cos(spin), rAy: -62+18*Math.sin(spin), rHx: 32*Math.cos(spin), rHy: -55+24*Math.sin(spin),
+        lAx: -24*Math.cos(spin), lAy: -62-18*Math.sin(spin), lHx: -32*Math.cos(spin), lHy: -55-24*Math.sin(spin),
+        rKx: 14+Math.sin(spin)*12, rKy: -18-Math.abs(Math.sin(spin))*14, rFx: 18+Math.sin(spin)*16, rFy: -Math.abs(Math.sin(spin))*10,
+        lKx: -14-Math.sin(spin)*12, lKy: -18-Math.abs(Math.sin(spin))*14, lFx: -18-Math.sin(spin)*16, lFy: -Math.abs(Math.sin(spin))*10,
+      };
+    }
+    case 'block': {
+      return {
+        rAx: 16, rAy: -78, rHx: 14, rHy: -68,
+        lAx: -16, lAy: -78, lHx: -14, lHy: -68,
+        rKx: 16, rKy: -20, rFx: 20, rFy: 0,
+        lKx: -16, lKy: -20, lFx: -20, lFy: 0,
+      };
+    }
+    case 'hurt': {
+      const lean = Math.min(1, fr / 5);
+      return {
+        rAx: 22-lean*8, rAy: -50-lean*14, rHx: 28-lean*8, rHy: -40-lean*14,
+        lAx: -22-lean*6, lAy: -50-lean*14, lHx: -28-lean*6, lHy: -40-lean*14,
+        rKx: 12+lean*4, rKy: -18, rFx: 14+lean*6, rFy: 0,
+        lKx: -10+lean*4, lKy: -18, lFx: -12+lean*6, lFy: 0,
+      };
+    }
+    case 'ragdoll': {
+      const sh = Math.sin(fr * 0.4) * 22;
+      return {
+        rAx: 20+sh, rAy: -50+sh*0.5, rHx: 26+sh, rHy: -38+sh*0.5,
+        lAx: -20-sh, lAy: -50-sh*0.5, lHx: -26-sh, lHy: -38-sh*0.5,
+        rKx: 16+sh*0.3, rKy: -10+Math.abs(sh)*0.2, rFx: 22+sh*0.3, rFy: Math.abs(sh)*0.15,
+        lKx: -16-sh*0.3, lKy: -10+Math.abs(sh)*0.2, lFx: -22-sh*0.3, lFy: Math.abs(sh)*0.15,
+      };
+    }
+    case 'dead': {
+      return {
+        rAx: 28, rAy: -16, rHx: 34, rHy: -8,
+        lAx: 10, lAy: -12, lHx: 14, lHy: -4,
+        rKx: 28, rKy: -8, rFx: 34, rFy: 0,
+        lKx: 8, lKy: -6, lFx: 4, lFy: 0,
+      };
+    }
+    default: return getPose('idle', fr, dir, vy);
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   FIGHTER CLASS
+═══════════════════════════════════════════════════ */
+class Fighter {
+  constructor(x, color, isPlayer) {
+    this.x = x * SCALE;
+    this.y = GROUND;
+    this.vx = 0; this.vy = 0;
+    this.hp = MAX_HP;
+    this.color = color;
+    this.isPlayer = isPlayer;
+    this.facing = isPlayer ? 1 : -1;
+    this.state = 'idle'; this.stateFrame = 0;
+    this.weapon = 'fist';
+    this.onGround = true;
+    this.invincible = 0;
+    this.combo = 0; this.comboTimer = 0;
+    this.totalDmg = 0;
+    // AI specific
+    this.aiTimer = 0; this.aiState = 'approach';
+    this.aiJumpTimer = 0;
+  }
+
+  get atkDef() { return ATTACKS[this.weapon]; }
+
+  getHitbox() {
+    // Returns {x, y, w, h} in world space, based on facing+attack
+    const s = SCALE;
+    const atk = this.state === 'attack1' ? 'atk1' : this.state === 'attack2' ? 'atk2' : 'special';
+    const def = this.atkDef[atk];
+    const range = def[6] * s;
+    return {
+      x: this.x + (this.facing > 0 ? 10*s : -10*s - range),
+      y: this.y - 90*s,
+      w: range, h: 70*s,
+    };
+  }
+
+  isAttacking() { return ['attack1','attack2','special'].includes(this.state); }
+  isAttackActive() {
+    const atk = this.state === 'attack1' ? 'atk1' : this.state === 'attack2' ? 'atk2' : 'special';
+    const def = this.atkDef[atk];
+    return this.stateFrame >= def[0] && this.stateFrame < def[0] + def[1];
+  }
+  attackTotalFrames() {
+    const atk = this.state === 'attack1' ? 'atk1' : this.state === 'attack2' ? 'atk2' : 'special';
+    const def = this.atkDef[atk];
+    return def[0] + def[1] + def[2];
+  }
+
+  setState(s) { this.state = s; this.stateFrame = 0; }
+
+  startAttack(type) {
+    if (this.isAttacking()) return false;
+    if (!['idle','walk'].includes(this.state) && this.state !== 'jump') return false;
+    this.setState(type);
+    return true;
+  }
+
+  takeDamage(dmg, kbx, kby, attacker) {
+    if (this.invincible > 0) return;
+    if (this.state === 'block') { dmg = Math.round(dmg * 0.2); kbx *= 0.3; }
+    this.hp = Math.max(0, this.hp - dmg);
+    this.vx = kbx * (this.facing > 0 ? 1 : -1) * -1;
+    this.vy = kby * SCALE;
+    this.invincible = 20;
+    if (dmg > 20) {
+      this.setState('ragdoll');
+    } else {
+      this.setState('hurt');
+    }
+    attacker.combo++;
+    attacker.comboTimer = 120;
+    attacker.totalDmg += dmg;
+  }
+
+  update(enemy) {
+    // Physics
+    this.vy += GRAV * SCALE;
+    this.x  += this.vx;
+    this.y  += this.vy;
+
+    // Ground
+    if (this.y >= GROUND) {
+      this.y = GROUND; this.vy = 0;
+      if (this.vx !== 0) this.vx *= 0.8;
+      if (Math.abs(this.vx) < 0.2) this.vx = 0;
+      this.onGround = true;
+    } else {
+      this.onGround = false;
+    }
+
+    // Wall bounds
+    const minX = 30 * SCALE, maxX = W - 30 * SCALE;
+    if (this.x < minX) { this.x = minX; this.vx = Math.abs(this.vx) * 0.3; }
+    if (this.x > maxX) { this.x = maxX; this.vx = -Math.abs(this.vx) * 0.3; }
+
+    // Face enemy
+    if (!this.isAttacking() && this.state !== 'block' && this.state !== 'dead') {
+      this.facing = enemy.x > this.x ? 1 : -1;
+    }
+
+    // Invincibility
+    if (this.invincible > 0) this.invincible--;
+
+    // Combo timer
+    if (this.comboTimer > 0) {
+      this.comboTimer--;
+      if (this.comboTimer === 0) this.combo = 0;
+    }
+
+    // State machine
+    this.stateFrame++;
+    switch (this.state) {
+      case 'hurt':
+        if (this.stateFrame >= 14) this.setState('idle');
+        break;
+      case 'ragdoll':
+        if (this.stateFrame >= 36 && this.onGround) this.setState('idle');
+        break;
+      case 'attack1': case 'attack2': case 'special':
+        if (this.stateFrame >= this.attackTotalFrames()) this.setState('idle');
+        break;
+      case 'block':
+        // hold while key pressed, handled in input
+        break;
+      case 'dead':
+        // remain
+        break;
+    }
+
+    if (this.hp <= 0 && this.state !== 'dead') this.setState('dead');
+  }
+
+  /* Player input */
+  handleInput() {
+    if (this.state === 'dead') return;
+    const left  = keys['KeyA'] || keys['ArrowLeft']  || mInput.dx < -0.3;
+    const right = keys['KeyD'] || keys['ArrowRight'] || mInput.dx >  0.3;
+    const jump  = keys['KeyW'] || keys['ArrowUp']    || keys['Space'];
+    const block = keys['ShiftLeft'] || keys['KeyS']  || mInput.block;
+    const j     = keys['KeyJ'] || mInput.j;
+    const k     = keys['KeyK'] || mInput.k;
+    const l     = keys['KeyL'] || mInput.l;
+
+    if (this.isAttacking()) return;
+    if (this.state === 'hurt' || this.state === 'ragdoll') return;
+
+    // Block
+    if (block && this.onGround) { this.setState('block'); return; }
+    if (this.state === 'block' && !block) this.setState('idle');
+
+    // Attacks
+    if (l) { this.startAttack('special'); return; }
+    if (k) { this.startAttack('attack2'); return; }
+    if (j) { this.startAttack('attack1'); return; }
+
+    // Move
+    if (left)  { this.vx = -WALK_SP * SCALE; if (this.onGround) this.setState('walk'); }
+    else if (right) { this.vx = WALK_SP * SCALE; if (this.onGround) this.setState('walk'); }
+    else { this.vx = 0; if (this.onGround && this.state === 'walk') this.setState('idle'); }
+
+    // Jump
+    if (jump && this.onGround) { this.vy = JUMP_V * SCALE; this.setState('jump'); }
+    if (!this.onGround && this.state !== 'jump') this.setState('jump');
+    if (this.onGround && this.state === 'jump') this.setState(this.vx !== 0 ? 'walk' : 'idle');
+  }
+
+  /* AI logic */
+  handleAI(player) {
+    if (this.state === 'dead') return;
+    if (this.isAttacking()) return;
+    if (this.state === 'hurt' || this.state === 'ragdoll') return;
+
+    this.aiTimer++;
+    const dist  = player.x - this.x;
+    const absDist = Math.abs(dist);
+    const dir = dist > 0 ? 1 : -1;
+    this.facing = dir;
+    const atkRange = 110 * SCALE;
+
+    // Decide AI state
+    if (this.aiTimer % 40 === 0) {
+      const r = Math.random();
+      if (absDist < atkRange) {
+        if (r < 0.4) this.aiState = 'attack';
+        else if (r < 0.55) this.aiState = 'block';
+        else if (r < 0.70) this.aiState = 'retreat';
+        else this.aiState = 'approach';
+      } else {
+        this.aiState = 'approach';
+      }
+    }
+
+    // Block if player attacking
+    if (player.isAttackActive() && absDist < atkRange) {
+      if (Math.random() < 0.35 + (1 - this.hp / MAX_HP) * 0.2) {
+        this.setState('block'); return;
+      }
+    }
+    if (this.state === 'block' && this.aiState !== 'block') this.setState('idle');
+
+    switch (this.aiState) {
+      case 'approach':
+        this.vx = dir * WALK_SP * 0.85 * SCALE;
+        if (this.onGround) this.setState('walk');
+        break;
+      case 'retreat':
+        this.vx = -dir * WALK_SP * 0.7 * SCALE;
+        if (this.onGround) this.setState('walk');
+        break;
+      case 'attack':
+        if (absDist < atkRange) {
+          this.vx = 0;
+          const r = Math.random();
+          if (r < 0.5)      this.startAttack('attack1');
+          else if (r < 0.8) this.startAttack('attack2');
+          else              this.startAttack('special');
+        } else {
+          this.aiState = 'approach';
+        }
+        break;
+      case 'block':
+        this.vx = 0;
+        this.setState('block');
+        break;
+    }
+
+    // Jump occasionally
+    this.aiJumpTimer++;
+    if (this.aiJumpTimer > 90 && this.onGround && Math.random() < 0.04) {
+      this.vy = JUMP_V * SCALE; this.setState('jump'); this.aiJumpTimer = 0;
+    }
+    if (this.onGround && this.state === 'jump') this.setState('idle');
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   BACKGROUNDS & STAGE DRAWING
+═══════════════════════════════════════════════════ */
+let bgStars = [];
+function initBg() {
+  bgStars = [];
+  for (let i = 0; i < 80; i++) {
+    bgStars.push({
+      x: Math.random() * W, y: Math.random() * GROUND,
+      r: Math.random() * 1.5 * SCALE + .3 * SCALE,
+      alpha: 0.3 + Math.random() * 0.7,
+    });
+  }
+}
+
+function drawBg() {
+  // Sky gradient
+  const grad = ctx.createLinearGradient(0, 0, 0, GROUND);
+  grad.addColorStop(0, '#08081e');
+  grad.addColorStop(1, '#16104a');
+  ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
+
+  // Stars
+  bgStars.forEach(s => {
+    ctx.save(); ctx.globalAlpha = s.alpha * 0.7;
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+  });
+
+  // City silhouette
+  ctx.fillStyle = '#0a0826';
+  const bs = SCALE;
+  [[60,120],[130,90],[200,140],[280,80],[350,110],[450,85],[540,130],[620,95],[700,120],[760,90]].forEach(([bx,bh]) => {
+    ctx.fillRect(bx*bs, GROUND - bh*bs, 50*bs, bh*bs);
+    // windows
+    ctx.fillStyle = 'rgba(255,220,80,.15)';
+    for (let row = 0; row < Math.floor(bh/12); row++) {
+      for (let col = 0; col < 3; col++) {
+        if (Math.random() > 0.4) ctx.fillRect((bx+5+col*14)*bs, (GROUND/bs-bh+6+row*12)*bs, 8*bs, 6*bs);
+      }
+    }
+    ctx.fillStyle = '#0a0826';
+  });
+
+  // Ground platform
+  ctx.fillStyle = '#1a1240';
+  ctx.fillRect(0, GROUND, W, H - GROUND);
+  // Ground glow line
+  const glowGrad = ctx.createLinearGradient(0, GROUND, 0, GROUND + 4*SCALE);
+  glowGrad.addColorStop(0, 'rgba(120,80,255,.8)');
+  glowGrad.addColorStop(1, 'transparent');
+  ctx.fillStyle = glowGrad;
+  ctx.fillRect(0, GROUND, W, 4 * SCALE);
+}
+
+/* ═══════════════════════════════════════════════════
+   HIT DETECTION
+═══════════════════════════════════════════════════ */
+function checkHit(attacker, defender) {
+  if (!attacker.isAttackActive()) return;
+  if (defender.state === 'dead') return;
+  if (attacker.hitLanded) return; // one hit per swing
+
+  const hb = attacker.getHitbox();
+  const dx = defender.x, dy = defender.y - 45 * SCALE;
+  if (dx >= hb.x && dx <= hb.x + hb.w && dy >= hb.y && dy <= hb.y + hb.h) {
+    const atk = attacker.state === 'attack1' ? 'atk1' : attacker.state === 'attack2' ? 'atk2' : 'special';
+    const def = attacker.atkDef[atk];
+    const dmg  = def[3];
+    const kbx  = def[4] * SCALE;
+    const kby  = def[5];
+    defender.takeDamage(dmg, kbx, kby, attacker);
+    attacker.hitLanded = true;
+    const hitX = defender.x, hitY = defender.y - 50 * SCALE;
+    const colors = { fist: '#ff6060', sword: '#ffe080', staff: '#c080ff' };
+    if (atk === 'special') {
+      spawnSpecial(hitX, hitY, colors[attacker.weapon]);
+    } else {
+      spawnHit(hitX, hitY, colors[attacker.weapon]);
+    }
+    hitFlash = 6;
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   GAME STATE
+═══════════════════════════════════════════════════ */
+let screen = 'start'; // 'start' | 'fight' | 'gameover'
+let player, enemy;
+let round = 1, playerWins = 0, enemyWins = 0;
+let hitFlash = 0, roundTimer = 0, roundMsg = '', roundMsgTimer = 0;
+let selectedWeapon = 'fist';
+let aiDifficulty = 1; // 1-3
+let frameCount = 0;
+
+const ENEMY_COLORS = ['#ff4d6d','#ff9500','#b97fff','#ff3cac','#4dffb4'];
+const ENEMY_NAMES  = ['SHADOW-7','VIPER','NEXUS-X','ECLIPSE','GHOST'];
+let enemyColor = '#ff4d6d', enemyName = 'SHADOW-7';
+
+function startFight() {
+  resize();
+  player = new Fighter(160, '#00e5ff', true);
+  player.weapon = selectedWeapon;
+  enemy  = new Fighter(640, enemyColor, false);
+  enemy.weapon  = WEAPONS[Math.floor(Math.random() * WEAPONS.length)];
+  particles.length = 0;
+  hitFlash = 0; roundTimer = 0;
+  roundMsg = 'FIGHT!'; roundMsgTimer = 80;
+  initBg();
+  screen = 'fight';
+}
+
+function nextRound() {
+  round++;
+  aiDifficulty = Math.min(3, 1 + Math.floor(round / 3));
+  enemyColor = ENEMY_COLORS[Math.floor(Math.random() * ENEMY_COLORS.length)];
+  enemyName  = ENEMY_NAMES[Math.floor(Math.random() * ENEMY_NAMES.length)];
+  startFight();
+}
+
+/* ═══════════════════════════════════════════════════
+   DRAW UI OVERLAYS
+═══════════════════════════════════════════════════ */
+function drawHUD() {
+  const s = SCALE;
+  // Player name + HP bar (big)
+  ctx.font = `bold ${11*s}px 'Segoe UI', sans-serif`;
+  ctx.fillStyle = '#00e5ff'; ctx.textAlign = 'left';
+  ctx.fillText('YOU', 10*s, 24*s);
+  // HP bar
+  const bw = 200*s, bh = 10*s, bx = 10*s, by = 28*s;
+  ctx.fillStyle = '#1a1a2e'; ctx.fillRect(bx, by, bw, bh);
+  const hpPct = Math.max(0, player.hp / MAX_HP);
+  const hpCol = hpPct > 0.5 ? '#00e5ff' : hpPct > 0.25 ? '#ffd700' : '#ff4d6d';
+  ctx.fillStyle = hpCol; ctx.fillRect(bx, by, bw * hpPct, bh);
+  ctx.strokeStyle = 'rgba(255,255,255,.2)'; ctx.lineWidth = 1; ctx.strokeRect(bx, by, bw, bh);
+  ctx.fillStyle = '#fff'; ctx.font = `${9*s}px monospace`;
+  ctx.fillText(`${Math.ceil(player.hp)} HP`, bx + 2*s, by - 3*s);
+
+  // Enemy
+  ctx.textAlign = 'right';
+  ctx.fillStyle = enemyColor;
+  ctx.font = `bold ${11*s}px 'Segoe UI', sans-serif`;
+  ctx.fillText(enemyName, W - 10*s, 24*s);
+  const ebw = 200*s, ebh = 10*s, ebx = W - 10*s - ebw, eby = 28*s;
+  ctx.fillStyle = '#1a1a2e'; ctx.fillRect(ebx, eby, ebw, ebh);
+  const ehpPct = Math.max(0, enemy.hp / MAX_HP);
+  const ehpCol = ehpPct > 0.5 ? enemyColor : ehpPct > 0.25 ? '#ffd700' : '#ff4d6d';
+  ctx.fillStyle = ehpCol; ctx.fillRect(ebx, eby, ebw * ehpPct, ebh);
+  ctx.strokeStyle = 'rgba(255,255,255,.2)'; ctx.lineWidth = 1; ctx.strokeRect(ebx, eby, ebw, ebh);
+  ctx.fillStyle = '#fff'; ctx.font = `${9*s}px monospace`;
+  ctx.textAlign = 'right';
+  ctx.fillText(`${Math.ceil(enemy.hp)} HP`, ebx + ebw - 2*s, eby - 3*s);
+
+  // Round info (center top)
+  ctx.textAlign = 'center';
+  ctx.font = `bold ${11*s}px 'Segoe UI', sans-serif`;
+  ctx.fillStyle = 'rgba(255,255,255,.6)';
+  ctx.fillText(`ROUND ${round}`, W/2, 20*s);
+  ctx.font = `${9*s}px monospace`; ctx.fillStyle = '#f7b731';
+  ctx.fillText(`★ ${playerWins}  VS  ${enemyWins} ★`, W/2, 34*s);
+
+  // Weapon icon
+  ctx.textAlign = 'left'; ctx.font = `${18*s}px serif`;
+  ctx.fillText(WEAPON_ICON[player.weapon], 8*s, 52*s);
+  ctx.font = `${9*s}px monospace`; ctx.fillStyle = 'rgba(255,255,255,.4)';
+  ctx.fillText('WPN', 8*s, 62*s);
+
+  ctx.textAlign = 'right'; ctx.font = `${18*s}px serif`;
+  ctx.fillText(WEAPON_ICON[enemy.weapon], W - 8*s, 52*s);
+
+  // Combo
+  if (player.combo >= 2) {
+    ctx.textAlign = 'left';
+    ctx.font = `bold ${16*s}px 'Segoe UI', sans-serif`;
+    ctx.fillStyle = `rgba(255,200,50,${Math.min(1, player.comboTimer / 60)})`;
+    ctx.fillText(`${player.combo}x COMBO!`, 12*s, 82*s);
+  }
+
+  // Controls hint
+  if (frameCount < 300) {
+    ctx.textAlign = 'center'; ctx.font = `${8*s}px monospace`;
+    ctx.fillStyle = `rgba(255,255,255,${Math.max(0, 1 - frameCount/200)})`;
+    ctx.fillText(isMobile() ? 'Joystick: Move  •  👊 Light  •  🦵 Heavy  •  ✨ Special' : 'A/D: Move  W: Jump  J: Punch  K: Kick  L: Special  S/Shift: Block', W/2, H - 8*s);
+  }
+
+  // Round message
+  if (roundMsgTimer > 0) {
+    const alpha = Math.min(1, roundMsgTimer / 20);
+    const sz = roundMsg === 'FIGHT!' ? 36 : 48;
+    ctx.textAlign = 'center';
+    ctx.font = `900 ${sz*s}px 'Segoe UI', sans-serif`;
+    ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+    ctx.shadowColor = '#00e5ff'; ctx.shadowBlur = 24*s;
+    ctx.fillText(roundMsg, W/2, H/2);
+    ctx.shadowBlur = 0;
+    roundMsgTimer--;
+  }
+
+  // Hit flash
+  if (hitFlash > 0) {
+    ctx.fillStyle = `rgba(255,255,255,${hitFlash * 0.03})`;
+    ctx.fillRect(0, 0, W, H);
+    hitFlash--;
+  }
+}
+
+/* ── Start Screen ── */
+function drawStart() {
+  drawBg();
+  const s = SCALE;
+  ctx.textAlign = 'center';
+
+  // Title
+  ctx.font = `900 ${38*s}px 'Segoe UI', sans-serif`;
+  ctx.fillStyle = '#00e5ff';
+  ctx.shadowColor = '#00e5ff'; ctx.shadowBlur = 24*s;
+  ctx.fillText('STICKMAN NEXUS', W/2, 100*s);
+  ctx.font = `700 ${18*s}px 'Segoe UI', sans-serif`;
+  ctx.fillStyle = '#b97fff'; ctx.shadowColor = '#b97fff'; ctx.shadowBlur = 12*s;
+  ctx.fillText('DUAL STRIKE', W/2, 128*s);
+  ctx.shadowBlur = 0;
+
+  // Weapon select
+  ctx.font = `${11*s}px 'Segoe UI', sans-serif`;
+  ctx.fillStyle = 'rgba(255,255,255,.6)';
+  ctx.fillText('SELECT WEAPON', W/2, 170*s);
+
+  const wBtns = [{id:'fist',label:'FIST',icon:'👊'},{id:'sword',label:'SWORD',icon:'⚔️'},{id:'staff',label:'STAFF',icon:'🪄'}];
+  wBtns.forEach((w, i) => {
+    const bx = W/2 + (i - 1) * 90*s;
+    const by = 185*s;
+    const bw = 76*s, bh = 36*s;
+    ctx.fillStyle = selectedWeapon === w.id ? 'rgba(0,229,255,.25)' : 'rgba(255,255,255,.06)';
+    ctx.strokeStyle = selectedWeapon === w.id ? '#00e5ff' : 'rgba(255,255,255,.2)';
+    ctx.lineWidth = 1.5;
+    roundRect(ctx, bx - bw/2, by, bw, bh, 6*s);
+    ctx.fill(); ctx.stroke();
+    ctx.font = `${16*s}px serif`; ctx.fillStyle = '#fff';
+    ctx.fillText(w.icon, bx, by + 18*s);
+    ctx.font = `${8*s}px monospace`; ctx.fillStyle = 'rgba(255,255,255,.6)';
+    ctx.fillText(w.label, bx, by + 30*s);
+  });
+
+  // Start button
+  const sbx = W/2 - 70*s, sby = 250*s, sbw = 140*s, sbh = 44*s;
+  ctx.fillStyle = '#00e5ff'; ctx.shadowColor = '#00e5ff'; ctx.shadowBlur = 16*s;
+  roundRect(ctx, sbx, sby, sbw, sbh, 8*s); ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.font = `bold ${16*s}px 'Segoe UI', sans-serif`;
+  ctx.fillStyle = '#000';
+  ctx.fillText('▶ START FIGHT', W/2, sby + 28*s);
+
+  // Controls
+  ctx.font = `${8*s}px monospace`; ctx.fillStyle = 'rgba(255,255,255,.35)';
+  ctx.fillText(isMobile() ? 'Joystick + buttons  •  Swipe joystick to move' : 'A/D Move  •  W Jump  •  J Punch  •  K Kick  •  L Special  •  S Block', W/2, 320*s);
+
+  // Store click areas
+  startScreen.weaponBtns = wBtns.map((w, i) => ({
+    id: w.id, cx: W/2 + (i-1)*90*s, cy: 203*s, r: 42*s,
+  }));
+  startScreen.startBtn = { x: sbx, y: sby, w: sbw, h: sbh };
+}
+
+const startScreen = { weaponBtns: [], startBtn: null };
+
+/* ── Game Over Screen ── */
+function drawGameOver(playerWon) {
+  drawBg();
+  const s = SCALE;
+  ctx.textAlign = 'center';
+  ctx.font = `900 ${40*s}px 'Segoe UI', sans-serif`;
+  if (playerWon) {
+    ctx.fillStyle = '#00e5ff'; ctx.shadowColor = '#00e5ff'; ctx.shadowBlur = 24*s;
+    ctx.fillText('VICTORY!', W/2, 120*s);
+  } else {
+    ctx.fillStyle = '#ff4d6d'; ctx.shadowColor = '#ff4d6d'; ctx.shadowBlur = 24*s;
+    ctx.fillText('DEFEATED', W/2, 120*s);
+  }
+  ctx.shadowBlur = 0;
+  ctx.font = `${13*s}px 'Segoe UI', sans-serif`; ctx.fillStyle = 'rgba(255,255,255,.6)';
+  ctx.fillText(`Round ${round}  •  Damage dealt: ${player.totalDmg}`, W/2, 160*s);
+  ctx.fillText(`Wins: YOU ${playerWins} — ${enemyWins} ENEMY`, W/2, 182*s);
+
+  // Next / Retry
+  if (playerWon) {
+    drawButton(W/2 - 70*s, 220*s, 140*s, 44*s, 'NEXT ROUND', '#00e5ff');
+    gameOverScreen.nextBtn = { x: W/2 - 70*s, y: 220*s, w: 140*s, h: 44*s };
+  }
+  drawButton(W/2 - 70*s, playerWon ? 278*s : 220*s, 140*s, 44*s, 'BACK TO MENU', 'rgba(255,255,255,.2)');
+  gameOverScreen.menuBtn = { x: W/2 - 70*s, y: playerWon ? 278*s : 220*s, w: 140*s, h: 44*s };
+}
+const gameOverScreen = { nextBtn: null, menuBtn: null };
+
+function drawButton(x, y, w, h, label, color) {
+  const s = SCALE;
+  ctx.fillStyle = color; ctx.shadowColor = color; ctx.shadowBlur = 10*s;
+  roundRect(ctx, x, y, w, h, 8*s); ctx.fill(); ctx.shadowBlur = 0;
+  ctx.font = `bold ${12*s}px 'Segoe UI', sans-serif`;
+  ctx.fillStyle = color === 'rgba(255,255,255,.2)' ? '#fff' : '#000';
+  ctx.textAlign = 'center';
+  ctx.fillText(label, x + w/2, y + 28*s);
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+/* ═══════════════════════════════════════════════════
+   CLICK / TAP HANDLER
+═══════════════════════════════════════════════════ */
+function getCanvasPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  const cx = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+  const cy = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+  return { x: cx * (W / rect.width), y: cy * (H / rect.height) };
+}
+
+function handleClick(e) {
+  const pos = getCanvasPos(e);
+  if (screen === 'start') {
+    startScreen.weaponBtns.forEach(btn => {
+      if (Math.hypot(pos.x - btn.cx, pos.y - btn.cy) < btn.r) selectedWeapon = btn.id;
+    });
+    const s = startScreen.startBtn;
+    if (s && pos.x >= s.x && pos.x <= s.x + s.w && pos.y >= s.y && pos.y <= s.y + s.h) {
+      startFight();
+    }
+  } else if (screen === 'gameover') {
+    const n = gameOverScreen.nextBtn;
+    if (n && pos.x >= n.x && pos.x <= n.x + n.w && pos.y >= n.y && pos.y <= n.y + n.h) {
+      nextRound();
+    }
+    const m = gameOverScreen.menuBtn;
+    if (m && pos.x >= m.x && pos.x <= m.x + m.w && pos.y >= m.y && pos.y <= m.y + m.h) {
+      screen = 'start'; round = 1; playerWins = 0; enemyWins = 0; aiDifficulty = 1;
+    }
+  }
+}
+canvas.addEventListener('click', handleClick);
+canvas.addEventListener('touchend', e => { handleClick(e); e.preventDefault(); }, {passive:false});
+
+/* ═══════════════════════════════════════════════════
+   MAIN GAME LOOP
+═══════════════════════════════════════════════════ */
+function gameLoop() {
+  ctx.clearRect(0, 0, W, H);
+  frameCount++;
+
+  if (screen === 'start') {
+    drawStart();
+    requestAnimationFrame(gameLoop);
+    return;
+  }
+
+  if (screen === 'gameover') {
+    drawGameOver(gameOverScreen._playerWon);
+    requestAnimationFrame(gameLoop);
+    return;
+  }
+
+  // FIGHT screen
+  drawBg();
+
+  // Reset hitLanded at start of each frame's attack check
+  if (!player.isAttacking()) player.hitLanded = false;
+  if (!enemy.isAttacking())  enemy.hitLanded  = false;
+
+  // Update
+  player.handleInput();
+  enemy.handleAI(player);
+  player.update(enemy);
+  enemy.update(player);
+
+  // Hit detection
+  checkHit(player, enemy);
+  checkHit(enemy, player);
+
+  // Particles
+  updateParticles();
+  drawParticles();
+
+  // Draw fighters
+  drawStickman(enemy);
+  drawStickman(player);
+
+  // HUD
+  drawHUD();
+
+  // Round end
+  if (player.state === 'dead' || enemy.state === 'dead') {
+    roundTimer++;
+    if (roundTimer === 60) {
+      const playerWon = enemy.state === 'dead';
+      if (playerWon) playerWins++; else enemyWins++;
+      gameOverScreen._playerWon = playerWon;
+      screen = 'gameover';
+    }
+  }
+
+  requestAnimationFrame(gameLoop);
+}
+
+initBg();
+gameLoop();
+</script>
+</body>
+</html>
