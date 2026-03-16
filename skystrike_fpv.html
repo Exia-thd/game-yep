@@ -1964,8 +1964,11 @@ function startGame() {
   document.getElementById('pause-overlay').classList.remove('active');
   document.getElementById('impactLabel').style.display='none';
 
-  // Init Three
+  // Init Three (canvas is visible now)
   initThree();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
 
   // Clear + rebuild world
   clearWorld();
@@ -2037,8 +2040,9 @@ function endGame(win) {
 
 // ============================================================
 // BOOTSTRAP
+// (Three.js is initialized lazily inside startGame so the
+//  canvas is already visible when the WebGL context is created)
 // ============================================================
-initThree();
 </script>
 </body>
 </html>
