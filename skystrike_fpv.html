@@ -76,10 +76,12 @@ body{background:#000;color:#00ff88;font-family:'Share Tech Mono',monospace;overf
   <div class="controls-box">
     <h3>// FLIGHT CONTROLS //</h3>
     <div class="controls-grid">
-      <span>SPACE</span><span>Throttle Up</span>
-      <span>SHIFT</span><span>Throttle Down</span>
-      <span>↑ / ↓</span><span>Pitch Fwd/Back</span>
-      <span>← / →</span><span>Roll Left/Right</span>
+      <span>SPACE</span><span>Altitude Up</span>
+      <span>SHIFT</span><span>Altitude Down</span>
+      <span>↑ / ↓</span><span>Fly Fwd / Back</span>
+      <span>← / →</span><span>Strafe L / R</span>
+      <span>W / S</span><span>Pitch Cam Up/Down</span>
+      <span>A / D</span><span>Roll Left/Right</span>
       <span>Q / E</span><span>Yaw Left/Right</span>
       <span>1 / 2 / 3</span><span>Camera Mode</span>
       <span>R</span><span>Respawn (once)</span>
@@ -210,7 +212,7 @@ document.addEventListener('keydown', e => {
       if(e.code==='KeyR') respawnDrone();
     }
   }
-  const pd=['Space','ShiftLeft','ShiftRight','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyQ','KeyE','Digit1','Digit2','Digit3','Escape'];
+  const pd=['Space','ShiftLeft','ShiftRight','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyW','KeyS','KeyA','KeyD','KeyQ','KeyE','Digit1','Digit2','Digit3','Escape'];
   if(pd.includes(e.code)) e.preventDefault();
 });
 document.addEventListener('keyup', e => { keys[e.code]=false; });
@@ -674,18 +676,27 @@ function createDrone(spawnY=8){
 function qMul(a,b){return{x:a.w*b.x+a.x*b.w+a.y*b.z-a.z*b.y,y:a.w*b.y-a.x*b.z+a.y*b.w+a.z*b.x,z:a.w*b.z+a.x*b.y-a.y*b.x+a.z*b.w,w:a.w*b.w-a.x*b.x-a.y*b.y-a.z*b.z};}
 function qNorm(q){const l=Math.sqrt(q.x*q.x+q.y*q.y+q.z*q.z+q.w*q.w)||1;return{x:q.x/l,y:q.y/l,z:q.z/l,w:q.w/l};}
 function qRotV(q,v){const qc={x:-q.x,y:-q.y,z:-q.z,w:q.w};const qv={x:v.x,y:v.y,z:v.z,w:0};const r=qMul(qMul(q,qv),qc);return{x:r.x,y:r.y,z:r.z};}
+// Normalize a vector on the XZ plane (horizontal)
+function normXZ(v){const l=Math.sqrt(v.x*v.x+v.z*v.z)||1;return{x:v.x/l,z:v.z/l};}
 
 function updateDronePhysics(dt){
   if(!drone||!drone.alive) return;
   const cfg=droneConfig;
-  const pitchIn=(keys['ArrowUp']?1:0)-(keys['ArrowDown']?1:0);
-  const rollIn =(keys['ArrowRight']?1:0)-(keys['ArrowLeft']?1:0);
+  const q={x:drone.qx,y:drone.qy,z:drone.qz,w:drone.qw};
+
+  // ---- WASD: attitude control (pitch & roll) ----
+  const pitchIn=(keys['KeyW']?1:0)-(keys['KeyS']?1:0);  // W=pitch up, S=pitch down
+  const rollIn =(keys['KeyD']?1:0)-(keys['KeyA']?1:0);  // D=roll right, A=roll left
   const yawIn  =(keys['KeyE']?1:0)-(keys['KeyQ']?1:0);
+
+  // ---- Space/Shift: altitude throttle ----
   const thrIn  =(keys['Space']?1:0)-((keys['ShiftLeft']||keys['ShiftRight'])?1:0);
   const thrTarget=thrIn*0.9;
   drone.throttle+=(thrTarget-drone.throttle)*Math.min(1,dt*5.5);
   drone.throttle=Math.max(-0.4,Math.min(1.0,drone.throttle));
-  const PITCH=3.8, ROLL=4.2, YAW=2.6;
+
+  // Integrate angular velocity into orientation quaternion
+  const PITCH=3.2, ROLL=3.8, YAW=2.6;
   const damp=cfg.angularDamp;
   drone.wx=drone.wx*damp+pitchIn*PITCH*dt;
   drone.wy=drone.wy*damp+yawIn*YAW*dt;
@@ -694,26 +705,47 @@ function updateDronePhysics(dt){
   if(wMag>0.0001){
     const ha=wMag*dt*0.5, s=Math.sin(ha)/wMag;
     const dq={x:drone.wx*s,y:drone.wy*s,z:drone.wz*s,w:Math.cos(ha)};
-    const q={x:drone.qx,y:drone.qy,z:drone.qz,w:drone.qw};
     const nq=qNorm(qMul(q,dq));
     drone.qx=nq.x;drone.qy=nq.y;drone.qz=nq.z;drone.qw=nq.w;
   }
+
+  // ---- Arrow keys: direct world-space horizontal movement ----
+  // Get drone's facing direction projected onto XZ plane
+  const fwdW = qRotV({x:drone.qx,y:drone.qy,z:drone.qz,w:drone.qw},{x:0,y:0,z:-1});
+  const fwdH = normXZ(fwdW);             // horizontal forward unit vector
+  const rgtH = {x:fwdH.z, z:-fwdH.x};   // horizontal right unit vector (90° CW)
+
+  const moveMag = cfg.maxThrust * 0.7;  // arrow force strength
+  let moveX=0, moveZ=0;
+  if(keys['ArrowUp'])    { moveX+=fwdH.x; moveZ+=fwdH.z; }
+  if(keys['ArrowDown'])  { moveX-=fwdH.x; moveZ-=fwdH.z; }
+  if(keys['ArrowRight']) { moveX+=rgtH.x; moveZ+=rgtH.z; }
+  if(keys['ArrowLeft'])  { moveX-=rgtH.x; moveZ-=rgtH.z; }
+  // Normalize diagonal movement
+  const mLen=Math.sqrt(moveX*moveX+moveZ*moveZ);
+  if(mLen>1){ moveX/=mLen; moveZ/=mLen; }
+  moveX*=moveMag; moveZ*=moveMag;
+
+  // ---- Forces ----
   const thrustMag=Math.max(0,drone.throttle)*cfg.maxThrust;
   const up=qRotV({x:drone.qx,y:drone.qy,z:drone.qz,w:drone.qw},{x:0,y:1,z:0});
   const t2=performance.now()*0.001;
-  const windX=Math.sin(t2*0.7+1.3)*1.0+Math.sin(t2*1.9)*0.4;
-  const windZ=Math.cos(t2*0.55+0.8)*0.8+Math.cos(t2*2.1)*0.3;
+  const windX=Math.sin(t2*0.7+1.3)*0.6+Math.sin(t2*1.9)*0.25;
+  const windZ=Math.cos(t2*0.55+0.8)*0.5+Math.cos(t2*2.1)*0.2;
   const spd=Math.sqrt(drone.vx*drone.vx+drone.vy*drone.vy+drone.vz*drone.vz);
   const dragF=cfg.drag*spd;
-  const ax=(up.x*thrustMag)/cfg.mass+windX/cfg.mass-drone.vx*dragF;
-  const ay=(up.y*thrustMag)/cfg.mass-GRAVITY-drone.vy*dragF;
-  const az=(up.z*thrustMag)/cfg.mass+windZ/cfg.mass-drone.vz*dragF;
+
+  // Combine thrust (orientation-based) + arrow horizontal force + wind
+  const ax=(up.x*thrustMag + moveX)/cfg.mass + windX/cfg.mass - drone.vx*dragF;
+  const ay=(up.y*thrustMag)/cfg.mass - GRAVITY - drone.vy*dragF;
+  const az=(up.z*thrustMag + moveZ)/cfg.mass + windZ/cfg.mass - drone.vz*dragF;
+
   drone.vx+=ax*dt; drone.vy+=ay*dt; drone.vz+=az*dt;
   const ns=Math.sqrt(drone.vx*drone.vx+drone.vy*drone.vy+drone.vz*drone.vz);
-  if(ns>55){const f2=55/ns;drone.vx*=f2;drone.vy*=f2;drone.vz*=f2;}
+  if(ns>60){const f2=60/ns;drone.vx*=f2;drone.vy*=f2;drone.vz*=f2;}
   drone.x+=drone.vx*dt; drone.y+=drone.vy*dt; drone.z+=drone.vz*dt;
   if(drone.y<0.4){
-    if(Math.sqrt(drone.vx*drone.vx+drone.vy*drone.vy+drone.vz*drone.vz)>7){triggerCrash();return;}
+    if(Math.sqrt(drone.vx*drone.vx+drone.vy*drone.vy+drone.vz*drone.vz)>9){triggerCrash();return;}
     drone.y=0.4; drone.vy=Math.max(0,drone.vy); drone.vx*=0.7; drone.vz*=0.7;
   }
   if(drone.x> MAP_HALF){drone.x= MAP_HALF;drone.vx=Math.min(0,drone.vx);}
@@ -813,120 +845,38 @@ function updateExplosions(dt){
 }
 
 // ============================================================
-// AUDIO - EDM Retro Chiptune BGM + Motor SFX
+// AUDIO - MP3 BGM + Motor SFX
 // ============================================================
 let audioCtx=null,motorOsc=null,motorGain=null,noiseSource=null,noiseGain=null,motorRunning=false;
-let bgmScheduler=null, bgmMaster=null;
 
+// ---- BGM via HTMLAudioElement (real mp3 files) ----
+let bgmAudio=null;
+const BGM_TRACKS=[
+  'Music/edm-gaming-music-335408.mp3',
+  'Music/retro-game-402454.mp3',
+  'Music/level-up-energetic-gaming-rock-music-251284.mp3'
+];
+let bgmTrackIdx=0;
+
+function startBGMusic(){
+  if(!bgmAudio){
+    bgmAudio=new Audio();
+    bgmAudio.loop=true;
+    bgmAudio.volume=0.45;
+    bgmAudio.src=BGM_TRACKS[bgmTrackIdx];
+  }
+  bgmAudio.currentTime=0;
+  bgmAudio.play().catch(()=>{});
+}
+function stopBGMusic(){
+  if(!bgmAudio) return;
+  bgmAudio.pause();
+}
+
+// ---- Web Audio context for motor SFX ----
 function ensureAudio(){
   if(audioCtx) return true;
   try{audioCtx=new(window.AudioContext||window.webkitAudioContext)();return true;}catch(e){return false;}
-}
-
-// ---- EDM Chiptune BGM ----
-const BPM=132;
-const BEAT=60/BPM;
-// Melody scale: pentatonic in A minor (chiptune friendly)
-const MELODY_NOTES=[220,261.63,293.66,329.63,392,440,523.25,587.33,659.26,784];
-const MELODY_SEQ=[4,6,4,6,7,6,4,2, 4,6,4,6,8,7,6,4]; // indices into MELODY_NOTES
-const BASS_NOTES=[110,110,146.83,110, 110,130.81,146.83,123.47];
-
-let bgNextBeat=0, bgBeat=0;
-
-function bgmKick(t){
-  try{
-    const o=audioCtx.createOscillator(), g=audioCtx.createGain();
-    o.type='sine'; o.frequency.setValueAtTime(150,t); o.frequency.exponentialRampToValueAtTime(50,t+0.12);
-    g.gain.setValueAtTime(0.5,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.22);
-    o.connect(g); g.connect(bgmMaster); o.start(t); o.stop(t+0.22);
-  }catch(e){}
-}
-function bgmSnare(t){
-  try{
-    const bL=Math.round(audioCtx.sampleRate*0.18);
-    const buf=audioCtx.createBuffer(1,bL,audioCtx.sampleRate);
-    const bd=buf.getChannelData(0);
-    for(let i=0;i<bL;i++) bd[i]=(Math.random()*2-1)*(1-i/bL);
-    const ns=audioCtx.createBufferSource(), g=audioCtx.createGain();
-    // High-pass filter for snare snap
-    const hpf=audioCtx.createBiquadFilter(); hpf.type='highpass'; hpf.frequency.value=1800;
-    g.gain.setValueAtTime(0.28,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.18);
-    ns.buffer=buf; ns.connect(hpf); hpf.connect(g); g.connect(bgmMaster); ns.start(t);
-  }catch(e){}
-}
-function bgmHat(t,open){
-  try{
-    const bL=Math.round(audioCtx.sampleRate*(open?0.12:0.04));
-    const buf=audioCtx.createBuffer(1,bL,audioCtx.sampleRate);
-    const bd=buf.getChannelData(0);
-    for(let i=0;i<bL;i++) bd[i]=(Math.random()*2-1)*(1-i/bL);
-    const ns=audioCtx.createBufferSource(), g=audioCtx.createGain();
-    const hpf=audioCtx.createBiquadFilter(); hpf.type='highpass'; hpf.frequency.value=8000;
-    g.gain.setValueAtTime(open?0.12:0.08,t); g.gain.exponentialRampToValueAtTime(0.001,t+(open?0.12:0.04));
-    ns.buffer=buf; ns.connect(hpf); hpf.connect(g); g.connect(bgmMaster); ns.start(t);
-  }catch(e){}
-}
-function bgmMelody(t, noteIdx){
-  try{
-    const freq=MELODY_NOTES[MELODY_SEQ[noteIdx%MELODY_SEQ.length]];
-    const o=audioCtx.createOscillator(), g=audioCtx.createGain();
-    o.type='square'; o.frequency.value=freq;
-    g.gain.setValueAtTime(0.12,t); g.gain.setValueAtTime(0.09,t+BEAT*0.6); g.gain.exponentialRampToValueAtTime(0.001,t+BEAT*0.95);
-    o.connect(g); g.connect(bgmMaster); o.start(t); o.stop(t+BEAT);
-  }catch(e){}
-}
-function bgmBass(t, noteIdx){
-  try{
-    const freq=BASS_NOTES[noteIdx%BASS_NOTES.length];
-    const o=audioCtx.createOscillator(), g=audioCtx.createGain();
-    o.type='sawtooth'; o.frequency.value=freq;
-    const lpf=audioCtx.createBiquadFilter(); lpf.type='lowpass'; lpf.frequency.value=600;
-    g.gain.setValueAtTime(0.18,t); g.gain.exponentialRampToValueAtTime(0.001,t+BEAT*0.85);
-    o.connect(lpf); lpf.connect(g); g.connect(bgmMaster); o.start(t); o.stop(t+BEAT);
-  }catch(e){}
-}
-
-function scheduleBGM(){
-  if(!audioCtx||!bgmMaster) return;
-  const ahead=0.1;
-  while(bgNextBeat < audioCtx.currentTime+0.25){
-    const t=bgNextBeat;
-    const beat=bgBeat%8; // 8-beat pattern
-    // Kick: beat 0, 4
-    if(beat===0||beat===4) bgmKick(t);
-    // Snare: beat 2, 6
-    if(beat===2||beat===6) bgmSnare(t);
-    // Half-beat hats
-    bgmHat(t, false);
-    bgmHat(t+BEAT*0.5, beat===3);
-    // Melody every beat
-    bgmMelody(t, bgBeat);
-    // Bass every beat
-    bgmBass(t, Math.floor(bgBeat/2));
-    bgNextBeat+=BEAT;
-    bgBeat++;
-  }
-  bgmScheduler=setTimeout(scheduleBGM, 80);
-}
-
-function startBGMusic(){
-  if(!ensureAudio()) return;
-  if(audioCtx.state==='suspended') audioCtx.resume();
-  stopBGMusic();
-  try{
-    bgmMaster=audioCtx.createGain(); bgmMaster.gain.value=0.55;
-    // Slight reverb via convolver not available without IR, use delay for depth
-    const dly=audioCtx.createDelay(0.5); dly.delayTime.value=BEAT*0.375;
-    const dlyG=audioCtx.createGain(); dlyG.gain.value=0.18;
-    bgmMaster.connect(dly); dly.connect(dlyG); dlyG.connect(audioCtx.destination);
-    bgmMaster.connect(audioCtx.destination);
-    bgNextBeat=audioCtx.currentTime+0.05; bgBeat=0;
-    scheduleBGM();
-  }catch(e){console.warn('BGM:',e);}
-}
-function stopBGMusic(){
-  if(bgmScheduler){clearTimeout(bgmScheduler);bgmScheduler=null;}
-  try{if(bgmMaster){bgmMaster.disconnect();bgmMaster=null;}}catch(e){}
 }
 
 // ---- Motor ambient (low volume, FPV feel) ----
