@@ -845,120 +845,38 @@ function updateExplosions(dt){
 }
 
 // ============================================================
-// AUDIO - EDM Retro Chiptune BGM + Motor SFX
+// AUDIO - MP3 BGM + Motor SFX
 // ============================================================
 let audioCtx=null,motorOsc=null,motorGain=null,noiseSource=null,noiseGain=null,motorRunning=false;
-let bgmScheduler=null, bgmMaster=null;
 
+// ---- BGM via HTMLAudioElement (real mp3 files) ----
+let bgmAudio=null;
+const BGM_TRACKS=[
+  'Music/edm-gaming-music-335408.mp3',
+  'Music/retro-game-402454.mp3',
+  'Music/level-up-energetic-gaming-rock-music-251284.mp3'
+];
+let bgmTrackIdx=0;
+
+function startBGMusic(){
+  if(!bgmAudio){
+    bgmAudio=new Audio();
+    bgmAudio.loop=true;
+    bgmAudio.volume=0.45;
+    bgmAudio.src=BGM_TRACKS[bgmTrackIdx];
+  }
+  bgmAudio.currentTime=0;
+  bgmAudio.play().catch(()=>{});
+}
+function stopBGMusic(){
+  if(!bgmAudio) return;
+  bgmAudio.pause();
+}
+
+// ---- Web Audio context for motor SFX ----
 function ensureAudio(){
   if(audioCtx) return true;
   try{audioCtx=new(window.AudioContext||window.webkitAudioContext)();return true;}catch(e){return false;}
-}
-
-// ---- EDM Chiptune BGM ----
-const BPM=132;
-const BEAT=60/BPM;
-// Melody scale: pentatonic in A minor (chiptune friendly)
-const MELODY_NOTES=[220,261.63,293.66,329.63,392,440,523.25,587.33,659.26,784];
-const MELODY_SEQ=[4,6,4,6,7,6,4,2, 4,6,4,6,8,7,6,4]; // indices into MELODY_NOTES
-const BASS_NOTES=[110,110,146.83,110, 110,130.81,146.83,123.47];
-
-let bgNextBeat=0, bgBeat=0;
-
-function bgmKick(t){
-  try{
-    const o=audioCtx.createOscillator(), g=audioCtx.createGain();
-    o.type='sine'; o.frequency.setValueAtTime(150,t); o.frequency.exponentialRampToValueAtTime(50,t+0.12);
-    g.gain.setValueAtTime(0.5,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.22);
-    o.connect(g); g.connect(bgmMaster); o.start(t); o.stop(t+0.22);
-  }catch(e){}
-}
-function bgmSnare(t){
-  try{
-    const bL=Math.round(audioCtx.sampleRate*0.18);
-    const buf=audioCtx.createBuffer(1,bL,audioCtx.sampleRate);
-    const bd=buf.getChannelData(0);
-    for(let i=0;i<bL;i++) bd[i]=(Math.random()*2-1)*(1-i/bL);
-    const ns=audioCtx.createBufferSource(), g=audioCtx.createGain();
-    // High-pass filter for snare snap
-    const hpf=audioCtx.createBiquadFilter(); hpf.type='highpass'; hpf.frequency.value=1800;
-    g.gain.setValueAtTime(0.28,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.18);
-    ns.buffer=buf; ns.connect(hpf); hpf.connect(g); g.connect(bgmMaster); ns.start(t);
-  }catch(e){}
-}
-function bgmHat(t,open){
-  try{
-    const bL=Math.round(audioCtx.sampleRate*(open?0.12:0.04));
-    const buf=audioCtx.createBuffer(1,bL,audioCtx.sampleRate);
-    const bd=buf.getChannelData(0);
-    for(let i=0;i<bL;i++) bd[i]=(Math.random()*2-1)*(1-i/bL);
-    const ns=audioCtx.createBufferSource(), g=audioCtx.createGain();
-    const hpf=audioCtx.createBiquadFilter(); hpf.type='highpass'; hpf.frequency.value=8000;
-    g.gain.setValueAtTime(open?0.12:0.08,t); g.gain.exponentialRampToValueAtTime(0.001,t+(open?0.12:0.04));
-    ns.buffer=buf; ns.connect(hpf); hpf.connect(g); g.connect(bgmMaster); ns.start(t);
-  }catch(e){}
-}
-function bgmMelody(t, noteIdx){
-  try{
-    const freq=MELODY_NOTES[MELODY_SEQ[noteIdx%MELODY_SEQ.length]];
-    const o=audioCtx.createOscillator(), g=audioCtx.createGain();
-    o.type='square'; o.frequency.value=freq;
-    g.gain.setValueAtTime(0.12,t); g.gain.setValueAtTime(0.09,t+BEAT*0.6); g.gain.exponentialRampToValueAtTime(0.001,t+BEAT*0.95);
-    o.connect(g); g.connect(bgmMaster); o.start(t); o.stop(t+BEAT);
-  }catch(e){}
-}
-function bgmBass(t, noteIdx){
-  try{
-    const freq=BASS_NOTES[noteIdx%BASS_NOTES.length];
-    const o=audioCtx.createOscillator(), g=audioCtx.createGain();
-    o.type='sawtooth'; o.frequency.value=freq;
-    const lpf=audioCtx.createBiquadFilter(); lpf.type='lowpass'; lpf.frequency.value=600;
-    g.gain.setValueAtTime(0.18,t); g.gain.exponentialRampToValueAtTime(0.001,t+BEAT*0.85);
-    o.connect(lpf); lpf.connect(g); g.connect(bgmMaster); o.start(t); o.stop(t+BEAT);
-  }catch(e){}
-}
-
-function scheduleBGM(){
-  if(!audioCtx||!bgmMaster) return;
-  const ahead=0.1;
-  while(bgNextBeat < audioCtx.currentTime+0.25){
-    const t=bgNextBeat;
-    const beat=bgBeat%8; // 8-beat pattern
-    // Kick: beat 0, 4
-    if(beat===0||beat===4) bgmKick(t);
-    // Snare: beat 2, 6
-    if(beat===2||beat===6) bgmSnare(t);
-    // Half-beat hats
-    bgmHat(t, false);
-    bgmHat(t+BEAT*0.5, beat===3);
-    // Melody every beat
-    bgmMelody(t, bgBeat);
-    // Bass every beat
-    bgmBass(t, Math.floor(bgBeat/2));
-    bgNextBeat+=BEAT;
-    bgBeat++;
-  }
-  bgmScheduler=setTimeout(scheduleBGM, 80);
-}
-
-function startBGMusic(){
-  if(!ensureAudio()) return;
-  if(audioCtx.state==='suspended') audioCtx.resume();
-  stopBGMusic();
-  try{
-    bgmMaster=audioCtx.createGain(); bgmMaster.gain.value=0.55;
-    // Slight reverb via convolver not available without IR, use delay for depth
-    const dly=audioCtx.createDelay(0.5); dly.delayTime.value=BEAT*0.375;
-    const dlyG=audioCtx.createGain(); dlyG.gain.value=0.18;
-    bgmMaster.connect(dly); dly.connect(dlyG); dlyG.connect(audioCtx.destination);
-    bgmMaster.connect(audioCtx.destination);
-    bgNextBeat=audioCtx.currentTime+0.05; bgBeat=0;
-    scheduleBGM();
-  }catch(e){console.warn('BGM:',e);}
-}
-function stopBGMusic(){
-  if(bgmScheduler){clearTimeout(bgmScheduler);bgmScheduler=null;}
-  try{if(bgmMaster){bgmMaster.disconnect();bgmMaster=null;}}catch(e){}
 }
 
 // ---- Motor ambient (low volume, FPV feel) ----
