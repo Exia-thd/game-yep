@@ -713,7 +713,7 @@ function updateDronePhysics(dt){
   // Get drone's facing direction projected onto XZ plane
   const fwdW = qRotV({x:drone.qx,y:drone.qy,z:drone.qz,w:drone.qw},{x:0,y:0,z:-1});
   const fwdH = normXZ(fwdW);             // horizontal forward unit vector
-  const rgtH = {x:fwdH.z, z:-fwdH.x};   // horizontal right unit vector (90° CW)
+  const rgtH = {x:-fwdH.z, z:fwdH.x};   // horizontal right unit vector (90° CW)
 
   const moveMag = cfg.maxThrust * 0.7;  // arrow force strength
   let moveX=0, moveZ=0;
@@ -847,7 +847,7 @@ function updateExplosions(dt){
 // ============================================================
 // AUDIO - MP3 BGM + Motor SFX
 // ============================================================
-let audioCtx=null,motorOsc=null,motorGain=null,noiseSource=null,noiseGain=null,motorRunning=false;
+let audioCtx=null,motorOsc=null,motorOsc2=null,motorGain=null,noiseSource=null,noiseGain=null,motorRunning=false;
 
 // ---- BGM via HTMLAudioElement (real mp3 files) ----
 let bgmAudio=null;
@@ -887,8 +887,8 @@ function startMotorSound(){
   try{
     motorGain=audioCtx.createGain(); motorGain.gain.value=0.022; motorGain.connect(audioCtx.destination);
     motorOsc=audioCtx.createOscillator(); motorOsc.type='sawtooth'; motorOsc.frequency.value=1700;
-    const o2=audioCtx.createOscillator(); o2.type='square'; o2.frequency.value=1700; o2.detune.value=12;
-    const g2=audioCtx.createGain(); g2.gain.value=0.3; o2.connect(g2); g2.connect(motorGain); o2.start();
+    motorOsc2=audioCtx.createOscillator(); motorOsc2.type='square'; motorOsc2.frequency.value=1700; motorOsc2.detune.value=12;
+    const g2=audioCtx.createGain(); g2.gain.value=0.3; motorOsc2.connect(g2); g2.connect(motorGain); motorOsc2.start();
     motorOsc.connect(motorGain); motorOsc.start();
     const bL=audioCtx.sampleRate, nB=audioCtx.createBuffer(1,bL,audioCtx.sampleRate);
     const nd=nB.getChannelData(0); for(let i=0;i<bL;i++) nd[i]=(Math.random()*2-1);
@@ -899,14 +899,21 @@ function startMotorSound(){
   }catch(e){console.warn('Motor:',e);}
 }
 function stopMotorSound(){
-  try{if(motorOsc){motorOsc.stop();motorOsc=null;} if(noiseSource){noiseSource.stop();noiseSource=null;} motorRunning=false;}catch(e){}
+  try{
+    if(motorOsc){motorOsc.stop();motorOsc=null;} 
+    if(motorOsc2){motorOsc2.stop();motorOsc2=null;}
+    if(noiseSource){noiseSource.stop();noiseSource=null;} 
+    if(motorGain){motorGain.disconnect();motorGain=null;}
+    motorRunning=false;
+  }catch(e){}
 }
 function updateMotorFrequency(){
   if(!audioCtx||!motorOsc||!drone) return;
   try{
     const spd=Math.sqrt(drone.vx*drone.vx+drone.vy*drone.vy+drone.vz*drone.vz);
     const freq=1300+Math.max(0,drone.throttle)*900+spd*5;
-    motorOsc.frequency.setTargetAtTime(freq,audioCtx.currentTime,0.04);
+    if(motorOsc) motorOsc.frequency.setTargetAtTime(freq,audioCtx.currentTime,0.04);
+    if(motorOsc2) motorOsc2.frequency.setTargetAtTime(freq,audioCtx.currentTime,0.04);
     if(audioCtx.state==='suspended') audioCtx.resume();
   }catch(e){}
 }
