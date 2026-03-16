@@ -78,8 +78,8 @@ body{background:#000;color:#00ff88;font-family:'Share Tech Mono',monospace;overf
     <div class="controls-grid">
       <span>SPACE</span><span>Throttle Up</span>
       <span>SHIFT</span><span>Throttle Down</span>
-      <span>W / S</span><span>Pitch Fwd/Back</span>
-      <span>A / D</span><span>Roll Left/Right</span>
+      <span>↑ / ↓</span><span>Pitch Fwd/Back</span>
+      <span>← / →</span><span>Roll Left/Right</span>
       <span>Q / E</span><span>Yaw Left/Right</span>
       <span>1 / 2 / 3</span><span>Camera Mode</span>
       <span>R</span><span>Respawn (once)</span>
@@ -210,7 +210,7 @@ document.addEventListener('keydown', e => {
       if(e.code==='KeyR') respawnDrone();
     }
   }
-  const pd=['Space','ShiftLeft','ShiftRight','KeyW','KeyS','KeyA','KeyD','KeyQ','KeyE','Digit1','Digit2','Digit3','Escape'];
+  const pd=['Space','ShiftLeft','ShiftRight','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyQ','KeyE','Digit1','Digit2','Digit3','Escape'];
   if(pd.includes(e.code)) e.preventDefault();
 });
 document.addEventListener('keyup', e => { keys[e.code]=false; });
@@ -240,12 +240,12 @@ document.getElementById('btn-replay').addEventListener('click', ()=>switchScreen
 function togglePause() {
   paused = !paused;
   document.getElementById('pause-overlay').classList.toggle('active', paused);
-  if(paused) stopMotorSound(); else startMotorSound();
+  if(paused) { stopMotorSound(); stopBGMusic(); } else { startMotorSound(); startBGMusic(); }
 }
 function resumeGame() {
   paused = false;
   document.getElementById('pause-overlay').classList.remove('active');
-  startMotorSound();
+  startMotorSound(); startBGMusic();
 }
 
 // ============================================================
@@ -310,23 +310,40 @@ function fog(r, g, b, depth) {
 function renderBackground() {
   if(!drone) { gc.fillStyle='#0a1a0a'; gc.fillRect(0,0,gW,gH); return; }
   const {qx,qy,qz,qw} = drone;
-  // Rotation matrix Y-row: maps camera ray to world Y component
   const m0 = 2*(qx*qy + qz*qw);
   const m1 = 1 - 2*(qx*qx + qz*qz);
   const m2 = 2*(qy*qz - qx*qw);
   const f = gW*0.5 / Math.tan(G_FOV_H);
 
-  // Sky fill
+  // Sky: deep twilight gradient (purple → dark blue → teal horizon)
   const sk = gc.createLinearGradient(0,0,0,gH);
-  sk.addColorStop(0,'#0c1c14'); sk.addColorStop(1,'#1a3a20');
+  sk.addColorStop(0,'#0a0a1e');
+  sk.addColorStop(0.35,'#0c1635');
+  sk.addColorStop(0.7,'#112240');
+  sk.addColorStop(1,'#1a3a2a');
   gc.fillStyle=sk; gc.fillRect(0,0,gW,gH);
+
+  // Stars at high altitude
+  if(drone.y > 30) {
+    const starAlpha = Math.min(0.7,(drone.y-30)/80);
+    gc.save(); gc.globalAlpha=starAlpha;
+    const seed=42;
+    for(let i=0;i<60;i++){
+      const sx=((Math.sin(i*seed)*0.5+0.5)*gW)|0;
+      const sy=((Math.cos(i*seed+1.3)*0.5+0.5)*(gH*0.5))|0;
+      const sr=Math.random()<0.1?1.5:0.8;
+      gc.fillStyle='#ffffff'; gc.beginPath(); gc.arc(sx,sy,sr,0,Math.PI*2); gc.fill();
+    }
+    gc.restore();
+  }
 
   // Ground polygon fill function
   const fillGnd = (p0,pw) => {
     const gg = gc.createLinearGradient(0, Math.min(p0,pw,gH), 0, gH);
-    gg.addColorStop(0, fog(40,80,20,G_FOG_E));
-    gg.addColorStop(0.5,'#2a5a10');
-    gg.addColorStop(1,'#1a3a08');
+    gg.addColorStop(0, fog(55,95,35,G_FOG_E));
+    gg.addColorStop(0.4,'#2e5c12');
+    gg.addColorStop(0.75,'#1e4208');
+    gg.addColorStop(1,'#121e04');
     gc.beginPath();
     gc.moveTo(0,p0); gc.lineTo(gW,pw); gc.lineTo(gW,gH); gc.lineTo(0,gH);
     gc.closePath(); gc.fillStyle=gg; gc.fill();
@@ -340,11 +357,38 @@ function renderBackground() {
   const yBase = gH*0.5 - f*m2/m1;
   const hY0 = yBase + slope*(-gW*0.5);
   const hYW = yBase + slope*(gW*0.5);
+
+  // Mountain silhouette on horizon
+  const horizonY = (hY0+hYW)*0.5;
+  if(horizonY>0 && horizonY<gH) {
+    gc.save(); gc.globalAlpha=0.35;
+    gc.fillStyle='#1a2a18';
+    gc.beginPath(); gc.moveTo(0,horizonY+5);
+    const mPts=[0,gW*0.1,gW*0.18,gW*0.28,gW*0.38,gW*0.5,gW*0.6,gW*0.72,gW*0.82,gW*0.92,gW];
+    const mH=[0,-18,-38,-22,-50,-30,-44,-20,-35,-15,0];
+    mPts.forEach((mx,mi)=>{ gc.lineTo(mx, horizonY+mH[mi]); });
+    gc.lineTo(gW,gH); gc.lineTo(0,gH); gc.closePath(); gc.fill();
+    gc.restore();
+  }
+
   fillGnd(hY0, hYW);
+
+  // Clouds (draw at horizon level)
+  if(horizonY>0 && horizonY<gH*0.75) {
+    gc.save(); gc.globalAlpha=0.18;
+    const cldY = horizonY - 12;
+    for(let ci=0;ci<5;ci++) {
+      const cx2 = (gW*0.1+ci*gW*0.22);
+      const cw = 60+ci*25, ch=12+ci*5;
+      gc.fillStyle='#b0d8d8';
+      gc.beginPath(); gc.ellipse(cx2,cldY,cw,ch,0,0,Math.PI*2); gc.fill();
+    }
+    gc.restore();
+  }
 
   // Ground grid
   if(drone.y < 80) {
-    gc.save(); gc.strokeStyle='rgba(50,100,30,0.3)'; gc.lineWidth=0.6;
+    gc.save(); gc.strokeStyle='rgba(60,110,40,0.25)'; gc.lineWidth=0.6;
     const step=20, range=150;
     const ox=Math.floor(drone.x/step)*step, oz=Math.floor(drone.z/step)*step;
     for(let x=ox-range;x<=ox+range;x+=step){
@@ -406,24 +450,43 @@ function clearWorld(){
 }
 
 function buildWorld(){
+  // City buildings (richer urban palette)
   const bd=[
-    {x:-80, z:-65, w:11,h:14,d:9 },{x:72,  z:-95, w:9, h:8, d:12},
-    {x:-125,z:42,  w:14,h:18,d:8 },{x:102, z:32,  w:10,h:12,d:11},
-    {x:-52, z:118, w:8, h:6, d:10},{x:132, z:-42, w:12,h:20,d:9 },
-    {x:-162,z:-115,w:9, h:10,d:13},{x:62,  z:148, w:11,h:7, d:8 },
-    {x:-88, z:-172,w:10,h:16,d:10},{x:152, z:112, w:8, h:9, d:11},
-    {x:-172,z:58,  w:13,h:11,d:9 },{x:42,  z:-132,w:9, h:15,d:9 },
-    {x:-32, z:82,  w:7, h:5, d:12},{x:112, z:-148,w:11,h:13,d:8 },
-    {x:-118,z:172, w:9, h:8, d:10}
+    {x:-80, z:-65, w:11,h:22,d:9 },{x:72,  z:-95, w:9, h:12,d:12},
+    {x:-125,z:42,  w:14,h:28,d:8 },{x:102, z:32,  w:10,h:18,d:11},
+    {x:-52, z:118, w:8, h:8, d:10},{x:132, z:-42, w:12,h:30,d:9 },
+    {x:-162,z:-115,w:9, h:14,d:13},{x:62,  z:148, w:11,h:10,d:8 },
+    {x:-88, z:-172,w:10,h:20,d:10},{x:152, z:112, w:8, h:13,d:11},
+    {x:-172,z:58,  w:13,h:16,d:9 },{x:42,  z:-132,w:9, h:22,d:9 },
+    {x:-32, z:82,  w:7, h:7, d:12},{x:112, z:-148,w:11,h:18,d:8 },
+    {x:-118,z:172, w:9, h:11,d:10}
   ];
-  const bc=[[102,102,85],[85,102,85],[102,85,68],[119,119,102],[85,68,51],
-            [102,119,85],[119,102,85],[90,90,74],[74,90,74],[119,119,85],
-            [96,96,80],[85,102,119],[102,85,85],[96,112,96],[85,85,102]];
+  // Urban concrete/glass tones
+  const bc=[[110,110,120],[90,105,120],[115,108,95],[130,128,115],[95,90,105],
+            [105,120,110],[118,108,95],[100,100,110],[85,100,85],[125,125,110],
+            [108,108,118],[90,110,130],[115,95,95],[100,118,108],[95,95,115]];
   bd.forEach((b,i)=>{
     const [r,g,bl]=bc[i%bc.length];
-    worldBuildings.push({x:b.x,z:b.z,w:b.w,h:b.h,d:b.d,r,g,b:bl});
+    worldBuildings.push({x:b.x,z:b.z,w:b.w,h:b.h,d:b.d,r,g,b:bl,hasWindows:true});
     buildingBoxes.push({x:b.x,z:b.z,hw:b.w*0.5+0.5,hd:b.d*0.5+0.5});
   });
+
+  // Airport complex (south-east area)
+  // Runway
+  worldBuildings.push({x:170,z:50,w:18,h:0.3,d:120,r:55,g:55,b:60,hasWindows:false,isRunway:true});
+  // Hangar 1
+  worldBuildings.push({x:155,z:20,w:22,h:10,d:16,r:130,g:125,b:110,hasWindows:false});
+  buildingBoxes.push({x:155,z:20,hw:12,hd:9});
+  // Hangar 2
+  worldBuildings.push({x:155,z:50,w:22,h:10,d:16,r:125,g:120,b:105,hasWindows:false});
+  buildingBoxes.push({x:155,z:50,hw:12,hd:9});
+  // Control tower
+  worldBuildings.push({x:178,z:-5,w:5,h:28,d:5,r:200,g:195,b:180,hasWindows:true});
+  buildingBoxes.push({x:178,z:-5,hw:3.5,hd:3.5});
+  // Tower cab (top)
+  worldBuildings.push({x:178,z:-5,w:8,h:3,d:8,r:80,g:180,b:220,hasWindows:false});
+
+  // Trees
   const tp=[[30,-60],[50,-40],[20,-100],[-60,25],[80,60],[-90,-30],[110,-80],
             [-140,90],[70,120],[-50,150],[120,-100],[-100,-145],[160,50],[-170,-80],
             [40,170],[-30,-180],[90,30],[-80,100],[130,150],[-150,120]];
@@ -431,13 +494,35 @@ function buildWorld(){
 }
 
 function drawBuilding(b){
-  const rT=Math.min(255,b.r+28), gT=Math.min(255,b.g+28), bT=Math.min(255,b.b+28);
-  const rS=Math.max(0,b.r-28),   gS=Math.max(0,b.g-28),   bS=Math.max(0,b.b-28);
+  if(b.isRunway) {
+    // Runway: flat dark asphalt strip
+    drawBox(b.x,0,b.z,b.w,b.h,b.d, 62,62,68, 55,55,62, 48,48,55);
+    return;
+  }
+  const rT=Math.min(255,b.r+35), gT=Math.min(255,b.g+35), bT=Math.min(255,b.b+40);
+  const rS=Math.max(0,b.r-35),   gS=Math.max(0,b.g-35),   bS=Math.max(0,b.b-35);
   drawBox(b.x,0,b.z,b.w,b.h,b.d, rT,gT,bT, b.r,b.g,b.b, rS,gS,bS);
-  drawBox(b.x,b.h,b.z,b.w*0.35,0.7,b.d*0.35,
-    Math.min(255,b.r+40),Math.min(255,b.g+40),Math.min(255,b.b+40),
-    Math.min(255,b.r+20),Math.min(255,b.g+20),Math.min(255,b.b+20),
-    b.r,b.g,b.b);
+  // Rooftop detail
+  if(b.h>8) {
+    drawBox(b.x,b.h,b.z,b.w*0.4,1.2,b.d*0.4,
+      Math.min(255,b.r+50),Math.min(255,b.g+50),Math.min(255,b.b+55),
+      Math.min(255,b.r+30),Math.min(255,b.g+30),Math.min(255,b.b+35),
+      b.r,b.g,b.b);
+    // Antenna
+    drawBox(b.x,b.h+1.2,b.z,0.6,3,0.6, 180,180,185, 170,170,175, 155,155,160);
+  }
+  // Windows (dark glass squares on front face) - draw as small dark boxes
+  if(b.hasWindows && b.h>6) {
+    const floors=Math.floor(b.h/4);
+    for(let fl=1;fl<=floors;fl++) {
+      const wy=fl*4-1;
+      if(wy>=b.h-1) continue;
+      // 2 windows per floor
+      for(let wi=-1;wi<=1;wi+=2) {
+        drawBox(b.x+wi*(b.w*0.22),wy,b.z+b.d*0.501,b.w*0.18,1.6,0.15, 30,60,90, 25,50,80, 20,40,70);
+      }
+    }
+  }
 }
 
 function drawTree(t){
@@ -455,19 +540,46 @@ function drawTree(t){
 }
 
 function drawTarget(t){
-  let tw,th,td;
-  if(t.type==='tank')  { tw=5;  th=4;  td=7; }
-  else if(t.type==='radar'){ tw=3; th=20; td=3; }
-  else                 { tw=2.8;th=3.5;td=7; }
   const hf=t.hp/t.maxHp;
   const rF=Math.round(hf<0.5?255:255*(2-2*hf));
   const gF=Math.round(hf>0.5?120:240*hf);
-  drawBox(t.x,t.y,t.z,tw,th,td,
-    Math.min(255,rF+50),Math.min(255,gF+50),50,
-    rF,gF,20,
-    Math.max(0,rF-40),Math.max(0,gF-40),10);
-  // Target indicator
-  const tp2=project(t.x,t.y+th+2.5,t.z);
+  const dmgAmt=Math.max(0,rF-40),dmgGmt=Math.max(0,gF-40);
+
+  if(t.type==='tank') {
+    // Hull (wide low body)
+    drawBox(t.x,t.y,    t.z, 5.5,1.5,7.5, Math.min(255,rF+20),Math.min(255,gF+20),25, rF,gF,15, dmgAmt,dmgGmt,8);
+    // Side skirts
+    drawBox(t.x,t.y+0.2,t.z, 6.0,0.8,7.8, dmgAmt,dmgGmt,8, Math.max(0,rF-20),Math.max(0,gF-20),10, dmgAmt,dmgGmt,5);
+    // Turret
+    drawBox(t.x,t.y+1.5,t.z-0.5, 3.5,1.8,3.5, Math.min(255,rF+35),Math.min(255,gF+35),40, Math.min(255,rF+15),Math.min(255,gF+15),20, rF,gF,15);
+    // Cannon barrel (long narrow)
+    drawBox(t.x+2.8,t.y+2.2,t.z-0.5, 3.5,0.4,0.4, 50,50,50, 40,40,40, 30,30,30);
+  } else if(t.type==='radar') {
+    // Base
+    drawBox(t.x,t.y,    t.z, 3.5,1.5,3.5, 90,105,90, 80,95,80, 65,78,65);
+    // Tower shaft
+    drawBox(t.x,t.y+1.5,t.z, 1.2,18,1.2,  100,110,100, 88,98,88, 72,80,72);
+    // Dish top
+    drawBox(t.x,t.y+19,t.z, 5,0.6,2.5,   180,190,180, 160,170,160, 130,140,130);
+    // Signal light (glowing)
+    drawBox(t.x,t.y+20,t.z, 0.6,0.6,0.6, 0,255,220, 0,200,180, 0,160,140);
+  } else {
+    // Truck chassis
+    drawBox(t.x,t.y,    t.z, 2.8,0.8,8.5,  Math.min(255,rF+15),Math.min(255,gF+15),20, rF,gF,15, dmgAmt,dmgGmt,8);
+    // Cab
+    drawBox(t.x,t.y+0.8,t.z-2.8, 2.6,2.0,3.0, Math.min(255,rF+30),Math.min(255,gF+30),35, Math.min(255,rF+10),Math.min(255,gF+10),20, rF,gF,15);
+    // Cargo box
+    drawBox(t.x,t.y+0.8,t.z+1.5, 2.5,2.2,5.0, rF,gF,15, dmgAmt,dmgGmt,8, Math.max(0,rF-60),Math.max(0,gF-60),5);
+    // Wheels (dark)
+    drawBox(t.x-1.5,t.y,t.z-2, 0.5,0.9,1.0, 30,30,30, 22,22,22, 15,15,15);
+    drawBox(t.x+1.5,t.y,t.z-2, 0.5,0.9,1.0, 30,30,30, 22,22,22, 15,15,15);
+    drawBox(t.x-1.5,t.y,t.z+2, 0.5,0.9,1.0, 30,30,30, 22,22,22, 15,15,15);
+    drawBox(t.x+1.5,t.y,t.z+2, 0.5,0.9,1.0, 30,30,30, 22,22,22, 15,15,15);
+  }
+
+  // Target indicator diamond
+  const th_h = t.type==='radar'?22:t.type==='tank'?4.5:3.8;
+  const tp2=project(t.x,t.y+th_h,t.z);
   if(tp2){
     const s=Math.max(5,tp2.f/tp2.z*2.8);
     const fa=1-Math.min(1,Math.max(0,(tp2.z-G_FOG_S)/(G_FOG_E-G_FOG_S)));
@@ -566,8 +678,8 @@ function qRotV(q,v){const qc={x:-q.x,y:-q.y,z:-q.z,w:q.w};const qv={x:v.x,y:v.y,
 function updateDronePhysics(dt){
   if(!drone||!drone.alive) return;
   const cfg=droneConfig;
-  const pitchIn=(keys['KeyW']?1:0)-(keys['KeyS']?1:0);
-  const rollIn =(keys['KeyD']?1:0)-(keys['KeyA']?1:0);
+  const pitchIn=(keys['ArrowUp']?1:0)-(keys['ArrowDown']?1:0);
+  const rollIn =(keys['ArrowRight']?1:0)-(keys['ArrowLeft']?1:0);
   const yawIn  =(keys['KeyE']?1:0)-(keys['KeyQ']?1:0);
   const thrIn  =(keys['Space']?1:0)-((keys['ShiftLeft']||keys['ShiftRight'])?1:0);
   const thrTarget=thrIn*0.9;
@@ -701,19 +813,129 @@ function updateExplosions(dt){
 }
 
 // ============================================================
-// AUDIO
+// AUDIO - EDM Retro Chiptune BGM + Motor SFX
 // ============================================================
 let audioCtx=null,motorOsc=null,motorGain=null,noiseSource=null,noiseGain=null,motorRunning=false;
+let bgmScheduler=null, bgmMaster=null;
+
 function ensureAudio(){
   if(audioCtx) return true;
   try{audioCtx=new(window.AudioContext||window.webkitAudioContext)();return true;}catch(e){return false;}
 }
+
+// ---- EDM Chiptune BGM ----
+const BPM=132;
+const BEAT=60/BPM;
+// Melody scale: pentatonic in A minor (chiptune friendly)
+const MELODY_NOTES=[220,261.63,293.66,329.63,392,440,523.25,587.33,659.26,784];
+const MELODY_SEQ=[4,6,4,6,7,6,4,2, 4,6,4,6,8,7,6,4]; // indices into MELODY_NOTES
+const BASS_NOTES=[110,110,146.83,110, 110,130.81,146.83,123.47];
+
+let bgNextBeat=0, bgBeat=0;
+
+function bgmKick(t){
+  try{
+    const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+    o.type='sine'; o.frequency.setValueAtTime(150,t); o.frequency.exponentialRampToValueAtTime(50,t+0.12);
+    g.gain.setValueAtTime(0.5,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.22);
+    o.connect(g); g.connect(bgmMaster); o.start(t); o.stop(t+0.22);
+  }catch(e){}
+}
+function bgmSnare(t){
+  try{
+    const bL=Math.round(audioCtx.sampleRate*0.18);
+    const buf=audioCtx.createBuffer(1,bL,audioCtx.sampleRate);
+    const bd=buf.getChannelData(0);
+    for(let i=0;i<bL;i++) bd[i]=(Math.random()*2-1)*(1-i/bL);
+    const ns=audioCtx.createBufferSource(), g=audioCtx.createGain();
+    // High-pass filter for snare snap
+    const hpf=audioCtx.createBiquadFilter(); hpf.type='highpass'; hpf.frequency.value=1800;
+    g.gain.setValueAtTime(0.28,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.18);
+    ns.buffer=buf; ns.connect(hpf); hpf.connect(g); g.connect(bgmMaster); ns.start(t);
+  }catch(e){}
+}
+function bgmHat(t,open){
+  try{
+    const bL=Math.round(audioCtx.sampleRate*(open?0.12:0.04));
+    const buf=audioCtx.createBuffer(1,bL,audioCtx.sampleRate);
+    const bd=buf.getChannelData(0);
+    for(let i=0;i<bL;i++) bd[i]=(Math.random()*2-1)*(1-i/bL);
+    const ns=audioCtx.createBufferSource(), g=audioCtx.createGain();
+    const hpf=audioCtx.createBiquadFilter(); hpf.type='highpass'; hpf.frequency.value=8000;
+    g.gain.setValueAtTime(open?0.12:0.08,t); g.gain.exponentialRampToValueAtTime(0.001,t+(open?0.12:0.04));
+    ns.buffer=buf; ns.connect(hpf); hpf.connect(g); g.connect(bgmMaster); ns.start(t);
+  }catch(e){}
+}
+function bgmMelody(t, noteIdx){
+  try{
+    const freq=MELODY_NOTES[MELODY_SEQ[noteIdx%MELODY_SEQ.length]];
+    const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+    o.type='square'; o.frequency.value=freq;
+    g.gain.setValueAtTime(0.12,t); g.gain.setValueAtTime(0.09,t+BEAT*0.6); g.gain.exponentialRampToValueAtTime(0.001,t+BEAT*0.95);
+    o.connect(g); g.connect(bgmMaster); o.start(t); o.stop(t+BEAT);
+  }catch(e){}
+}
+function bgmBass(t, noteIdx){
+  try{
+    const freq=BASS_NOTES[noteIdx%BASS_NOTES.length];
+    const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+    o.type='sawtooth'; o.frequency.value=freq;
+    const lpf=audioCtx.createBiquadFilter(); lpf.type='lowpass'; lpf.frequency.value=600;
+    g.gain.setValueAtTime(0.18,t); g.gain.exponentialRampToValueAtTime(0.001,t+BEAT*0.85);
+    o.connect(lpf); lpf.connect(g); g.connect(bgmMaster); o.start(t); o.stop(t+BEAT);
+  }catch(e){}
+}
+
+function scheduleBGM(){
+  if(!audioCtx||!bgmMaster) return;
+  const ahead=0.1;
+  while(bgNextBeat < audioCtx.currentTime+0.25){
+    const t=bgNextBeat;
+    const beat=bgBeat%8; // 8-beat pattern
+    // Kick: beat 0, 4
+    if(beat===0||beat===4) bgmKick(t);
+    // Snare: beat 2, 6
+    if(beat===2||beat===6) bgmSnare(t);
+    // Half-beat hats
+    bgmHat(t, false);
+    bgmHat(t+BEAT*0.5, beat===3);
+    // Melody every beat
+    bgmMelody(t, bgBeat);
+    // Bass every beat
+    bgmBass(t, Math.floor(bgBeat/2));
+    bgNextBeat+=BEAT;
+    bgBeat++;
+  }
+  bgmScheduler=setTimeout(scheduleBGM, 80);
+}
+
+function startBGMusic(){
+  if(!ensureAudio()) return;
+  if(audioCtx.state==='suspended') audioCtx.resume();
+  stopBGMusic();
+  try{
+    bgmMaster=audioCtx.createGain(); bgmMaster.gain.value=0.55;
+    // Slight reverb via convolver not available without IR, use delay for depth
+    const dly=audioCtx.createDelay(0.5); dly.delayTime.value=BEAT*0.375;
+    const dlyG=audioCtx.createGain(); dlyG.gain.value=0.18;
+    bgmMaster.connect(dly); dly.connect(dlyG); dlyG.connect(audioCtx.destination);
+    bgmMaster.connect(audioCtx.destination);
+    bgNextBeat=audioCtx.currentTime+0.05; bgBeat=0;
+    scheduleBGM();
+  }catch(e){console.warn('BGM:',e);}
+}
+function stopBGMusic(){
+  if(bgmScheduler){clearTimeout(bgmScheduler);bgmScheduler=null;}
+  try{if(bgmMaster){bgmMaster.disconnect();bgmMaster=null;}}catch(e){}
+}
+
+// ---- Motor ambient (low volume, FPV feel) ----
 function startMotorSound(){
   if(!ensureAudio()) return;
   if(motorRunning) return;
   if(audioCtx.state==='suspended') audioCtx.resume();
   try{
-    motorGain=audioCtx.createGain(); motorGain.gain.value=0.07; motorGain.connect(audioCtx.destination);
+    motorGain=audioCtx.createGain(); motorGain.gain.value=0.022; motorGain.connect(audioCtx.destination);
     motorOsc=audioCtx.createOscillator(); motorOsc.type='sawtooth'; motorOsc.frequency.value=1700;
     const o2=audioCtx.createOscillator(); o2.type='square'; o2.frequency.value=1700; o2.detune.value=12;
     const g2=audioCtx.createGain(); g2.gain.value=0.3; o2.connect(g2); g2.connect(motorGain); o2.start();
@@ -724,7 +946,7 @@ function startMotorSound(){
     noiseGain=audioCtx.createGain(); noiseGain.gain.value=0;
     noiseSource.connect(noiseGain); noiseGain.connect(audioCtx.destination); noiseSource.start();
     motorRunning=true;
-  }catch(e){console.warn('Audio:',e);}
+  }catch(e){console.warn('Motor:',e);}
 }
 function stopMotorSound(){
   try{if(motorOsc){motorOsc.stop();motorOsc=null;} if(noiseSource){noiseSource.stop();noiseSource=null;} motorRunning=false;}catch(e){}
@@ -735,29 +957,24 @@ function updateMotorFrequency(){
     const spd=Math.sqrt(drone.vx*drone.vx+drone.vy*drone.vy+drone.vz*drone.vz);
     const freq=1300+Math.max(0,drone.throttle)*900+spd*5;
     motorOsc.frequency.setTargetAtTime(freq,audioCtx.currentTime,0.04);
-    const noiseLevel=Math.max(0,drone.throttle)*0.04+spd*0.001;
-    if(noiseGain) noiseGain.gain.setTargetAtTime(noiseLevel,audioCtx.currentTime,0.12);
     if(audioCtx.state==='suspended') audioCtx.resume();
   }catch(e){}
 }
 function playExplosion(scale){
   if(!ensureAudio()) return;
   try{
+    // Deep boom
     const r=audioCtx.createOscillator(), rg=audioCtx.createGain();
     r.type='sawtooth'; r.frequency.value=80+Math.random()*40;
-    rg.gain.setValueAtTime(Math.min(0.5,0.35*scale),audioCtx.currentTime);
+    rg.gain.setValueAtTime(Math.min(0.45,0.32*scale),audioCtx.currentTime);
     rg.gain.exponentialRampToValueAtTime(0.0001,audioCtx.currentTime+0.9);
     r.connect(rg); rg.connect(audioCtx.destination); r.start(); r.stop(audioCtx.currentTime+0.9);
-    const c=audioCtx.createOscillator(), cg=audioCtx.createGain();
-    c.type='square'; c.frequency.value=40+Math.random()*20;
-    cg.gain.setValueAtTime(Math.min(0.4,0.25*scale),audioCtx.currentTime);
-    cg.gain.exponentialRampToValueAtTime(0.0001,audioCtx.currentTime+0.25);
-    c.connect(cg); cg.connect(audioCtx.destination); c.start(); c.stop(audioCtx.currentTime+0.25);
-    const bL=Math.round(audioCtx.sampleRate*0.4), buf=audioCtx.createBuffer(1,bL,audioCtx.sampleRate);
-    const bd=buf.getChannelData(0); for(let i=0;i<bL;i++) bd[i]=(Math.random()*2-1)*(1-i/bL);
+    // Noise burst
+    const bL=Math.round(audioCtx.sampleRate*0.35), buf=audioCtx.createBuffer(1,bL,audioCtx.sampleRate);
+    const bd2=buf.getChannelData(0); for(let i=0;i<bL;i++) bd2[i]=(Math.random()*2-1)*(1-i/bL);
     const ns=audioCtx.createBufferSource(), ng=audioCtx.createGain();
-    ng.gain.setValueAtTime(Math.min(0.6,0.4*scale),audioCtx.currentTime);
-    ng.gain.exponentialRampToValueAtTime(0.0001,audioCtx.currentTime+0.4);
+    ng.gain.setValueAtTime(Math.min(0.5,0.35*scale),audioCtx.currentTime);
+    ng.gain.exponentialRampToValueAtTime(0.0001,audioCtx.currentTime+0.35);
     ns.buffer=buf; ns.connect(ng); ng.connect(audioCtx.destination); ns.start();
   }catch(e){}
 }
@@ -931,9 +1148,10 @@ function startGame(){
   initRenderer();
   clearWorld(); buildWorld(); buildTargets();
   createDrone(8); initHud(); setCameraMode(0);
-  if(!audioCtx) ensureAudio();
-  if(audioCtx&&audioCtx.state==='suspended') audioCtx.resume().then(()=>startMotorSound()).catch(()=>{});
-  else startMotorSound();
+  ensureAudio();
+  const startAudio=()=>{ startBGMusic(); startMotorSound(); };
+  if(audioCtx&&audioCtx.state==='suspended') audioCtx.resume().then(startAudio).catch(()=>{});
+  else startAudio();
   gameRunning=true; lastTime=performance.now();
   animFrameId=requestAnimationFrame(gameLoop);
 }
@@ -953,7 +1171,7 @@ function respawnDrone(){
 }
 
 function endGame(win){
-  gameRunning=false; stopMotorSound(); impactCamActive=false;
+  gameRunning=false; stopMotorSound(); stopBGMusic(); impactCamActive=false;
   document.getElementById('impactLabel').style.display='none';
   const alive=targets.filter(t=>t.alive).length;
   const titleEl=document.getElementById('results-title');
